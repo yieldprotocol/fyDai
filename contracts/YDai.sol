@@ -4,11 +4,12 @@ import "@hq20/contracts/contracts/math/DecimalMath.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 import "./interfaces/IVat.sol";
 import "./interfaces/IPot.sol";
+import "./Constants.sol";
 import "./YToken.sol";
 
 
 ///@dev yDai is a yToken targeting Dai
-contract YDai is YToken {
+contract YDai is YToken, Constants {
     using DecimalMath for uint256;
     using DecimalMath for uint8;
 
@@ -16,12 +17,6 @@ contract YDai is YToken {
 
     IVat public vat;
     IPot public pot;
-
-    // TODO: Move to Constants.sol
-    // Fixed point precisions from MakerDao
-    uint8 constant public wad = 18;
-    uint8 constant public ray = 27;
-    uint8 constant public rad = 45;
 
     uint256 public maturityChi;  // accumulator (for dsr) at maturity in ray units
     uint256 public maturityRate; // accumulator (for stability fee) at maturity in ray units
