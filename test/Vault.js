@@ -11,6 +11,7 @@ const collateralToPost = web3.utils.toWei("20");
 const underlyingToLock = web3.utils.toWei("5");
 const underlyingPrice = web3.utils.toWei("2");
 const collateralRatio = toRay(2);
+const minCollateralRatio = toRay(1.5);
 const tooMuchUnderlying = web3.utils.toWei("6");
 
 contract('Vault', async (accounts) =>    {
@@ -24,7 +25,7 @@ contract('Vault', async (accounts) =>    {
         await collateral.transfer(user1, user1balance, { from: owner });
         oracle = await TestOracle.new({ from: owner });
         await oracle.set(underlyingPrice, { from: owner });
-        vault = await Vault.new(collateral.address, oracle.address, collateralRatio);
+        vault = await Vault.new(collateral.address, oracle.address, collateralRatio, minCollateralRatio);
     });
 
     it("collateral can't be retrieved if not available", async() => {

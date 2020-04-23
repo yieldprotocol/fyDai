@@ -1,3 +1,5 @@
+const { BN, expectRevert } = require('@openzeppelin/test-helpers');
+
 const YDai = artifacts.require('YDai');
 const Vault = artifacts.require('Vault');
 const TestOracle = artifacts.require('TestOracle');
@@ -15,6 +17,7 @@ const collateralToPost = web3.utils.toWei("20");
 const underlyingToLock = web3.utils.toWei("5");
 const underlyingPrice = web3.utils.toWei("2");
 const collateralRatio = web3.utils.toWei("2");
+const minCollateralRatio = toRay(1.5);
 const user1collateral = web3.utils.toWei("100");
 const user1underlying = web3.utils.toWei("100");
 const rate      = "1019999142148527182676895718";
@@ -43,7 +46,7 @@ contract('YDai', async (accounts) =>    {
         await collateral.transfer(user1, user1collateral, { from: owner });
         const oracle = await TestOracle.new({ from: owner });
         await oracle.set(underlyingPrice, { from: owner });
-        vault = await Vault.new(collateral.address, oracle.address, collateralRatio);
+        vault = await Vault.new(collateral.address, oracle.address, collateralRatio, minCollateralRatio);
 
         //current releases at: https://changelog.makerdao.com/
         vat = await TestVat.new();
@@ -126,3 +129,18 @@ contract('YDai', async (accounts) =>    {
         });
     });
 });
+
+function toWad(x) {
+    const wad = (new BN(10)).pow(new BN(18));
+    return (new BN(x).mul(rad)).toString(10);
+}
+
+function toRay(x) {
+    const ray = (new BN(10)).pow(new BN(27));
+    return (new BN(x).mul(ray)).toString(10);
+}
+
+function toRad(x) {
+    const rad = (new BN(10)).pow(new BN(45));
+    return (new BN(x).mul(rad)).toString(10);
+}

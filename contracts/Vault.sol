@@ -16,14 +16,16 @@ contract Vault is Ownable, Constants {
     // TODO: Use address(0) to represent Ether, consider also using an ERC20 Ether wrapper
     IERC20 internal collateral;
     uint256 public ratio; // collateralization ratio, in RAY units
+    uint256 public minRatio; // minimum collateralization ratio, in RAY units
     IOracle internal oracle;
     mapping(address => uint256) internal posted; // In collateral
     mapping(address => uint256) internal locked; // In collateral
 
-    constructor (address collateral_, address oracle_, uint256 ratio_) public Ownable() {
+    constructor (address collateral_, address oracle_, uint256 ratio_, uint256 minRatio_) public Ownable() {
         collateral = IERC20(collateral_);
         oracle = IOracle(oracle_);
         ratio = ratio_;
+        minRatio = minRatio_;
     }
 
     /// @dev Return posted collateral of an user
@@ -77,9 +79,14 @@ contract Vault is Ownable, Constants {
         return true;
     }
 
-    /// @dev Return whether a position can be collateralized
+    /// @dev Return whether a position is collateralized
     function isCollateralized(address user, uint256 amount) public view returns (bool) {
-        return balanceOf(user) >= collateralNeeded(amount);
+        return locked[user] >= collateralNeeded(amount);
+    }
+
+    /// @dev Return whether a position is under collateralized
+    function isUnderCollateralized(address user, uint256 amount) public view returns (bool) {
+        return locked[user] >= minCollateralNeeded(amount);
     }
 
     /// @dev Return how much collateral is needed to collateralize an amount of underlying
@@ -89,5 +96,14 @@ contract Vault is Ownable, Constants {
         // TODO: What happens for tiny amounts that get divided to zero?
         // (amount / price) * ratio
         return amount.muld(oracle.get(), WAD).muld(ratio, RAY);
+    }
+
+    /// @dev Return how much collateral is needed to maintain collateralization on an amount of underlying
+    function minCollateralNeeded(uint256 amount) public view returns (uint256) {
+        // TODO: Think about oracle decimals
+        // TODO: Do I have to worry about the oracle returning zero?
+        // TODO: What happens for tiny amounts that get divided to zero?
+        // (amount / price) * minRatio
+        return amount.muld(oracle.get(), WAD).muld(minRatio, RAY);
     }
 }
