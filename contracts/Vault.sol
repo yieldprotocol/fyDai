@@ -5,16 +5,17 @@ import "@openzeppelin/contracts/ownership/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IOracle.sol";
 import "./interfaces/IVault.sol";
+import "./Constants.sol";
 
 
-contract Vault is Ownable {
+contract Vault is Ownable, Constants {
     using DecimalMath for uint256;
 
     event CollateralLocked(address collateral, address user, uint256 amount);
 
     // TODO: Use address(0) to represent Ether, consider also using an ERC20 Ether wrapper
     IERC20 internal collateral;
-    uint256 public ratio; // collateralization ratio, with 18 decimals
+    uint256 public ratio; // collateralization ratio, in RAY units
     IOracle internal oracle;
     mapping(address => uint256) internal posted; // In collateral
     mapping(address => uint256) internal locked; // In collateral
@@ -87,6 +88,6 @@ contract Vault is Ownable {
         // TODO: Do I have to worry about the oracle returning zero?
         // TODO: What happens for tiny amounts that get divided to zero?
         // (amount / price) * ratio
-        return amount.muld(oracle.get(), 18).muld(ratio, 18);
+        return amount.muld(oracle.get(), WAD).muld(ratio, RAY);
     }
 }
