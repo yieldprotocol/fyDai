@@ -37,6 +37,7 @@ contract DaiVault is IVault, Ownable, Constants {
             dai.transferFrom(from, address(this), amount),
             "YToken: DAI transfer fail"
         ); // TODO: Check dai behaviour on failed transfers
+        // With the split I'm not sure about this, can we use the Controller address everywhere here and in EthVault.sol?
         (, uint256 normalizedDebt) = vat.urns(collateralType, address(this));
         if (normalizedDebt > 0){
             // repay as much debt as possible

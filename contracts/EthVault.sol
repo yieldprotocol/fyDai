@@ -32,6 +32,7 @@ contract EthVault is IVault, Ownable, Constants {
             "YToken: WETH transfer fail"
         );
         weth.approve(address(wethJoin), amount);
+        // With the split I'm not sure about this, can we use the Controller address everywhere here and in DaiVault.sol?
         wethJoin.join(address(this), amount); // GemJoin reverts if anything goes wrong.
         // All added collateral should be locked into the vault
         // collateral to add - wad
