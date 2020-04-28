@@ -8,13 +8,14 @@ import "./interfaces/IOracle.sol";
 import "./Constants.sol";
 
 
-/// @dev Controller is the top layer that implements rules and keeps the system state
+/// @dev Controller manages the state variables for an yDai series
 contract Controller is Ownable, Constants {
     using DecimalMath for uint256;
     using DecimalMath for int256;
     using DecimalMath for uint8;
 
-    ITreasury internal _treasury;
+    IVault internal _wethVault;
+    IVault internal _daiVault;
     IERC20 internal _weth;
     IERC20 internal _dai;
     IYDai internal _yDai;
@@ -63,7 +64,7 @@ contract Controller is Ownable, Constants {
     /// user --- Weth ---> us
     function post(address user, uint256 amount) public {
         posted[user] = posted[user].add(amount);
-        _treasury.post(user, amount);
+        _wethVault.push(user, amount);
     }
 
     /// @dev Moves Eth collateral from Treasury controlled Maker Eth vault back to user
@@ -74,7 +75,7 @@ contract Controller is Ownable, Constants {
             "Accounts: Free more collateral"
         )
         posted[user] = posted[user].sub(amount); // Will revert if not enough posted
-        _treasury.withdraw(user, amount);
+        _wethVault.pull(user, amount);
     }
 
     // ---------- Manage Dai/yDai ----------
@@ -95,7 +96,7 @@ contract Controller is Ownable, Constants {
             "Accounts: Post more collateral"
         )
         debt[user] = debt[user].add(amount); // TODO: Check collateralization ratio
-        _treasury.mint(user, amount);
+        _yDai.mint(user, amount);
     }
 
     /// @dev Moves Dai from user into Treasury controlled Maker Dai vault
@@ -108,14 +109,15 @@ contract Controller is Ownable, Constants {
     function repay(address user, uint256 amount) public {
         uint256 debtProportion = debt[user].mul(ray.unit()).divd(debtOf(user).mul(ray.unit()), ray);
         debt[user] = debt[user].sub(amount.muld(debtProportion, ray)); // Will revert if not enough debt
-        _treasury.repay(user, amount);
+        _daiVault.push(user, amount);
     }
 
     /// @dev Mint yTokens by posting an equal amount of underlying.
     /// user --- Dai  ---> us
     /// us   --- yDai ---> user
     function mint(address user, uint256 amount) public {
-        _treasury.mint(user, amount);
+        _daiVault.push(user, amount);
+        _yDai.mint(user, amount);
     }
 
     /// @dev Burn yTokens and return an equal amount of underlying.
@@ -126,6 +128,7 @@ contract Controller is Ownable, Constants {
             _yDai.isMature() == true,
             "Accounts: Only mature redeem"
         );
-        _treasury.burn(user, amount);
+        _yDai.burn(user, amount);
+        _daiVault.pull(user, amount);
     }
 }
