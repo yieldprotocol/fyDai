@@ -1,9 +1,10 @@
 pragma solidity ^0.6.2;
 
-import "./../interfaces/IPot.sol";
+// avoid using interface to keep contract from being abstract
+//import "./../interfaces/IPot.sol";
 
 
-contract TestPot is IPot {
+contract TestPot {
     uint256 internal _chi;  // the Rate Accumulator
 
     function chi() public view returns (uint256) {

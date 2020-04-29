@@ -3,7 +3,7 @@ pragma solidity ^0.6.2;
 import "@hq20/contracts/contracts/access/AuthorizedAccess.sol";
 import "@hq20/contracts/contracts/math/DecimalMath.sol";
 import "@hq20/contracts/contracts/utils/SafeCast.sol";
-import "@openzeppelin/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 import "./interfaces/IDaiJoin.sol";
@@ -16,8 +16,11 @@ import "./Constants.sol";
 /// @dev Treasury is the bottom layer that moves all assets.
 contract Treasury is AuthorizedAccess(), Constants() {
     using DecimalMath for uint256;
+    
     using DecimalMath for int256;
     using DecimalMath for uint8;
+
+    using SafeCast for uint256;
 
     IERC20 public weth;
     IERC20 public dai;
@@ -33,14 +36,8 @@ contract Treasury is AuthorizedAccess(), Constants() {
     // uint256 ethBalance; // This can be retrieved as weth.balanceOf(address(this))
     bytes32 collateralType = "ETH-A";
 
-    // TODO: Move to Constants.sol
-    // Fixed point256 precisions from MakerDao
-    uint8 constant public wad = 18;
-    uint8 constant public ray = 27;
-    uint8 constant public rad = 45;
-
     /// @dev Moves Eth collateral from user into Treasury controlled Maker Eth vault
-    function post(address from, uint256 amount) public onlyAuthorized {
+    function post(address from, uint256 amount) public onlyAuthorized("Treasury: Not Authorized") {
         require(
             weth.transferFrom(from, address(this), amount),
             "YToken: WETH transfer fail"
@@ -49,7 +46,9 @@ contract Treasury is AuthorizedAccess(), Constants() {
         wethJoin.join(address(this), amount); // GemJoin reverts if anything goes wrong.
         // All added collateral should be locked into the vault
         // collateral to add - wad
-        int256 dink = amount.toInt256();
+        int256 dink = int256(amount);
+        // SafeCast is not working and its unclear why
+        //int256 dink = amount.toInt256(amount);
         // Normalized Dai to receive - wad
         int256 dart = 0;
         // frob alters Maker vaults
@@ -65,10 +64,11 @@ contract Treasury is AuthorizedAccess(), Constants() {
 
     /// @dev Moves Eth collateral from Treasury controlled Maker Eth vault back to user
     /// TODO: This function requires authorization to use
-    function withdraw(address receiver, uint256 amount) public onlyAuthorized {
+    function withdraw(address receiver, uint256 amount) public onlyAuthorized("Treasury: Not Authorized") {
         // Remove collateral from vault
         // collateral to add - wad
-        int256 dink = -amount.toInt256();
+        //int256 dink = -amount.toInt256();
+        int256 dink = -int256(amount);
         // Normalized Dai to receive - wad
         int256 dart = 0;
         // frob alters Maker vaults
@@ -84,19 +84,14 @@ contract Treasury is AuthorizedAccess(), Constants() {
     }
 
     /// @dev Moves Dai from user into Treasury controlled Maker Dai vault
-    function repay(address source, uint256 amount) public onlyAuthorized {
+    function repay(address source, uint256 amount) public onlyAuthorized("Treasury: Not Authorized") {
         require(
             dai.transferFrom(source, address(this), amount),
             "YToken: DAI transfer fail"
         ); // TODO: Check dai behaviour on failed transfers
         (, uint256 normalizedDebt) = vat.urns(collateralType, address(this));
         if (normalizedDebt > 0){
-            // repay as much debt as possible
-            (, uint256 rate,,,) = vat.ilks(collateralType);
-            // Normalized Dai to receive - wad
-            int256 dart = int256(amount.divd(rate, ray)); // `amount` and `rate` are positive
-            maturityRate = Math.min(dart, ray.unit()); // only repay up to total in
-            _repayDai(dart);
+            _repayDai();
         } else {
             // put funds in the DSR
             _lockDai();
@@ -107,11 +102,11 @@ contract Treasury is AuthorizedAccess(), Constants() {
 
     /// @dev moves Dai from Treasury to user, borrowing from Maker DAO if not enough present.
     /// TODO: This function requires authorization to use
-    function disburse(address receiver, uint256 amount) public onlyAuthorized {
+    function disburse(address receiver, uint256 amount) public onlyAuthorized("Treasury: Not Authorized") {
         uint256 chi = pot.chi();
         uint256 normalizedBalance = pot.pie(address(this));
         uint256 balance = normalizedBalance.muld(chi, ray);
-        if (balance > toSend) {
+        if (balance > amount) {
             //send funds directly
             uint256 normalizedAmount = amount.divd(chi, ray);
             _freeDai(normalizedAmount);
@@ -131,9 +126,10 @@ contract Treasury is AuthorizedAccess(), Constants() {
         // collateral to add - wad
         int256 dink = 0; // Delta ink, change in collateral balance
         // Normalized Dai to receive - wad
-        (, rate,,,) = vat.ilks("ETH-A"); // Retrieve the MakerDAO stability fee
+        (, uint256 rate,,,) = vat.ilks("ETH-A"); // Retrieve the MakerDAO stability fee
         // collateral to add -- all collateral should already be present
-        int256 dart = -amount.divd(rate, ray).toInt256(); // Delta art, change in dai debt
+        //int256 dart = -int256(amount.divd(rate, ray)).toInt256(); // Delta art, change in dai debt
+        int256 dart = -int256(amount.divd(rate, ray)); // Delta art, change in dai debt
         // Normalized Dai to receive - wad
         // frob alters Maker vaults
         vat.frob(
@@ -147,10 +143,26 @@ contract Treasury is AuthorizedAccess(), Constants() {
         daiJoin.exit(receiver, amount); // `daiJoin` reverts on failures
     }
 
-        /// @dev Moves Dai from user into Treasury controlled Maker Dai vault
-    function _repayDai(uint256 dart) internal {
+    /// @dev Moves Dai from user into Treasury controlled Maker Dai vault
+    function _repayDai() internal {
+        // repay as much debt as possible
+        uint256 balance = dai.balanceOf(address(this));
+        (, uint256 rate,,,) = vat.ilks(collateralType);
+        uint256 normalizedAmount = balance.divd(rate, ray);
+        (, uint256 normalizedDebt) = vat.urns(collateralType, address(this));
+        //int256 toRepay = Math.min(normalizedAmount, normalizedDebt); // only repay up to total in
+        int256 toRepay;
+        uint256 toJoin;
+        if (normalizedAmount >= normalizedDebt){
+            toRepay = -int256(normalizedDebt);
+            toJoin = normalizedDebt.muld(rate, ray);      
+        } else {
+            toRepay = -int(normalizedAmount);
+            toJoin = balance;
+
+        }
         // TODO: Check dai behaviour on failed transfers
-        daiJoin.join(address(this), amount);
+        daiJoin.join(address(this), toJoin);
         // Add Dai to vault
         // collateral to add - wad
         int256 dink = 0;
@@ -161,7 +173,7 @@ contract Treasury is AuthorizedAccess(), Constants() {
             address(this),
             address(this),
             dink,
-            dart
+            toRepay
         ); // `vat.frob` reverts on failure
     }
 

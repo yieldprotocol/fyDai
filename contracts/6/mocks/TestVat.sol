@@ -1,9 +1,10 @@
 pragma solidity ^0.6.2;
 
-import "./../interfaces/IVat.sol";
+//avoid interface to avoid making contract abstract
+//import "./../interfaces/IVat.sol";
 
 
-contract TestVat is IVat {
+contract TestVat {
     uint256 internal _rate;
 
     function ilks(bytes32) external view returns (

@@ -1,10 +1,9 @@
 module.exports = {
     solc: {
-        version: "0.6.2"
+        version: "0.5.6"
     },
     paths: {
-        sources: "./contracts/6"
+        sources: "./contracts/5",
     }
-      
 };
 usePlugin("@nomiclabs/buidler-truffle5");
