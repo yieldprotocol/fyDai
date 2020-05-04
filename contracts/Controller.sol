@@ -117,8 +117,8 @@ contract Controller is Ownable, Constants {
             _yDai.isMature() != true,
             "Accounts: No mature borrow"
         );
+        uint256 collateralizationMultiplier = ICollateral(collateral).multiplier();
         require(
-            uint256 collateralizationMultiplier = ICollateral(collateral).multiplier();
             posted[collateral][user] >= (debtOf(collateral, user).add(amount)).muld(collateralizationMultiplier, ray),
             "Accounts: Post more collateral"
         );
