@@ -86,7 +86,9 @@ contract Controller is Ownable, Constants {
     // user --- Weth ---> us
     function post(address collateral, address user, uint256 amount) public acceptedCollateral(collateral) {
         posted[collateral][user] = posted[collateral][user].add(amount);
+        // Only for WETH
         _treasury.post(user, amount);
+        // For Chai, if treasury has debt, unwrap, repay, and record chi for user.
     }
 
     /// @dev Moves Eth collateral from Treasury controlled Maker Eth vault back to user
@@ -97,7 +99,9 @@ contract Controller is Ownable, Constants {
             "Accounts: Free more collateral"
         );
         posted[collateral][user] = posted[collateral][user].sub(amount); // Will revert if not enough posted
+        // Only for WETH
         _treasury.withdraw(user, amount);
+        // For Chai, if controller has not enough Chai, retrieve chi for user, borrow dai and wrap.
     }
 
     // ---------- Manage Dai/yDai ----------
@@ -114,7 +118,8 @@ contract Controller is Ownable, Constants {
             "Accounts: No mature borrow"
         );
         require(
-            posted[collateral][user] >= (debtOf(collateral, user).add(amount)).muld(collateralization, ray),
+            uint256 collateralizationMultiplier = ICollateral(collateral).multiplier();
+            posted[collateral][user] >= (debtOf(collateral, user).add(amount)).muld(collateralizationMultiplier, ray),
             "Accounts: Post more collateral"
         );
         debt[collateral][user] = debt[collateral][user].add(amount); // TODO: Check collateralization ratio
