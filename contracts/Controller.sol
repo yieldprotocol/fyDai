@@ -4,8 +4,9 @@ import "@hq20/contracts/contracts/math/DecimalMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "./interfaces/ITreasury.sol";
-import "./interfaces/IOracle.sol";
+import "./interfaces/ICollateral.sol";
 import "./Constants.sol";
 import "./YDai.sol"; // TODO: Find how to use an interface
 
@@ -16,24 +17,40 @@ contract Controller is Ownable, Constants {
     using DecimalMath for uint256;
     using DecimalMath for int256;
     using DecimalMath for uint8;
+    using EnumerableSet for EnumerableSet.AddressSet;
 
     ITreasury internal _treasury;
     IERC20 internal _weth;
     IERC20 internal _dai;
     YDai internal _yDai;
     IVat internal _vat;
-    IOracle internal _daiOracle;
+    EnumerableSet.AddressSet internal _collaterals;
 
-    mapping(address => uint256) internal posted; // In WETH
-    mapping(address => uint256) internal debt; // In DAI
+    mapping(address => mapping(address => uint256)) internal posted; // User/Collateral/Tokens
+    mapping(address => mapping(address => uint256)) internal debt; // User/Collateral/Dai
 
     uint256 public stability; // accumulator (for stability fee) at maturity in ray units
     uint256 public collateralization; // accumulator (for stability fee) at maturity in ray units
 
-    constructor (address treasury_, address yDai_, address daiOracle_) public {
+    constructor (address treasury_, address yDai_/*, address daiOracle_*/) public {
         _treasury = ITreasury(treasury_);
         _yDai = YDai(yDai_);
-        _daiOracle = IOracle(daiOracle_);
+        // _daiOracle = IOracle(daiOracle_);
+    }
+
+    modifier acceptedCollateral(address collateral) {
+        require(
+            _collaterals.contains(collateral),
+            "Controller: Unknown collateral"
+        );
+        _;
+    }
+
+    function addCollateral(address collateral) public onlyOwner {
+        require(
+            _collaterals.add(collateral),
+            "Controller: Collateral already exists"
+        );
     }
 
     /// @dev Collateral not in use for debt
@@ -42,10 +59,12 @@ contract Controller is Ownable, Constants {
     // posted[user](wad) - -----------------------
     //                       daiOracle.get()(ray)
     //
-    function unlockedOf(address user) public view returns (uint256) {
-        uint256 locked = debtOf(user).divd(_daiOracle.get(), ray);
-        if (locked > posted[user]) return 0; // Unlikely
-        return posted[user].sub(locked);
+    function unlockedOf(address collateral, address user) public view acceptedCollateral(collateral) returns (uint256) {
+        // This is actually collateral/dai price * collateralizationRatio in ray
+        uint256 collateralizationMultiplier = ICollateral(collateral).multiplier();
+        uint256 locked = debtOf(collateral, user).muld(collateralizationMultiplier, ray);
+        if (locked > posted[collateral][user]) return 0; // Unlikely
+        return posted[collateral][user].sub(locked);
     }
 
     /// @dev Return debt in underlying of an user
@@ -54,30 +73,30 @@ contract Controller is Ownable, Constants {
     // debt_now = debt_mat * ----------
     //                        rate_mat
     //
-    function debtOf(address user) public view returns (uint256) {
+    function debtOf(address collateral, address user) public view acceptedCollateral(collateral) returns (uint256) {
         if (_yDai.isMature()){
             (, uint256 rate,,,) = _vat.ilks("ETH-A");
-            return debt[user].muld(rate.divd(_yDai.maturityRate(), ray), ray);
+            return debt[collateral][user].muld(rate.divd(_yDai.maturityRate(), ray), ray);
         } else {
-            return debt[user];
+            return debt[collateral][user];
         }
     }
 
     /// @dev Moves Eth collateral from user into Treasury controlled Maker Eth vault
     // user --- Weth ---> us
-    function post(address user, uint256 amount) public {
-        posted[user] = posted[user].add(amount);
+    function post(address collateral, address user, uint256 amount) public acceptedCollateral(collateral) {
+        posted[collateral][user] = posted[collateral][user].add(amount);
         _treasury.post(user, amount);
     }
 
     /// @dev Moves Eth collateral from Treasury controlled Maker Eth vault back to user
     // us --- Weth ---> user
-    function withdraw(address user, uint256 amount) public {
+    function withdraw(address collateral, address user, uint256 amount) public acceptedCollateral(collateral) {
         require(
-            unlockedOf(user) >= amount,
+            unlockedOf(collateral, user) >= amount,
             "Accounts: Free more collateral"
         );
-        posted[user] = posted[user].sub(amount); // Will revert if not enough posted
+        posted[collateral][user] = posted[collateral][user].sub(amount); // Will revert if not enough posted
         _treasury.withdraw(user, amount);
     }
 
@@ -89,16 +108,16 @@ contract Controller is Ownable, Constants {
     //
     // us --- yDai ---> user
     // debt++
-    function borrow(address user, uint256 amount) public {
+    function borrow(address collateral, address user, uint256 amount) public acceptedCollateral(collateral) {
         require(
             _yDai.isMature() != true,
             "Accounts: No mature borrow"
         );
         require(
-            posted[user] >= (debtOf(user).add(amount)).muld(collateralization, ray),
+            posted[collateral][user] >= (debtOf(collateral, user).add(amount)).muld(collateralization, ray),
             "Accounts: Post more collateral"
         );
-        debt[user] = debt[user].add(amount); // TODO: Check collateralization ratio
+        debt[collateral][user] = debt[collateral][user].add(amount); // TODO: Check collateralization ratio
         _yDai.mint(user, amount);
     }
 
@@ -109,9 +128,9 @@ contract Controller is Ownable, Constants {
     //
     // user --- Dai ---> us
     // debt--
-    function repay(address user, uint256 amount) public {
-        uint256 debtProportion = debt[user].mul(ray.unit()).divd(debtOf(user).mul(ray.unit()), ray);
-        debt[user] = debt[user].sub(amount.muld(debtProportion, ray)); // Will revert if not enough debt
+    function repay(address collateral, address user, uint256 amount) public acceptedCollateral(collateral) {
+        uint256 debtProportion = debt[collateral][user].mul(ray.unit()).divd(debtOf(collateral, user).mul(ray.unit()), ray);
+        debt[collateral][user] = debt[collateral][user].sub(amount.muld(debtProportion, ray)); // Will revert if not enough debt
         _treasury.repay(user, amount);
     }
 
