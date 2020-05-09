@@ -60,7 +60,7 @@ contract('Treasury', async (accounts) =>  {
             vat.address,        // vat
             pot.address         // pot
         );
-        await vat.rely(treasury.address, { from: owner }); //?
+        //await vat.rely(treasury.address, { from: owner }); //?
 
         await treasury.grantAccess(user, { from: owner });
     });

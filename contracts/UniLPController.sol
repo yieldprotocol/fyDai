@@ -6,18 +6,11 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/ITreasury.sol";
 import "./interfaces/IOracle.sol";
+import "./interfaces/IUniswap.sol";
 import "./Constants.sol";
 import "./YDai.sol"; // TODO: Find how to use an interface
 
-// We should replace this sqrt with the appropriate library version, if any
-function sqrt(uint x) returns (uint y) {
-    uint z = (x + 1) / 2;
-    y = x;
-    while (z < y) {
-        y = z;
-        z = (x / z + z) / 2;
-    }
-}
+import "@nomiclabs/buidler/console.sol";
 
 /// @dev Controller manages the state variables for an yDai series
 contract UniLPController is Ownable, Constants {
@@ -41,7 +34,7 @@ contract UniLPController is Ownable, Constants {
     uint256 public stability; // accumulator (for stability fee) at maturity in ray units
     uint256 public collateralization; // accumulator (for stability fee) at maturity in ray units
 
-    uint256 constant public two = ray.unit() * 2; 
+    uint256 public two = ray.unit() * 2; 
 
     constructor (
         address collateral_, 
@@ -50,6 +43,7 @@ contract UniLPController is Ownable, Constants {
         address treasury_, 
         address yDai_, 
         address daiOracle_,
+        address vat_,
         address uniswap_
         ) public {
             _weth = IERC20(weth_);
@@ -58,9 +52,20 @@ contract UniLPController is Ownable, Constants {
             _treasury = ITreasury(treasury_);
             _yDai = YDai(yDai_);
             _daiOracle = IOracle(daiOracle_);
+            _vat = IVat(vat_);
             _uniswap = IUniswap(uniswap_);
     }
     
+    // We should replace this sqrt with the appropriate library version, if any
+    function sqrt(uint x) private pure returns (uint y) {
+        uint z = (x + 1) / 2;
+        y = x;
+        while (z < y) {
+            y = z;
+            z = (x / z + z) / 2;
+        }
+    }
+
 
     /// @dev minimum to lock for amount of new debt
     //
@@ -71,7 +76,8 @@ contract UniLPController is Ownable, Constants {
     function minLocked(uint256 amount) public view returns (uint256) {
         (uint112 _reserve0, uint112 _reserve1,) = _uniswap.getReserves(); 
         uint256 _totalSupply = _uniswap.totalSupply();
-        uint256 divisor = 2 * sqrt(_reserve0.mul(_reserve1), wad); //does this work correctly with uint112?
+        uint256 divisor = 2 * sqrt(uint256(_reserve0)
+                    .mul(uint256(_reserve1))); 
         return amount.muld(_totalSupply, wad).divd(divisor, wad);
     }
 
