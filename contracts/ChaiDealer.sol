@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IChai.sol";
 import "./interfaces/IOracle.sol";
 import "./interfaces/ITreasury.sol";
-import "./Constants.sol";
 import "./ERC20Dealer.sol";
 
 
@@ -46,8 +45,19 @@ contract ChaiDealer is ERC20Dealer {
         _treasury.pull(address(this), dai);                 // Take dai from treasury
         _dai.approve(address(_chai), dai);                  // Chai will take dai
         _chai.join(address(this), dai);                     // Give dai to Chai, take chai back
-        super.withdraw(to, chai);                           // Check collateralization, send chai to user and update posted
+        super.withdraw(to, chai);                         // Check collateralization, send chai to `to`, update posted
         // TODO: Consider a require on super.withdraw()
+    }
+
+    /// @dev Deletes the debt from `from` and transfers `chai` to `to`.
+    function liquidate(address from, address to, uint256 chai)
+        public override onlyAuthorized("ChaiDealer: Not Authorized") nonReentrant
+    {
+        uint256 dai = chai.divd(_chaiOracle.price(), RAY);  // dai = chai / price
+        _treasury.pull(address(this), dai);                 // Take dai from treasury
+        _dai.approve(address(_chai), dai);                  // Chai will take dai
+        _chai.join(address(this), dai);                     // Give dai to Chai, take chai back
+        super.liquidate(from, to, chai);                    // Update posted and debt, and send chai to `to`
     }
 
     /// @dev Takes dai from Treasury, and gives it to `to` address

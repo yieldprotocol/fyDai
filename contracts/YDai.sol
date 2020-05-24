@@ -35,6 +35,7 @@ contract YDai is AuthorizedAccess, ERC20, Constants, IYDai  {
         _vat = IVat(vat_);
         _pot = IPot(pot_);
         _maturity = maturity_;
+        // solium-disable-next-line security/no-block-members
         _chi = (now > _pot.rho()) ? _pot.drip() : _pot.chi();
         (, _rate,,,) = _vat.ilks("ETH-A"); // Retrieve the MakerDAO Stability fee
         _rate = Math.max(_rate, RAY.unit()); // Floor it at 1.0
@@ -57,6 +58,7 @@ contract YDai is AuthorizedAccess, ERC20, Constants, IYDai  {
     //  chi_mat
     //
     function chi() public override returns(uint256){
+        // solium-disable-next-line security/no-block-members
         uint256 chiNow = (now > _pot.rho()) ? _pot.drip() : _pot.chi();
         return chiNow.divd(_chi, RAY);
     }

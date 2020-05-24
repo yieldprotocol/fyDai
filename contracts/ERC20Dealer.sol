@@ -1,18 +1,20 @@
 pragma solidity ^0.6.2;
 
+import "@hq20/contracts/contracts/access/AuthorizedAccess.sol";
 import "@hq20/contracts/contracts/math/DecimalMath.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./interfaces/IOracle.sol";
+import "./interfaces/ILiquidable.sol";
 import "./interfaces/ITreasury.sol";
 import "./interfaces/IYDai.sol";
 import "./Constants.sol";
 
 
 /// @dev A dealer takes one type of collateral token and issues yDai
-contract ERC20Dealer is Ownable, Constants {
+contract ERC20Dealer is ILiquidable, AuthorizedAccess, ReentrancyGuard, Constants {
     using SafeMath for uint256;
     using DecimalMath for uint256;
     using DecimalMath for uint8;
@@ -23,8 +25,8 @@ contract ERC20Dealer is Ownable, Constants {
     IERC20 internal _token;
     IOracle internal _tokenOracle; // The oracle should return the price adjusted by collateralization
 
-    mapping(address => uint256) internal posted;     // In Erc20
-    mapping(address => uint256) internal debtYDai;   // In yDai
+    mapping(address => uint256) public override posted; // In Erc20
+    mapping(address => uint256) public debtYDai;        // In yDai
 
     constructor (
         address treasury_,
@@ -32,7 +34,7 @@ contract ERC20Dealer is Ownable, Constants {
         address yDai_,
         address token_,
         address tokenOracle_
-    ) public {
+    ) public AuthorizedAccess() ReentrancyGuard() {
         _treasury = ITreasury(treasury_);
         _dai = IERC20(dai_);
         _yDai = IYDai(yDai_);
@@ -57,8 +59,13 @@ contract ERC20Dealer is Ownable, Constants {
     // debt_now = debt_mat * ----------
     //                        rate_mat
     //
-    function debtDai(address user) public view returns (uint256) {
+    function debtDai(address user) public view override returns (uint256) {
         return inDai(debtYDai[user]);
+    }
+
+    /// @dev Return if an user is undercollateralized
+    function isUndercollateralized(address user) public override returns (bool) {
+        return debtDai(user) > powerOf(user);
     }
 
     /// @dev Returns the dai equivalent of an yDai amount
@@ -159,6 +166,33 @@ contract ERC20Dealer is Ownable, Constants {
         _dai.approve(address(_treasury), toRepay);              // Treasury will take the dai
         _treasury.push(address(this), toRepay);                 // Give the dai to Treasury
         debtYDai[from] = debtYDai[from].sub(debtDecrease);
+    }
+
+    /// @dev Adds a liquidation fee to the user.
+    function target(address user, uint256 fee)
+        public override onlyAuthorized("ERC20Dealer: Not Authorized") nonReentrant
+    {
+        require(
+            isUndercollateralized(user),
+            "ERC20Dealer: Not undercollateralized"
+        );
+        debtYDai[user] = debtYDai[user] + inYDai(fee);
+    }
+
+    /// @dev Removes the debt of `from` and transfers `token` collateral to `to`.
+    function liquidate(address from, address to, uint256 token)
+        public virtual override onlyAuthorized("ERC20Dealer: Not Authorized") nonReentrant
+    {
+        require(
+            posted[from] >= token,
+            "ERC20Dealer: Not enough collateral"
+        );
+        posted[from] = posted[from] - token;
+        delete debtYDai[from];
+        require(
+            _token.transfer(to, token),
+            "ERC20Dealer: Collateral transfer fail"
+        );
     }
 
     /// @dev Calculates the amount to repay and the amount by which to reduce the debt
