@@ -47,7 +47,7 @@ contract Liquidations  {
         );
         // solium-disable-next-line security/no-block-members
         auctions[user] = now;
-        _dealer.target(user, fee * 2);  // Adds twice the reward fee to the user's debt.
+        _dealer.target(user, fee);       // Adds the liquidation fee to the user's debt.
         _treasury.pull(msg.sender, fee); // Pull dai from treasury to reward the starter
     }
 
@@ -63,7 +63,6 @@ contract Liquidations  {
         );
         // solium-disable-next-line security/no-block-members
         delete auctions[user];
-        _treasury.pull(msg.sender, fee); // Pull dai from treasury to reward the stopper
     }
 
     /// @dev Liquidates a position. The caller pays the debt of `from`, and `to` receives an amount of collateral.
