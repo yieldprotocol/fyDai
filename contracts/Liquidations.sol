@@ -52,8 +52,8 @@ contract Liquidations  {
         _treasury.pull(msg.sender, fee); // Pull dai from treasury to reward the starter
     }
 
-    /// @dev Stops a liquidation process
-    function stop(address user) public {
+    /// @dev Cancels a liquidation process
+    function cancel(address user) public {
         require(
             auctions[user] > 0,
             "Liquidations: User is not targeted"
@@ -69,7 +69,7 @@ contract Liquidations  {
     /// @dev Liquidates a position. The caller pays the debt of `from`, and `to` receives an amount of collateral.
     /// @param from User vault to liquidate
     /// @param to Account paying the debt and receiving the collateral
-    function liquidate(address from, address to) public {
+    function complete(address from, address to) public {
         require(
             auctions[from] > 0,
             "Liquidations: User is not targeted"
