@@ -91,6 +91,11 @@ contract Liquidations  {
     }
 
     /// @dev Return how much collateral would be obtained by liquidating a vault
+    //
+    //                                        elapsedTime
+    // value = (2/3) posted + (1/3) posted * -------------
+    //                                        auctionTime
+
     function value(address user) public view returns (uint256) {
         require(
             auctions[user] > 0,
@@ -98,7 +103,7 @@ contract Liquidations  {
         );
         return Math.min(
             _dealer.posted(user),
-            _dealer.posted(user) * ((now - auctions[user]) / auctionTime)
+            (2 * _dealer.posted(user) / 3) + (_dealer.posted(user) * ((now - auctions[user]) / auctionTime) / 3)
         ); // TODO: Think about precision
     }
 }
