@@ -49,17 +49,6 @@ contract ChaiDealer is ERC20Dealer {
         // TODO: Consider a require on super.withdraw()
     }
 
-    /// @dev Deletes the debt from `from` and transfers `chai` to `to`.
-    function liquidate(address from, address to, uint256 chai)
-        public override onlyAuthorized("ChaiDealer: Not Authorized") nonReentrant
-    {
-        uint256 dai = chai.divd(_chaiOracle.price(), RAY);  // dai = chai / price
-        _treasury.pull(address(this), dai);                 // Take dai from treasury
-        _dai.approve(address(_chai), dai);                  // Chai will take dai
-        _chai.join(address(this), dai);                     // Give dai to Chai, take chai back
-        super.liquidate(from, to, chai);                    // Update posted and debt, and send chai to `to`
-    }
-
     /// @dev Takes dai from Treasury, and gives it to `to` address
     // Treasury --- Dai ---> to
     function withdrawDai(address to, uint256 dai) public {
