@@ -376,7 +376,7 @@ contract('ERC20Dealer', async (accounts) =>  {
                     "Owner does not have debt",
                 );
 
-                await dai.approve(dealer.address, daiTokens, { from: owner });
+                await dai.approve(treasury.address, daiTokens, { from: owner });
                 await dealer.repay(owner, daiTokens, { from: owner });
     
                 assert.equal(

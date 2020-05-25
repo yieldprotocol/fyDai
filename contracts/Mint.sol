@@ -36,12 +36,9 @@ contract Mint is Constants {
             !_yDai.isMature(),
             "Mint: yDai is mature"
         );
-        require(
-            _dai.transferFrom(user, address(this), dai),           // Take dai from user
-            "Mint: Dai transfer fail"
-        );
-        _dai.approve(address(_treasury), dai);      // Treasury will take the dai
-        _treasury.push(address(this), dai);                  // Give the dai to Treasury
+
+        // Treasury must have been approved to take the dai
+        _treasury.push(user, dai);                  // Have Treasury take the dai from user
         _yDai.mint(user, dai);                      // Mint yDai to user
     }
 

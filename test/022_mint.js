@@ -148,7 +148,7 @@ contract('Mint', async (accounts) =>  {
         );
     });
 
-    it("mint takes dai and pushes it to Treasury, mints yDai for the user", async() => {
+    it("mint takes dai, mints yDai for the user", async() => {
         // Borrow dai
         await weth.approve(wethJoin.address, wethTokens, { from: owner });
         await wethJoin.join(owner, wethTokens, { from: owner });
@@ -170,7 +170,7 @@ contract('Mint', async (accounts) =>  {
             0,
             "Treasury has savings",
         );
-        await dai.approve(mint.address, daiTokens, { from: owner });
+        await dai.approve(treasury.address, daiTokens, { from: owner });
         await mint.mint(owner, daiTokens, { from: owner });
 
         assert.equal(
@@ -242,7 +242,7 @@ contract('Mint', async (accounts) =>  {
         await daiJoin.exit(owner, moreDai, { from: owner });
         
         // Mint yDai
-        await dai.approve(mint.address, moreDai, { from: owner });
+        await dai.approve(treasury.address, moreDai, { from: owner });
         await mint.mint(owner, moreDai, { from: owner });
 
         // yDai matures
