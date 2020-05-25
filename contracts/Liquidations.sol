@@ -54,7 +54,7 @@ contract Liquidations  {
     /// @dev Stops a liquidation process
     function stop(address user) public {
         require(
-            auctions[user] >= 0,
+            auctions[user] > 0,
             "Liquidations: User is not targeted"
         );
         require(
@@ -71,7 +71,7 @@ contract Liquidations  {
     /// @param to Account paying the debt and receiving the collateral
     function liquidate(address from, address to) public {
         require(
-            auctions[from] >= 0,
+            auctions[from] > 0,
             "Liquidations: User is not targeted"
         );
         require(
@@ -94,7 +94,7 @@ contract Liquidations  {
     /// @dev Return how much collateral would be obtained by liquidating a vault
     function value(address user) public view returns (uint256) {
         require(
-            auctions[user] >= 0,
+            auctions[user] > 0,
             "Liquidations: User is not targeted"
         );
         return Math.min(
