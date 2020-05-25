@@ -33,6 +33,7 @@ contract Liquidations  {
             auctionTime_ > 0,
             "Liquidations: Auction time is zero"
         );
+        _dai.approve(address(_treasury), uint256(-1)); // Treasury will not cheat on us
     }
 
     /// @dev Starts a liquidation process
@@ -84,7 +85,6 @@ contract Liquidations  {
             _dai.transferFrom(msg.sender, address(this), debt), // The liquidator must have approved the dai payment
             "Liquidations: Dai transfer fail"
         );
-        _dai.approve(address(_treasury), debt);
 
         _treasury.push(address(this), debt);
         _dealer.liquidate(from, to, value(from));
