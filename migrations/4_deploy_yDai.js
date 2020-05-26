@@ -11,27 +11,24 @@ const WethOracle = artifacts.require("WethOracle");
 
 const Migrations = artifacts.require("Migrations");
 
-const fs = require('fs');
-const { MongoClient } = require('mongodb');
-const uri = fs.readFileSync("../.mongo").toString().trim();
+const admin = require('firebase-admin');
+let serviceAccount = require('../firebaseKey.json');
 
 async function seriesToDb(seriesArr, networkId) {
-  // Connection to Mongo
-  const client = new MongoClient(uri);
   try {
-    await client.connect();
-    const collection = client.db("ydai").collection(networkId.toString());
-    // Remove previous series data
-    await collection.remove({});
-    // Add new series data
-    await collection.insertMany(seriesArr);
-  } catch (e) {
-      console.error(e);
-  } finally { 
-      await client.close();
-  }
-}
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    databaseURL: "https://yield-ydai.firebaseio.com"
+  });} catch (e) { console.log(e)}
 
+  let db = admin.firestore();
+  var batch = db.batch()
+  seriesArr.forEach((doc) => {
+    let docRef = db.collection(networkId.toString()).doc(doc.name);
+    batch.set(docRef, doc);
+  });
+  await batch.commit()
+}
 
 module.exports = async (deployer, network, accounts) => {
 
