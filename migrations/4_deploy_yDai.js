@@ -11,6 +11,28 @@ const WethOracle = artifacts.require("WethOracle");
 
 const Migrations = artifacts.require("Migrations");
 
+const fs = require('fs');
+const { MongoClient } = require('mongodb');
+const uri = fs.readFileSync("../.mongo").toString().trim();
+
+async function seriesToDb(seriesArr, networkId) {
+  // Connection to Mongo
+  const client = new MongoClient(uri);
+  try {
+    await client.connect();
+    const collection = client.db("ydai").collection(networkId.toString());
+    // Remove previous series data
+    await collection.remove({});
+    // Add new series data
+    await collection.insertMany(seriesArr);
+  } catch (e) {
+      console.error(e);
+  } finally { 
+      await client.close();
+  }
+}
+
+
 module.exports = async (deployer, network, accounts) => {
 
   console.log( process.argv )
@@ -64,10 +86,11 @@ module.exports = async (deployer, network, accounts) => {
     [1601510399, 'yDai-2020-09-30', 'yDai-2020-09-30'],
     [1609459199, 'yDai-2020-12-31', 'yDai-2020-12-31'],
     [1617235199, 'yDai-2021-03-31', 'yDai-2021-03-31'],
-    [1625097599, 'yDai-2021-06-30', 'yDai-2021-06-30'],
+    // [1625097599, 'yDai-2021-06-30', 'yDai-2021-06-30'],
   ]);
 
   const maturitiesOutput = [];
+
   for (const [maturity, name, symbol] of maturitiesInput.values()) {
     // Setup YDai
     await deployer.deploy(
@@ -122,18 +145,21 @@ module.exports = async (deployer, network, accounts) => {
     await yDai.grantAccess(wethDealer.address);
     await treasury.grantAccess(wethDealer.address);
 
-    maturitiesOutput.push(new Map([
-      ['maturity', maturity],
-      ['name', name],
-      ['symbol', symbol],
-      ['YDai', yDai.address],
-      ['Mint', mint.address],
-      ['ChaiDealer', chaiDealer.address],
-      ['WethDealer', wethDealer.address],
-    ]));
-
-    console.log(maturitiesOutput);
+    maturitiesOutput.push({
+      maturity, 
+      name, 
+      symbol, 
+      'YDai': yDai.address,
+      'Mint': mint.address,
+      'ChaiDealer': chaiDealer.address,
+      'WethDealer': wethDealer.address,
+    })
   }
+
+  console.log(maturitiesOutput);
+  
+  const networkId = await web3.eth.net.getId();
+  await seriesToDb(maturitiesOutput, networkId);
 
   console.log('vat:', vatAddress)
   console.log('weth:', wethAddress)
