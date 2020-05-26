@@ -13,14 +13,14 @@ const Migrations = artifacts.require("Migrations");
 
 const admin = require('firebase-admin');
 let serviceAccount = require('../firebaseKey.json');
-
-async function seriesToDb(seriesArr, networkId) {
-  try {
+try {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     databaseURL: "https://yield-ydai.firebaseio.com"
-  });} catch (e) { console.log(e)}
+  });
+} catch (e) { console.log(e)}
 
+async function seriesToDb(seriesArr, networkId) {
   let db = admin.firestore();
   var batch = db.batch()
   seriesArr.forEach((doc) => {
