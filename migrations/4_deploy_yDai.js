@@ -20,14 +20,16 @@ try {
   });
 } catch (e) { console.log(e)}
 
-async function seriesToDb(seriesArr, networkId) {
+async function seriesToDb(seriesArr, sysContracts, networkId) {
   let db = admin.firestore();
   var batch = db.batch()
   seriesArr.forEach((doc) => {
     let docRef = db.collection(networkId.toString()).doc(doc.name);
     batch.set(docRef, doc);
   });
-  await batch.commit()
+  let sysRef = db.collection(networkId.toString()).doc('systemContracts')
+  batch.set(sysRef, sysContracts);
+  await batch.commit();
 }
 
 module.exports = async (deployer, network, accounts) => {
@@ -83,7 +85,7 @@ module.exports = async (deployer, network, accounts) => {
     [1601510399, 'yDai-2020-09-30', 'yDai-2020-09-30'],
     [1609459199, 'yDai-2020-12-31', 'yDai-2020-12-31'],
     [1617235199, 'yDai-2021-03-31', 'yDai-2021-03-31'],
-    // [1625097599, 'yDai-2021-06-30', 'yDai-2021-06-30'],
+    [1625097599, 'yDai-2021-06-30', 'yDai-2021-06-30'],
   ]);
 
   const maturitiesOutput = [];
@@ -153,20 +155,23 @@ module.exports = async (deployer, network, accounts) => {
     })
   }
 
-  console.log(maturitiesOutput);
-  
-  const networkId = await web3.eth.net.getId();
-  await seriesToDb(maturitiesOutput, networkId);
+  const sysContracts = {
+    'vat': vatAddress,
+    'weth': wethAddress,
+    'wethJoin': wethJoinAddress,
+    'dai': daiAddress,
+    'daijoin': daiJoinAddress,
+    'pot': potAddress,
+    'chai': chaiAddress,
+    'treasury': treasuryAddress,
+    'chaiOracle': chaiOracleAddress,
+    'wethOracle': wethOracleAddress
+  }
 
-  console.log('vat:', vatAddress)
-  console.log('weth:', wethAddress)
-  console.log('wethJoin:', wethJoinAddress)
-  console.log('dai:', daiAddress)
-  console.log('daijoin:', daiJoinAddress)
-  console.log('pot:', potAddress)
-  console.log('chai', chaiAddress)
-  console.log('treasury:', treasuryAddress)
-  console.log('chaiOracle:', chaiOracleAddress)
-  console.log('wethOracle', wethOracleAddress)
+  const networkId = await web3.eth.net.getId();
+  await seriesToDb(maturitiesOutput, sysContracts, networkId);
+
+  console.log(sysContracts)
+  console.log(maturitiesOutput);
 
 };
