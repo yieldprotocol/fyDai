@@ -27,7 +27,7 @@ async function seriesToDb(seriesArr, sysContracts, networkId) {
     let docRef = db.collection(networkId.toString()).doc(doc.name);
     batch.set(docRef, doc);
   });
-  let sysRef = db.collection(networkId.toString()).doc('systemContracts')
+  let sysRef = db.collection(networkId.toString()).doc('sysAddrList')
   batch.set(sysRef, sysContracts);
   await batch.commit();
 }
@@ -155,7 +155,7 @@ module.exports = async (deployer, network, accounts) => {
     })
   }
 
-  const sysContracts = {
+  const sysAddrList = {
     'vat': vatAddress,
     'weth': wethAddress,
     'wethJoin': wethJoinAddress,
@@ -169,9 +169,9 @@ module.exports = async (deployer, network, accounts) => {
   }
 
   const networkId = await web3.eth.net.getId();
-  await seriesToDb(maturitiesOutput, sysContracts, networkId);
+  await seriesToDb(maturitiesOutput, sysAddrList, networkId);
 
-  console.log(sysContracts)
+  console.log(sysAddrList)
   console.log(maturitiesOutput);
 
 };
