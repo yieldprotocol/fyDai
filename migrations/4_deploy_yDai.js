@@ -137,22 +137,23 @@ module.exports = async (deployer, network, accounts) => {
       symbol, 
       'YDai': yDai.address,
       'Mint': mint.address,
-      'ChaiDealer': chaiDealer.address,
-      'WethDealer': wethDealer.address,
+      'Dealer': Dealer.address,
+      // 'ChaiDealer': chaiDealer.address,
+      // 'WethDealer': wethDealer.address,
     })
   }
 
   const sysAddrList = {
-    'vat': vatAddress,
-    'weth': wethAddress,
-    'wethJoin': wethJoinAddress,
-    'dai': daiAddress,
-    'daijoin': daiJoinAddress,
-    'pot': potAddress,
-    'chai': chaiAddress,
-    'treasury': treasuryAddress,
-    'chaiOracle': chaiOracleAddress,
-    'wethOracle': wethOracleAddress
+    'Vat': vatAddress,
+    'Weth': wethAddress,
+    'WethJoin': wethJoinAddress,
+    'Dai': daiAddress,
+    'DaiJoin': daiJoinAddress,
+    'Pot': potAddress,
+    'Chai': chaiAddress,
+    'Treasury': treasuryAddress,
+    'ChaiOracle': chaiOracleAddress,
+    'WethOracle': wethOracleAddress
   }
 
   const networkId = await web3.eth.net.getId();
