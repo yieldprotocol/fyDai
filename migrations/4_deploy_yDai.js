@@ -76,8 +76,7 @@ module.exports = async (deployer, network, accounts) => {
   // Setup yDai - TODO: Replace by the right maturities, there will be several of these
   const YDai = artifacts.require("YDai");
   const Mint = artifacts.require("Mint");
-  const ChaiDealer = artifacts.require("ChaiDealer");
-  const WethDealer = artifacts.require("WethDealer");
+  const Dealer = artifacts.require("Dealer");
 
   // const block = await web3.eth.getBlockNumber();
   const maturitiesInput = new Set([
@@ -116,33 +115,21 @@ module.exports = async (deployer, network, accounts) => {
     await yDai.grantAccess(mint.address);
     await treasury.grantAccess(mint.address);
 
-    // Setup ChaiDealer
+    // Setup Dealer
     await deployer.deploy(
-      ChaiDealer,
-      treasuryAddress,
-      daiAddress,
-      yDaiAddress,
-      chaiAddress,
-      chaiOracleAddress,
-      { gas: 5000000 },
-    );
-    const chaiDealer = await ChaiDealer.deployed();
-    await yDai.grantAccess(chaiDealer.address);
-    await treasury.grantAccess(chaiDealer.address);
-  
-    // Setup WethDealer
-    await deployer.deploy(
-      WethDealer,
+      Dealer,
       treasuryAddress,
       daiAddress,
       yDaiAddress,
       wethAddress,
       wethOracleAddress,
+      chaiAddress,
+      chaiOracleAddress,
       { gas: 5000000 },
     );
-    const wethDealer = await WethDealer.deployed();
-    await yDai.grantAccess(wethDealer.address);
-    await treasury.grantAccess(wethDealer.address);
+    const dealer = await Dealer.deployed();
+    await yDai.grantAccess(dealer.address);
+    await treasury.grantAccess(dealer.address);
 
     maturitiesOutput.push({
       maturity, 
