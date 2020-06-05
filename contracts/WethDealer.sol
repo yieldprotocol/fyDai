@@ -14,9 +14,10 @@ contract WethDealer is ERC20Dealer {
         address treasury_,
         address dai_,
         address yDai_,
+        address gasToken_,
         address weth_,
         address wethOracle_
-    ) public ERC20Dealer(treasury_, dai_, yDai_, weth_, wethOracle_) {
+    ) public ERC20Dealer(treasury_, dai_, gasToken_, yDai_, weth_, wethOracle_) {
         //
     }
 

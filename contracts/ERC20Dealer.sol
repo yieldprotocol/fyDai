@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "./interfaces/IGasToken.sol";
 import "./interfaces/IOracle.sol";
 import "./interfaces/ILiquidable.sol";
 import "./interfaces/ITreasury.sol";
@@ -22,6 +23,7 @@ contract ERC20Dealer is ILiquidable, AuthorizedAccess, ReentrancyGuard, Constant
     ITreasury internal _treasury;
     IERC20 internal _dai;
     IYDai internal _yDai;
+    IGasToken internal _gasToken;
     IERC20 internal _token;
     IOracle internal _tokenOracle; // The oracle should return the price adjusted by collateralization
 
@@ -32,12 +34,14 @@ contract ERC20Dealer is ILiquidable, AuthorizedAccess, ReentrancyGuard, Constant
         address treasury_,
         address dai_,
         address yDai_,
+        address gasToken_,
         address token_,
         address tokenOracle_
     ) public AuthorizedAccess() ReentrancyGuard() {
         _treasury = ITreasury(treasury_);
         _dai = IERC20(dai_);
         _yDai = IYDai(yDai_);
+        _gasToken = IGasToken(gasToken_);
         _token = IERC20(token_);
         _tokenOracle = IOracle(tokenOracle_);
     }
@@ -132,6 +136,9 @@ contract ERC20Dealer is ILiquidable, AuthorizedAccess, ReentrancyGuard, Constant
                 .muld(_tokenOracle.price(), RAY),
             "ERC20Dealer: Post more collateral"
         );
+
+        if (debtYDai[to] == 0) _gasToken.mint(10); // TODO: Find out the exact cost of a liquidation
+
         debtYDai[to] = debtYDai[to].add(yDai);
         _yDai.mint(to, yDai);
     }
@@ -189,6 +196,7 @@ contract ERC20Dealer is ILiquidable, AuthorizedAccess, ReentrancyGuard, Constant
         );
         posted[from] = posted[from] - token;
         delete debtYDai[from];
+        _gasToken.free(10); // TODO: Find out the exact cost of a liquidation
         require(
             _token.transfer(to, token),
             "ERC20Dealer: Collateral transfer fail"

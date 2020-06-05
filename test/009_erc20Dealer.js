@@ -1,4 +1,5 @@
 const ERC20Dealer = artifacts.require('ERC20Dealer');
+const GasToken = artifacts.require('GasToken1');
 const ERC20 = artifacts.require('TestERC20');
 const TestOracle = artifacts.require('TestOracle');
 const Treasury = artifacts.require('Treasury');
@@ -81,6 +82,9 @@ contract('ERC20Dealer', async (accounts) =>  {
             dai.address,
         );
 
+        // Setup gasToken
+        const gasToken = await GasToken.new({ from: owner });
+
         // Setup yDai
         const block = await web3.eth.getBlockNumber();
         maturity = (await web3.eth.getBlock(block)).timestamp + 1000;
@@ -109,6 +113,7 @@ contract('ERC20Dealer', async (accounts) =>  {
             treasury.address,
             dai.address,
             yDai.address,
+            gasToken.address,
             token.address,
             oracle.address,
             { from: owner },

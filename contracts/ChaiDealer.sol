@@ -22,7 +22,7 @@ contract ChaiDealer is ERC20Dealer {
         address yDai_,
         address chai_,
         address chaiOracle_
-    ) public ERC20Dealer(treasury_, dai_, yDai_, chai_, chaiOracle_) {
+    ) public ERC20Dealer(treasury_, dai_, yDai_, address(0), chai_, chaiOracle_) {
         _chai = IChai(chai_);
         _chaiOracle = IOracle(chaiOracle_);
     }
