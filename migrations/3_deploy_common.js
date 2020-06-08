@@ -8,6 +8,7 @@ const Chai = artifacts.require("Chai");
 const Treasury = artifacts.require("Treasury");
 const ChaiOracle = artifacts.require("ChaiOracle");
 const WethOracle = artifacts.require("WethOracle");
+const Dealer = artifacts.require("Dealer");
 
 const Migrations = artifacts.require("Migrations");
 
@@ -65,4 +66,30 @@ module.exports = async (deployer, network, accounts) => {
   );
   treasury = await Treasury.deployed();
   treasuryAddress = treasury.address;
+
+  let WETH = web3.utils.fromAscii("WETH");
+  let CHAI = web3.utils.fromAscii("CHAI");
+
+  // Setup WETH Dealer
+  wethDealer = await Dealer.new(
+    treasury.address,
+    daiAddress,
+    wethAddress,
+    wethOracleAddress,
+    WETH,
+  );
+  treasury.grantAccess(wethDealer.address);
+  await migration.setDupAddr('wethDealer', wethDealer.address );
+
+  // Setup CHAI Dealer
+  chaiDealer = await Dealer.new(
+    treasury.address,
+    daiAddress,
+    wethAddress,
+    wethOracleAddress,
+    CHAI,
+  );
+  treasury.grantAccess(chaiDealer.address);
+  await migration.setDupAddr('chaiDealer', chaiDealer.address );
+
 };

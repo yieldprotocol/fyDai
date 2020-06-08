@@ -40,6 +40,9 @@ module.exports = async (deployer, network, accounts) => {
   let chaiOracleAddress;
   let wethOracleAddress;
 
+  let wethDealerAddress;
+  let chaiDealerAddress;
+
   if (network !== 'development') {
     vatAddress = fixed_addrs[network].vatAddress ;
     wethAddress = fixed_addrs[network].wethAddress;
@@ -58,6 +61,9 @@ module.exports = async (deployer, network, accounts) => {
       daiJoinAddress = (await DaiJoin.deployed()).address;
       potAddress = (await Pot.deployed()).address;
       chaiAddress = (await Chai.deployed()).address;
+
+      wethDealerAddress = await migration.contracts.call('wethDealer', (e,r)=> !e && r)
+      chaiDealerAddress = await migration.contracts.call('chaiDealer', (e,r)=> !e && r)
   }
 
   treasury = await Treasury.deployed();
@@ -68,6 +74,8 @@ module.exports = async (deployer, network, accounts) => {
   // Setup yDai - TODO: Replace by the right maturities, there will be several of these
   const YDai = artifacts.require("YDai");
   const Dealer = artifacts.require("Dealer");
+  const wethDealer = await Dealer.at(wethDealerAddress);
+  const chaiDealer = await Dealer.at(chaiDealerAddress);
 
   // const block = await web3.eth.getBlockNumber();
   const maturitiesInput = new Set([
@@ -95,45 +103,21 @@ module.exports = async (deployer, network, accounts) => {
     const yDaiAddress = yDai.address;
     await treasury.grantAccess(yDai.address);
 
-    let WETH = web3.utils.fromAscii("WETH");
-    let CHAI = web3.utils.fromAscii("CHAI");
+    // Subscribe to WethDealer
+    await wethDealer.addSeries(yDaiAddress);
+    yDai.grantAccess(wethDealerAddress);
+    // await treasury.grantAccess(wethDealer.address);
 
-    // Setup Weth Dealer
-    await deployer.deploy(
-      Dealer,
-      treasuryAddress,
-      daiAddress,
-      yDaiAddress,
-      wethAddress,
-      wethOracleAddress,
-      WETH,
-      { gas: 5000000 },
-    );
-    const wethDealer = await Dealer.deployed();
-    await yDai.grantAccess(wethDealer.address);
-    await treasury.grantAccess(wethDealer.address);
-
-    // Setup Chai Dealer
-    await deployer.deploy(
-      Dealer,
-      treasuryAddress,
-      daiAddress,
-      yDaiAddress,
-      chaiAddress,
-      chaiOracleAddress,
-      CHAI,
-      { gas: 5000000 },
-    );
-    const chaiDealer = await Dealer.deployed();
-    await yDai.grantAccess(chaiDealer.address);
-    await treasury.grantAccess(chaiDealer.address);
+    // Subscribe to ChaiDealer
+    await chaiDealer.addSeries(yDaiAddress);
+    yDai.grantAccess(chaiDealerAddress);
+    // await treasury.grantAccess(chaiDealer.address);
 
     deployedMaturities.push({
       maturity, 
       name, 
       symbol, 
       'YDai': yDai.address,
-      'Dealer': Dealer.address,
     })
 
     let maturityRef = db.collection(networkId.toString()).doc(name);
@@ -150,7 +134,9 @@ module.exports = async (deployer, network, accounts) => {
     'Chai': chaiAddress,
     'WethOracle': wethOracleAddress,
     'ChaiOracle': chaiOracleAddress,
-    'Treasury': treasuryAddress
+    'Treasury': treasuryAddress,
+    'WethDealer' : wethDealerAddress,
+    'chaiDealer' : chaiDealerAddress,
   }
 
   let coreRef = db.collection(networkId.toString()).doc('deployedCore')
