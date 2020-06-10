@@ -136,7 +136,7 @@ module.exports = async (deployer, network, accounts) => {
     'ChaiOracle': chaiOracleAddress,
     'Treasury': treasuryAddress,
     'WethDealer' : wethDealerAddress,
-    'chaiDealer' : chaiDealerAddress,
+    'ChaiDealer' : chaiDealerAddress,
   }
 
   let coreRef = db.collection(networkId.toString()).doc('deployedCore')
