@@ -106,12 +106,12 @@ module.exports = async (deployer, network, accounts) => {
     // Subscribe to WethDealer
     await wethDealer.addSeries(yDaiAddress);
     yDai.grantAccess(wethDealerAddress);
-    // await treasury.grantAccess(wethDealer.address);
+    await treasury.grantAccess(wethDealer.address);
 
     // Subscribe to ChaiDealer
     await chaiDealer.addSeries(yDaiAddress);
     yDai.grantAccess(chaiDealerAddress);
-    // await treasury.grantAccess(chaiDealer.address);
+    await treasury.grantAccess(chaiDealer.address);
 
     deployedMaturities.push({
       maturity, 

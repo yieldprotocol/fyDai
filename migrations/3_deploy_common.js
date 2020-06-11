@@ -85,8 +85,8 @@ module.exports = async (deployer, network, accounts) => {
   chaiDealer = await Dealer.new(
     treasury.address,
     daiAddress,
-    wethAddress,
-    wethOracleAddress,
+    chaiAddress,
+    chaiOracleAddress,
     CHAI,
   );
   treasury.grantAccess(chaiDealer.address);

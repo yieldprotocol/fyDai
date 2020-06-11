@@ -2,11 +2,13 @@
 const fixed_addrs = require('./fixed_addrs.json');
 const ERC20 = artifacts.require("TestERC20");
 const Vat = artifacts.require("Vat");
+const Weth = artifacts.require("WETH9");
 const GemJoin = artifacts.require("GemJoin");
 const DaiJoin = artifacts.require("DaiJoin");
 const Pot = artifacts.require("Pot");
 const Migrations = artifacts.require("Migrations");
 
+const { toWad, toRay, toRad, addBN, subBN, mulRay, divRay } = require('../test/shared/utils');
 
 module.exports = async (deployer, network, accounts) => {
   const [owner] = accounts;
@@ -24,25 +26,21 @@ module.exports = async (deployer, network, accounts) => {
     const Line = web3.utils.fromAscii("Line");
     const spotName = web3.utils.fromAscii("spot");
     const linel = web3.utils.fromAscii("line");
-
-    // const limits =  toRad(1);
-    // const spot  = toRay(1.5);
-    // const rate  = toRay(1.25);
-    const limits = "1000000000000000000000000000000000000000000000";
-    const spot = "1500000000000000000000000000"
-    const rateIncrease  = "250000000000000000000000000"; // Total: 1.25
+    
+    const limits = toRad(10000);
+    const spot  = toRay(1.5);
+    const rate  = toRay(1.25);
+    const chi  = toRay(1.25);
 
     // Setup Vat, Dai, Join and Weth
     await deployer.deploy(Vat);
     const vat = await Vat.deployed();
     vatAddress = vat.address;
     await vat.rely(vatAddress);
-    await vat.init(ilk); // Set ilk rate to 1.0
+    await vat.init(ilk, { from: owner });// Set ilk rate to 1.0
 
-    await vat.fold(ilk, vat.address, rateIncrease, { from: owner }); // 1 + 0.25
-
-    await deployer.deploy(ERC20, 0);
-    wethAddress = (await ERC20.deployed()).address;
+    await deployer.deploy(Weth, 0);
+    wethAddress = (await Weth.deployed()).address;
 
     const migration = await Migrations.deployed();
     await migration.setDupAddr('weth', wethAddress );
@@ -58,17 +56,26 @@ module.exports = async (deployer, network, accounts) => {
 
     await deployer.deploy(DaiJoin, vatAddress, daiAddress);
     daiJoinAddress = (await DaiJoin.deployed()).address;
-    await vat.rely(daiJoinAddress);
 
     // Setup spot and limits
     await vat.file(ilk, spotName, spot);
     await vat.file(ilk, linel, limits);
     await vat.file(Line, limits);
+    await vat.fold(ilk, vat.address, subBN(rate, toRay(1))); // Fold only the increase from 1.0
 
     // Setup Pot
     await deployer.deploy(Pot, vatAddress);
     potAddress = (await Pot.deployed()).address;
+    const pot = await Pot.deployed();
+    await pot.setChi(chi);
+
+    await vat.rely(vatAddress);
+    await vat.rely(wethJoinAddress);
+    await vat.rely(daiJoinAddress);
     await vat.rely(potAddress);
+    await vat.hope(daiJoinAddress);
+    await vat.hope(wethJoinAddress);
+
   };
 
    if (network !== 'development') {
