@@ -21,7 +21,7 @@ contract Dealer is IVault, AuthorizedAccess(), UserProxy(), Constants {
     using DecimalMath for uint256;
     using DecimalMath for uint8;
 
-    event Erased(address indexed user, bytes32 indexed collateral, uint256 tokens, uint256 debt);
+    event Trace(bytes32 indexed method, bytes32 indexed arg1, bytes32 indexed arg2, bytes32 arg3, bytes32 arg4);
 
     ITreasury internal _treasury;
     IERC20 internal _dai;
@@ -62,8 +62,12 @@ contract Dealer is IVault, AuthorizedAccess(), UserProxy(), Constants {
     }
 
     /// @dev Disables post, withdraw, borrow and repay. To be called only by shutdown management contracts.
-    function shutdown() public override onlyAuthorized("Dealer: Not Authorized") {
+    function shutdown()
+        public override
+        onlyAuthorized("Dealer: Not Authorized")
+    {
         live = false;
+        emit Trace("shutdown", 0, 0, 0, 0);
     }
 
     /// @dev Returns if a series has been added to the Dealer, for a given series identified by maturity
@@ -165,21 +169,24 @@ contract Dealer is IVault, AuthorizedAccess(), UserProxy(), Constants {
     }
     
     /// @dev Locks a liquidation bond in gas tokens
-    function lockBond(uint256 value) public {
+    function lockBond(uint256 value) public { // TODO: Make internal
         if (!_gasToken.transferFrom(msg.sender, address(this), value)) {
             _gasToken.mint(value);
         }
     }
 
     /// @dev Frees a liquidation bond in gas tokens
-    function returnBond(uint256 value) public {
+    function returnBond(uint256 value) public { // TODO: Make internal
         _gasToken.transfer(msg.sender, value);
     }
 
     /// @dev Takes collateral _token from `from` address, and credits it to `to` collateral account.
     // from --- Token ---> us(to)
     function post(bytes32 collateral, address from, address to, uint256 amount)
-        public override onlyHolderOrProxy(from, "YDai: Only Holder Or Proxy") onlyLive {
+        public override
+        onlyLive
+        onlyHolderOrProxy(from, "YDai: Only Holder Or Proxy")
+    {
         require(
             _token[collateral].transferFrom(from, address(_treasury), amount),
             "Dealer: Collateral transfer fail"
@@ -197,12 +204,16 @@ contract Dealer is IVault, AuthorizedAccess(), UserProxy(), Constants {
             lockBond(10);
         }
         posted[collateral][to] = posted[collateral][to].add(amount);
+        emit Trace("post", collateral, bytes20(uint160(from)), bytes20(uint160(to)), bytes32(amount));
     }
 
     /// @dev Returns collateral to `to` address, taking it from `from` collateral account.
     // us(from) --- Token ---> to
     function withdraw(bytes32 collateral, address from, address to, uint256 amount)
-        public override onlyHolderOrProxy(from, "YDai: Only Holder Or Proxy") onlyLive {
+        public override
+        onlyLive
+        onlyHolderOrProxy(from, "YDai: Only Holder Or Proxy")
+    {
         posted[collateral][from] = posted[collateral][from].sub(amount); // Will revert if not enough posted
 
         require(
@@ -221,6 +232,7 @@ contract Dealer is IVault, AuthorizedAccess(), UserProxy(), Constants {
         if (posted[collateral][from] == 0 && amount >= 0) {
             returnBond(10);
         }
+        emit Trace("withdraw", collateral, bytes20(uint160(from)), bytes20(uint160(to)), bytes32(amount));
     }
 
     /// @dev Mint yDai for a given series for address `to` by locking its market value in collateral, user debt is increased in the given collateral.
@@ -230,7 +242,10 @@ contract Dealer is IVault, AuthorizedAccess(), UserProxy(), Constants {
     // us --- yDai ---> user
     // debt++
     function borrow(bytes32 collateral, uint256 maturity, address to, uint256 yDaiAmount)
-        public onlyHolderOrProxy(to, "YDai: Only Holder Or Proxy") onlyLive {
+        public
+        onlyLive
+        onlyHolderOrProxy(to, "YDai: Only Holder Or Proxy")
+    {
         require(
             containsSeries(maturity),
             "Dealer: Unrecognized series"
@@ -250,6 +265,7 @@ contract Dealer is IVault, AuthorizedAccess(), UserProxy(), Constants {
             "Dealer: Too much debt"
         );
         series[maturity].mint(to, yDaiAmount);
+        emit Trace("borrow", collateral, bytes32(maturity), bytes20(uint160(to)), bytes32(yDaiAmount));
     }
 
     /// @dev Burns yDai of a given series from `from` address, user debt is decreased for the given collateral and yDai series.
@@ -260,7 +276,10 @@ contract Dealer is IVault, AuthorizedAccess(), UserProxy(), Constants {
     // user --- yDai ---> us
     // debt--
     function repayYDai(bytes32 collateral, uint256 maturity, address from, uint256 yDaiAmount)
-        public onlyHolderOrProxy(from, "YDai: Only Holder Or Proxy") onlyLive {
+        public
+        onlyLive
+        onlyHolderOrProxy(from, "YDai: Only Holder Or Proxy")
+    {
         require(
             containsSeries(maturity),
             "Dealer: Unrecognized series"
@@ -271,6 +290,7 @@ contract Dealer is IVault, AuthorizedAccess(), UserProxy(), Constants {
         if (debtYDai[collateral][maturity][from] == 0 && debtDecrease >= 0) {
             returnBond(10);
         }
+        emit Trace("repayYDai", collateral, bytes32(maturity), bytes20(uint160(from)), bytes32(yDaiAmount));
     }
 
     /// @dev Takes dai from `from` address, user debt is decreased for the given collateral and yDai series.
@@ -281,7 +301,10 @@ contract Dealer is IVault, AuthorizedAccess(), UserProxy(), Constants {
     // user --- dai ---> us
     // debt--
     function repayDai(bytes32 collateral, uint256 maturity, address from, uint256 daiAmount)
-        public onlyHolderOrProxy(from, "YDai: Only Holder Or Proxy") onlyLive {
+        public
+        onlyLive
+        onlyHolderOrProxy(from, "YDai: Only Holder Or Proxy")
+    {
         (uint256 toRepay, uint256 debtDecrease) = repayProportion(collateral, maturity, from, inYDai(maturity, daiAmount));
         require(
             _dai.transferFrom(from, address(_treasury), toRepay),  // Take dai from user to Treasury
@@ -293,11 +316,15 @@ contract Dealer is IVault, AuthorizedAccess(), UserProxy(), Constants {
         if (debtYDai[collateral][maturity][from] == 0 && debtDecrease >= 0) {
             returnBond(10);
         }
+        emit Trace("repayDai", collateral, bytes32(maturity), bytes20(uint160(from)), bytes32(daiAmount));
     }
 
     /// @dev Erases all collateral and debt for an user.
     function erase(bytes32 collateral, address user)
-        public onlyAuthorized("Dealer: Not Authorized") override returns (uint256, uint256) {
+        public override
+        onlyAuthorized("Dealer: Not Authorized")
+        returns (uint256, uint256)
+    {
 
         uint256 debt;
         for (uint256 i = 0; i < seriesIterator.length; i += 1) {
@@ -308,7 +335,7 @@ contract Dealer is IVault, AuthorizedAccess(), UserProxy(), Constants {
         delete posted[collateral][user];
         returnBond((seriesIterator.length + 1) * 10); // 10 per series, and 10 for the collateral
 
-        emit Erased(user, collateral, tokens, debt);
+        emit Trace("erase", collateral, bytes20(uint160(user)), 0, 0);
         return (tokens, debt);
     }
 
