@@ -14,7 +14,6 @@ const { toWad, toRay, toRad, addBN, subBN, mulRay, divRay } = require('../test/s
 
 module.exports = async (deployer, network, accounts) => {
 
-  const [owner] = accounts;
   let vatAddress;
   let wethAddress;
   let wethJoinAddress;
@@ -77,6 +76,8 @@ module.exports = async (deployer, network, accounts) => {
     await vat.rely(daiJoinAddress);
     await vat.rely(potAddress);
     await vat.rely(endAddress);
+    await vat.hope(daiJoinAddress);
+    await vat.hope(wethJoinAddress);
 
   };
 
@@ -89,10 +90,10 @@ module.exports = async (deployer, network, accounts) => {
     potAddress = fixed_addrs[network].potAddress;
     endAddress = fixed_addrs[network].endAddress;
     fixed_addrs[network].chaiAddress && (chaiAddress = fixed_addrs[network].chaiAddress);
+    fixed_addrs[network].gasTokenAddress && (gasTokenAddress = fixed_addrs[network].gasTokenAddress);
   };
 
   if (network === "development" || network === "goerli" && network === "goerli-fork") {
-    // Setup Chai
     await deployer.deploy(GasToken);
     gasTokenAddress = (await GasToken.deployed()).address;
   };
