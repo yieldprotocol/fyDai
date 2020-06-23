@@ -93,7 +93,7 @@ module.exports = async (deployer, network, accounts) => {
     fixed_addrs[network].gasTokenAddress && (gasTokenAddress = fixed_addrs[network].gasTokenAddress);
   };
 
-  if (network === "development" || network === "goerli" && network === "goerli-fork") {
+  if (network === "development" || network === "goerli" || network === "goerli-fork" ) {
     await deployer.deploy(GasToken);
     gasTokenAddress = (await GasToken.deployed()).address;
   };
