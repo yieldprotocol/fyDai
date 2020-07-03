@@ -15,11 +15,11 @@ const Treasury = artifacts.require('Treasury');
 
 // YDai
 const YDai = artifacts.require('YDai');
-const Dealer = artifacts.require('Dealer');
+// const Dealer = artifacts.require('Dealer');
 
 // Peripheral
 const EthProxy = artifacts.require('EthProxy');
-const Unwind = artifacts.require('Unwind');
+// // const Unwind = artifacts.require('Unwind');
 
 // Mocks
 const FlashMinterMock = artifacts.require('FlashMinterMock');

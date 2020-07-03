@@ -114,7 +114,7 @@ contract YDai is Orchestrated(), Delegable(), /* DecimalMath, */ ERC20/*, IYDai 
             "YDai: Already matured"
         );
         (, uint256 tmpRate,,,) = _vat.ilks("ETH-A"); // Retrieve the MakerDAO Vat
-        rate0 = /* Math. */max(uint128(rate0), uint128(UNIT)); // Floor it at 1.0
+        rate0 = /* Math. */max(uint128(tmpRate), uint128(UNIT)); // Floor it at 1.0
         chi0 = uint128((now > _pot.rho()) ? _pot.drip() : _pot.chi());
         isMature = true;
         emit Matured(rate0, chi0);
