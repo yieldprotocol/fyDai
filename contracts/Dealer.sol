@@ -8,7 +8,7 @@ import "./interfaces/IPot.sol";
 import "./interfaces/IChai.sol";
 import "./interfaces/IGasToken.sol";
 import "./interfaces/ITreasury.sol";
-// import "./interfaces/IDealer.sol";
+import "./interfaces/IDealer.sol";
 import "./interfaces/IYDai.sol";
 import "./helpers/Constants.sol";
 import "./helpers/Delegable.sol";
@@ -17,7 +17,7 @@ import "./helpers/Orchestrated.sol";
 // import "@nomiclabs/buidler/console.sol";
 
 /// @dev A dealer takes collateral and issues yDai.
-contract Dealer is /* IDealer, */ Orchestrated(), Delegable(), /* DecimalMath, */ Constants {
+contract Dealer is IDealer, Orchestrated(), Delegable(), /* DecimalMath, */ Constants {
     // --- TEMP
 
     uint256 constant public UNIT = 1000000000000000000000000000;
@@ -59,14 +59,14 @@ contract Dealer is /* IDealer, */ Orchestrated(), Delegable(), /* DecimalMath, *
     ITreasury internal _treasury;
 
     mapping(bytes32 => IERC20) internal _token;                       // Weth or Chai
-    mapping(uint256 => IYDai) public /* override */ series;                 // YDai series, indexed by maturity
+    mapping(uint256 => IYDai) public override series;                 // YDai series, indexed by maturity
     uint256[] internal seriesIterator;                                // We need to know all the series
 
-    mapping(bytes32 => mapping(address => uint128)) public /* override */ posted;               // Collateral posted by each user
+    mapping(bytes32 => mapping(address => uint128)) public override posted;               // Collateral posted by each user
     mapping(bytes32 => mapping(uint256 => mapping(address => uint128))) public debtYDai;  // Debt owed by each user, by series
 
-    mapping(bytes32 => uint128) public /* override */ systemPosted;                        // Sum of collateral posted by all users
-    mapping(bytes32 => mapping(uint256 => uint128)) public /* override */ systemDebtYDai;  // Sum of debt owed by all users, by series
+    mapping(bytes32 => uint128) public override systemPosted;                        // Sum of collateral posted by all users
+    mapping(bytes32 => mapping(uint256 => uint128)) public override systemDebtYDai;  // Sum of debt owed by all users, by series
 
     bool public live = true;
 
@@ -110,7 +110,7 @@ contract Dealer is /* IDealer, */ Orchestrated(), Delegable(), /* DecimalMath, *
     }
 
     /// @dev Disables post, withdraw, borrow and repay. To be called only when Treasury shuts down.
-    function shutdown() public /* override */ {
+    function shutdown() public override {
         require(
             _treasury.live() == false,
             "Dealer: Treasury is live"
@@ -175,7 +175,7 @@ contract Dealer is /* IDealer, */ Orchestrated(), Delegable(), /* DecimalMath, *
     }
 
     /// @dev Returns the total debt of an user, for a given collateral, across all series, in Dai
-    function totalDebtDai(bytes32 collateral, address user) public /* override */ returns (uint128) {
+    function totalDebtDai(bytes32 collateral, address user) public override returns (uint128) {
         uint128 totalDebt;
         for (uint256 i = 0; i < seriesIterator.length; i += 1) {
             // TODO: Skip next line if debtYDai[collateral][maturity][user] == 0
@@ -201,14 +201,14 @@ contract Dealer is /* IDealer, */ Orchestrated(), Delegable(), /* DecimalMath, *
     }
 
     /// @dev Return if the borrowing power for a given collateral of an user is equal or greater than its debt for the same collateral
-    function isCollateralized(bytes32 collateral, address user) public /* override */ returns (bool) {
+    function isCollateralized(bytes32 collateral, address user) public override returns (bool) {
         return powerOf(collateral, user) >= totalDebtDai(collateral, user);
     }
 
     /// @dev Takes collateral _token from `from` address, and credits it to `to` collateral account.
     // from --- Token ---> us(to)
     function post(bytes32 collateral, address from, address to, uint128 amount)
-        public /* override */ 
+        public override 
         validCollateral(collateral)
         onlyLive
     {
@@ -229,7 +229,7 @@ contract Dealer is /* IDealer, */ Orchestrated(), Delegable(), /* DecimalMath, *
     /// @dev Returns collateral to `to` address, taking it from `from` collateral account.
     // us(from) --- Token ---> to
     function withdraw(bytes32 collateral, address from, address to, uint128 amount)
-        public /* override */
+        public override
         validCollateral(collateral)
         onlyHolderOrDelegate(from, "Dealer: Only Holder Or Delegate")
         onlyLive
@@ -342,7 +342,7 @@ contract Dealer is /* IDealer, */ Orchestrated(), Delegable(), /* DecimalMath, *
 
     /// @dev Removes collateral and debt for an user.
     function grab(bytes32 collateral, address user, uint128 daiAmount, uint128 tokenAmount)
-        public /* override */
+        public override
         validCollateral(collateral)
         onlyOrchestrated("Dealer: Not Authorized")
     {

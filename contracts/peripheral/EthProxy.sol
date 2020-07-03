@@ -29,13 +29,13 @@ contract EthProxy is Delegable(), Constants {
 
     receive() external payable { }
 
-    function post(address from, address to, uint256 amount)
+    function post(address from, address to, uint128 amount)
         public payable onlyHolderOrDelegate(from, "EthProxy: Only Holder Or Delegate") {
         _weth.deposit.value(amount)();      // Specify the ether in both `amount` and `value`
         _dealer.post(WETH, address(this), to, amount);
     }
 
-    function withdraw(address from, address payable to, uint256 amount)
+    function withdraw(address from, address payable to, uint128 amount)
         public onlyHolderOrDelegate(from, "EthProxy: Only Holder Or Delegate") {
         _dealer.withdraw(WETH, from, address(this), amount);
         _weth.withdraw(amount);
