@@ -47,12 +47,17 @@ contract Splitter is IFlashMinter, DecimalMath {
         wethJoin = IGemJoin(wethJoin_);
         daiJoin = IDaiJoin(daiJoin_);
         chai = IChai(chai_);
-        yDai = IYDai(chai_);
-        dealer = IDealer(yDai_);
+        yDai = IYDai(yDai_);
+        dealer = IDealer(dealer_);
         market = IMarket(market_);
 
         vat.hope(daiJoin_);
         vat.hope(wethJoin_);
+
+        chai.approve(market_, uint256(-1));
+        yDai.approve(market_, uint256(-1));
+        dai.approve(daiJoin_, uint(-1));
+        weth.approve(wethJoin_, uint(-1));
     }
 
     /// @dev Safe casting from uint256 to int256
@@ -86,7 +91,7 @@ contract Splitter is IFlashMinter, DecimalMath {
         // Sell the YDai for Chai
         // TODO: Calculate how much dai, then chai is needed, and use buyChai
         // Splitter will hold the chai temporarily - TODO: Consider SafeCast
-        market.sellYDai(address(this), address(this), uint128(yDaiAmount));
+        market.sellYDai(user, address(this), uint128(yDaiAmount));
         // Unpack the Chai into Dai
         chai.exit(address(this), chai.balanceOf(address(this)));
         // Put the Dai in Maker
@@ -109,7 +114,7 @@ contract Splitter is IFlashMinter, DecimalMath {
         // Add the collateral to Yield
         dealer.post(WETH, address(this), user, wethAmount);
         // Borrow the Dai
-        // TODO: dealer.addProxy(splitter.address, { from: user });
+        // TODO: dealer.addDelegate(splitter.address, { from: user });
         dealer.borrow(WETH, yDai.maturity(), user, yDaiAmount);
     }
 
@@ -118,7 +123,7 @@ contract Splitter is IFlashMinter, DecimalMath {
         dealer.repayYDai(WETH, yDai.maturity(), user, yDaiAmount); // repayYDai wil only take what is needed
         // Withdraw the collateral from Yield
         uint256 wethAmount = dealer.posted(WETH, user);
-        // TODO: dealer.addProxy(splitter.address, { from: user });
+        // TODO: dealer.addDelegate(splitter.address, { from: user });
         dealer.withdraw(WETH, user, address(this), wethAmount);
         // Post the collateral to Maker
         // TODO: wethJoin.hope(splitter.address, { from: user });
@@ -141,6 +146,5 @@ contract Splitter is IFlashMinter, DecimalMath {
         // Sell the Chai for YDai at Market - It should make up for what was taken with repayYdai
         // Splitter will hold the chai temporarily - TODO: Consider SafeCast
         market.sellChai(address(this), address(this), uint128(chai.balanceOf(address(this))));
-        yDai.transfer(user, yDai.balanceOf(address(this)));
     }
 }
