@@ -203,53 +203,53 @@ contract('Market', async (accounts) =>  {
         });
 
         it("sells chai", async() => {
-            const oneToken = toWad(1);
+            const tradeSize = toWad(1).div(1000);
             await getChai(from, chaiTokens1);
 
             await market.addDelegate(operator, { from: from });
-            await chai.approve(market.address, oneToken, { from: from });
-            await market.sellChai(from, to, oneToken, { from: operator });
+            await chai.approve(market.address, tradeSize, { from: from });
+            await market.sellChai(from, to, tradeSize, { from: operator });
 
             const yDaiOut = new BN(await yDai1.balanceOf(to));
 
-            results.add(['sellChai', chaiReserves, yDaiReserves, oneToken, yDaiOut]);
+            results.add(['sellChai', chaiReserves, yDaiReserves, tradeSize, yDaiOut]);
         });
 
         it("buys chai", async() => {
-            const oneToken = toWad(1);
-            await yDai1.mint(from, yDaiTokens1, { from: owner });
+            const tradeSize = toWad(1).div(1000);
+            await yDai1.mint(from, yDaiTokens1.div(1000), { from: owner });
 
             await market.addDelegate(operator, { from: from });
-            await yDai1.approve(market.address, yDaiTokens1, { from: from });
-            await market.buyChai(from, to, oneToken, { from: operator });
+            await yDai1.approve(market.address, yDaiTokens1.div(1000), { from: from });
+            await market.buyChai(from, to, tradeSize, { from: operator });
 
-            const yDaiIn = (new BN(yDaiTokens1.toString())).sub(new BN(await yDai1.balanceOf(from)));
+            const yDaiIn = (new BN(yDaiTokens1.div(1000).toString())).sub(new BN(await yDai1.balanceOf(from)));
 
-            results.add(['buyChai', chaiReserves, yDaiReserves, yDaiIn, oneToken]);
+            results.add(['buyChai', chaiReserves, yDaiReserves, yDaiIn, tradeSize]);
         });
 
         it("sells yDai", async() => {
-            const oneToken = toWad(1);
-            await yDai1.mint(from, oneToken, { from: owner });
+            const tradeSize = toWad(1).div(1000);
+            await yDai1.mint(from, tradeSize, { from: owner });
 
             await market.addDelegate(operator, { from: from });
-            await yDai1.approve(market.address, oneToken, { from: from });
-            await market.sellYDai(from, to, oneToken, { from: operator });
+            await yDai1.approve(market.address, tradeSize, { from: from });
+            await market.sellYDai(from, to, tradeSize, { from: operator });
 
             const chaiOut = new BN(await chai.balanceOf(to));
-            results.add(['sellYDai', chaiReserves, yDaiReserves, oneToken, chaiOut]);
+            results.add(['sellYDai', chaiReserves, yDaiReserves, tradeSize, chaiOut]);
         });
 
         it("buys yDai", async() => {
-            const oneToken = toWad(1);
-            await getChai(from, chaiTokens1);
+            const tradeSize = toWad(1).div(1000);
+            await getChai(from, chaiTokens1.div(1000));
 
             await market.addDelegate(operator, { from: from });
-            await chai.approve(market.address, chaiTokens1, { from: from });
-            await market.buyYDai(from, to, oneToken, { from: operator });
+            await chai.approve(market.address, chaiTokens1.div(1000), { from: from });
+            await market.buyYDai(from, to, tradeSize, { from: operator });
 
-            const chaiIn = (new BN(chaiTokens1.toString())).sub(new BN(await chai.balanceOf(from)));
-            results.add(['buyYDai', chaiReserves, yDaiReserves, chaiIn, oneToken]);
+            const chaiIn = (new BN(chaiTokens1.div(1000).toString())).sub(new BN(await chai.balanceOf(from)));
+            results.add(['buyYDai', chaiReserves, yDaiReserves, chaiIn, tradeSize]);
         });
 
         it("prints results", async() => {
