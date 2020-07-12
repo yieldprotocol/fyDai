@@ -1,6 +1,6 @@
 pragma solidity ^0.6.10;
 
-import "../helpers/YieldMath.sol";
+import "../market/YieldMath.sol";
 import "../mocks/YieldMath64.sol";
 import "../mocks/YieldMath48.sol";
 
