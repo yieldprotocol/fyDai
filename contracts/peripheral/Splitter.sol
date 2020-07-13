@@ -105,13 +105,9 @@ contract Splitter is IFlashMinter, DecimalMath {
         (uint256 ink, uint256 art) = vat.urns(WETH, user);
         uint256 daiToRepay = Math.min(daiAmount, muld(art, rate));
         uint256 wethToWithdraw = Math.min(wethAmount, ink);
-        console.log(daiAmount);
-        console.log(daiToRepay);
-        console.log(wethToWithdraw);
         // Calculate how much chai is the daiToRepay equivalent to
         uint256 chi = (now > pot.rho()) ? pot.drip() : pot.chi();
         uint256 chaiToBuy = divdrup(daiToRepay, chi);
-        console.log(chaiToBuy);
         // Market will take as much YDai as needed, if available. Splitter will hold the chai temporarily
         // uint256 yDaiSold = market.buyChai(user, address(this), uint128(chaiToBuy)); // TODO: Consider SafeCast
         market.buyChai(user, address(this), uint128(chaiToBuy)); // TODO: Consider SafeCast
@@ -119,7 +115,6 @@ contract Splitter is IFlashMinter, DecimalMath {
         chai.exit(address(this), chai.balanceOf(address(this)));
         // Put the Dai in Maker
         // TODO: daiJoin.hope(splitter.address, { from: user });
-        console.log(dai.balanceOf(address(this)));
         daiJoin.join(user, daiToRepay);
         // Pay the debt in Maker
         // Needs vat.hope(splitter.address, { from: user });
