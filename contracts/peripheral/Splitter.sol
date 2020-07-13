@@ -122,7 +122,6 @@ contract Splitter is IFlashMinter, DecimalMath {
         // Pay the Yield debt
         dealer.repayYDai(WETH, yDai.maturity(), user, yDaiAmount); // repayYDai wil only take what is needed
         // Withdraw the collateral from Yield
-        uint256 wethAmount = dealer.posted(WETH, user);
         // TODO: dealer.addDelegate(splitter.address, { from: user });
         dealer.withdraw(WETH, user, address(this), wethAmount);
         // Post the collateral to Maker
