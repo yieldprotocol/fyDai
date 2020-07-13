@@ -6,7 +6,7 @@
   "author": "",
   "scripts": {
     "eslint": "node_modules/eslint/bin/eslint.js . ",
-    "lint": "node_modules/.bin/solhint",
+    "lint": "node_modules/.bin/solhint 'contracts/**/.sol'",
     "test": "buidler test test/*.js test/market/*.js",
     "test:external": "buidler test test/external/*.js",
     "test:gas": "buidler test test/gas/*.js",
