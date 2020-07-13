@@ -104,7 +104,7 @@ contract Splitter is IFlashMinter, DecimalMath {
         (, uint256 rate,,,) = vat.ilks("ETH-A");
         (uint256 ink, uint256 art) = vat.urns(WETH, user);
         uint256 daiToRepay = Math.min(daiAmount, muld(art, rate));
-        uint256 wethToWithdraw = Math.min(wethAmount, ink);
+        // uint256 wethToWithdraw = Math.min(wethAmount, ink);
         // Calculate how much chai is the daiToRepay equivalent to
         uint256 chi = (now > pot.rho()) ? pot.drip() : pot.chi();
         uint256 chaiToBuy = divdrup(daiToRepay, chi);
@@ -123,7 +123,7 @@ contract Splitter is IFlashMinter, DecimalMath {
             user,
             user,
             user,
-            -toInt(wethToWithdraw),         // Weth collateral to add
+            -toInt(Math.min(wethAmount, ink)),         // Weth collateral to add
             -toInt(divd(daiToRepay, rate))  // Dai debt to add
         );
         // Remove the collateral from Maker
@@ -132,12 +132,12 @@ contract Splitter is IFlashMinter, DecimalMath {
         // Add the collateral to Yield
         dealer.post(WETH, address(this), user, wethAmount);
         // Borrow the Dai
-        dealer.borrow(WETH, yDai.maturity(), user, yDaiAmount - yDai.balanceOf(address(this))); // TODO: Use the output from buyChai instead
+        dealer.borrow(WETH, yDai.maturity(), user, user, yDaiAmount - yDai.balanceOf(address(this))); // TODO: Use the output from buyChai instead
     }
 
     function _yieldToMaker(address user, uint256 yDaiAmount, uint256 wethAmount, uint256 daiAmount) internal {
         // Pay the Yield debt
-        dealer.repayYDai(WETH, yDai.maturity(), user, yDaiAmount); // repayYDai wil only take what is needed
+        dealer.repayYDai(WETH, yDai.maturity(), user, user, yDaiAmount); // repayYDai wil only take what is needed
         // Withdraw the collateral from Yield
         // TODO: dealer.addDelegate(splitter.address, { from: user });
         dealer.withdraw(WETH, user, address(this), wethAmount);

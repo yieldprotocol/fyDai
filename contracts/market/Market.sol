@@ -2,8 +2,8 @@ pragma solidity ^0.6.10;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./YieldMath.sol";
 import "../helpers/Delegable.sol";
-import "../helpers/YieldMath.sol";
 import "../interfaces/IPot.sol";
 import "../interfaces/IYDai.sol";
 import "../interfaces/IMarket.sol";
@@ -46,6 +46,12 @@ contract Market is IMarket, ERC20, Delegable {
             "Market: Cast overflow"
         );
         return uint128(x);
+    }
+
+    /// @dev max(0, x - y)
+    function subFloorZero(uint256 x, uint256 y) public pure returns(uint256) {
+        if (y >= x) return 0;
+        else return x - y;
     }
 
     /// @dev Mint initial liquidity tokens
@@ -97,92 +103,171 @@ contract Market is IMarket, ERC20, Delegable {
     /// @param from Wallet providing the chai being sold. Must have approved the operator with `market.addDelegate(operator)`.
     /// @param to Wallet receiving the yDai being bought
     /// @param chaiIn Amount of chai being sold that will be taken from the user's wallet
+    /// @return Amount of yDai that will be deposited on `to` wallet
     function sellChai(address from, address to, uint128 chaiIn)
         external override
         onlyHolderOrDelegate(from, "Market: Only Holder Or Delegate")
+        returns(uint256)
     {
-        int128 c = int128((((now > _pot.rho()) ? _pot.drip() : _pot.chi()) << 64) / 10**27); // Chi can't be higher than 2**64
         uint128 chaiReserves = toUint128(chai.balanceOf(address(this)));
         uint128 yDaiReserves = toUint128(yDai.balanceOf(address(this)));
         uint256 yDaiOut = YieldMath.yDaiOutForChaiIn(
-            chaiReserves, yDaiReserves,
+            chaiReserves,
+            yDaiReserves,
             chaiIn,
-            toUint128(maturity - now), k, c, g
+            toUint128(subFloorZero(maturity, now)),
+            k,
+            int128((((now > _pot.rho()) ? _pot.drip() : _pot.chi()) << 64) / 10**27), // Chi can't be higher than 2**64
+            g
         );
 
         chai.transferFrom(from, address(this), chaiIn);
         yDai.transfer(to, yDaiOut);
 
         _updateState(uint256(chaiReserves).add(chaiIn), uint256(yDaiReserves).sub(yDaiOut));
+
+        return yDaiOut;
+    }
+
+    /// @dev Returns how much yDai would be obtained by selling `chaiIn` chai
+    function sellChaiPreview(uint128 chaiIn) external view returns(uint256) {
+        return YieldMath.yDaiOutForChaiIn(
+            toUint128(chai.balanceOf(address(this))),
+            toUint128(yDai.balanceOf(address(this))),
+            chaiIn,
+            toUint128(subFloorZero(maturity, now)),
+            k,
+            int128((_pot.chi() << 64) / 10**27),
+            g
+        );
     }
 
     /// @dev Buy Chai for yDai
     /// @param from Wallet providing the yDai being sold. Must have approved the operator with `market.addDelegate(operator)`.
     /// @param to Wallet receiving the chai being bought
     /// @param chaiOut Amount of chai being bought that will be deposited in `to` wallet
+    /// @return Amount of yDai that will be taken from `from` wallet
     function buyChai(address from, address to, uint128 chaiOut)
         external override
         onlyHolderOrDelegate(from, "Market: Only Holder Or Delegate")
+        returns(uint256)
     {
-        int128 c = int128((((now > _pot.rho()) ? _pot.drip() : _pot.chi()) << 64) / 10**27);
         uint128 chaiReserves = toUint128(chai.balanceOf(address(this)));
         uint128 yDaiReserves = toUint128(yDai.balanceOf(address(this)));
         uint256 yDaiIn = YieldMath.yDaiInForChaiOut(
-            chaiReserves, yDaiReserves,
+            chaiReserves,
+            yDaiReserves,
             chaiOut,
-            toUint128(maturity - now), k, c, g
+            toUint128(subFloorZero(maturity, now)),
+            k,
+            int128((((now > _pot.rho()) ? _pot.drip() : _pot.chi()) << 64) / 10**27), // Chi can't be higher than 2**64
+            g
         );
 
         yDai.transferFrom(from, address(this), yDaiIn);
         chai.transfer(to, chaiOut);
 
         _updateState(uint256(chaiReserves).sub(chaiOut), uint256(yDaiReserves).add(yDaiIn));
+
+        return yDaiIn;
+    }
+
+    /// @dev Returns how much yDai would be required to buy `chaiOut` chai
+    function buyChaiPreview(uint128 chaiOut) external view returns(uint256) {
+        return YieldMath.yDaiInForChaiOut(
+            toUint128(chai.balanceOf(address(this))),
+            toUint128(yDai.balanceOf(address(this))),
+            chaiOut,
+            toUint128(subFloorZero(maturity, now)),
+            k,
+            int128((_pot.chi() << 64) / 10**27),
+            g
+        );
     }
 
     /// @dev Sell yDai for Chai
     /// @param from Wallet providing the yDai being sold. Must have approved the operator with `market.addDelegate(operator)`.
     /// @param to Wallet receiving the chai being bought
     /// @param yDaiIn Amount of yDai being sold that will be taken from the user's wallet
+    /// @return Amount of chai that will be deposited on `to` wallet
     function sellYDai(address from, address to, uint128 yDaiIn)
         external override
         onlyHolderOrDelegate(from, "Market: Only Holder Or Delegate")
+        returns(uint256)
     {
-        int128 c = int128((((now > _pot.rho()) ? _pot.drip() : _pot.chi()) << 64) / 10**27);
         uint128 chaiReserves = toUint128(chai.balanceOf(address(this)));
         uint128 yDaiReserves = toUint128(yDai.balanceOf(address(this)));
         uint256 chaiOut = YieldMath.chaiOutForYDaiIn(
             chaiReserves, yDaiReserves,
             yDaiIn,
-            toUint128(maturity - now), k, c, g
+            toUint128(subFloorZero(maturity, now)),
+            k,
+            int128((((now > _pot.rho()) ? _pot.drip() : _pot.chi()) << 64) / 10**27), // Chi can't be higher than 2**64
+            g
         );
 
         yDai.transferFrom(from, address(this), yDaiIn);
         chai.transfer(to, chaiOut);
 
         _updateState(uint256(chaiReserves).sub(chaiOut), uint256(yDaiReserves).add(yDaiIn));
+
+        return chaiOut;
+    }
+
+    /// @dev Returns how much chai would be obtained by selling `yDaiIn` yDai
+    function sellYDaiPreview(uint128 yDaiIn) external view returns(uint256) {
+        return YieldMath.chaiOutForYDaiIn(
+            toUint128(chai.balanceOf(address(this))),
+            toUint128(yDai.balanceOf(address(this))),
+            yDaiIn,
+            toUint128(subFloorZero(maturity, now)),
+            k,
+            int128((_pot.chi() << 64) / 10**27),
+            g
+        );
     }
 
     /// @dev Buy yDai for chai
     /// @param from Wallet providing the chai being sold. Must have approved the operator with `market.addDelegate(operator)`.
     /// @param to Wallet receiving the yDai being bought
     /// @param yDaiOut Amount of yDai being bought that will be deposited in `to` wallet
+    /// @return Amount of chai that will be taken from `from` wallet
     function buyYDai(address from, address to, uint128 yDaiOut)
         external override
         onlyHolderOrDelegate(from, "Market: Only Holder Or Delegate")
+        returns(uint256)
     {
-        int128 c = int128((((now > _pot.rho()) ? _pot.drip() : _pot.chi()) << 64) / 10**27);
         uint128 chaiReserves = toUint128(chai.balanceOf(address(this)));
         uint128 yDaiReserves = toUint128(yDai.balanceOf(address(this)));
         uint256 chaiIn = YieldMath.chaiInForYDaiOut(
             chaiReserves, yDaiReserves,
             yDaiOut,
-            toUint128(maturity - now), k, c, g
+            toUint128(subFloorZero(maturity, now)),
+            k,
+            int128((((now > _pot.rho()) ? _pot.drip() : _pot.chi()) << 64) / 10**27), // Chi can't be higher than 2**64
+            g
         );
 
         chai.transferFrom(from, address(this), chaiIn);
         yDai.transfer(to, yDaiOut);
 
         _updateState(uint256(chaiReserves).add(chaiIn), uint256(yDaiReserves).sub(yDaiOut));
+
+        return chaiIn;
+    }
+
+
+    /// @dev Returns how much chai would be required to buy `yDaiOut` yDai
+    function buyYDaiPreview(uint128 yDaiOut) external view returns(uint256) {
+        return YieldMath.chaiInForYDaiOut(
+            toUint128(chai.balanceOf(address(this))),
+            toUint128(yDai.balanceOf(address(this))),
+            yDaiOut,
+            toUint128(subFloorZero(maturity, now)),
+            k,
+            int128((_pot.chi() << 64) / 10**27),
+            g
+        );
     }
 
     /// @dev Maintain the price oracle
