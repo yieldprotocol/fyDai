@@ -103,29 +103,31 @@ contract Splitter is IFlashMinter, DecimalMath {
         // Calculate how much dai should be repaid as the minimum between daiAmount and the existing user debt
         (, uint256 rate,,,) = vat.ilks("ETH-A");
         (uint256 ink, uint256 art) = vat.urns(WETH, user);
-        uint256 daiToRepay = Math.min(daiAmount, muld(art, rate));
-        // uint256 wethToWithdraw = Math.min(wethAmount, ink);
-        // Calculate how much chai is the daiToRepay equivalent to
-        uint256 chi = (now > pot.rho()) ? pot.drip() : pot.chi();
-        uint256 chaiToBuy = divdrup(daiToRepay, chi);
-        // Market will take as much YDai as needed, if available. Splitter will hold the chai temporarily
-        // uint256 yDaiSold = market.buyChai(user, address(this), uint128(chaiToBuy)); // TODO: Consider SafeCast
-        market.buyChai(user, address(this), uint128(chaiToBuy)); // TODO: Consider SafeCast
-        // Unpack the Chai into Dai
-        chai.exit(address(this), chai.balanceOf(address(this)));
-        // Put the Dai in Maker
-        // TODO: daiJoin.hope(splitter.address, { from: user });
-        daiJoin.join(user, daiToRepay);
-        // Pay the debt in Maker
-        // Needs vat.hope(splitter.address, { from: user });
-        vat.frob(
-            "ETH-A",
-            user,
-            user,
-            user,
-            -toInt(Math.min(wethAmount, ink)),         // Weth collateral to add
-            -toInt(divd(daiToRepay, rate))  // Dai debt to add
-        );
+        { // Working around the stack too deep issue
+            uint256 daiToRepay = Math.min(daiAmount, muld(art, rate));
+            uint256 wethToWithdraw = Math.min(wethAmount, ink);
+            // Calculate how much chai is the daiToRepay equivalent to
+            uint256 chi = (now > pot.rho()) ? pot.drip() : pot.chi();
+            uint256 chaiToBuy = divdrup(daiToRepay, chi);
+            // Market will take as much YDai as needed, if available. Splitter will hold the chai temporarily
+            // uint256 yDaiSold = market.buyChai(user, address(this), uint128(chaiToBuy)); // TODO: Consider SafeCast
+            market.buyChai(user, address(this), uint128(chaiToBuy)); // TODO: Consider SafeCast
+            // Unpack the Chai into Dai
+            chai.exit(address(this), chai.balanceOf(address(this)));
+            // Put the Dai in Maker
+            // TODO: daiJoin.hope(splitter.address, { from: user });
+            daiJoin.join(user, daiToRepay);
+            // Pay the debt in Maker
+            // Needs vat.hope(splitter.address, { from: user });
+            vat.frob(
+                "ETH-A",
+                user,
+                user,
+                user,
+                -toInt(wethToWithdraw),         // Weth collateral to add
+                -toInt(divd(daiToRepay, rate))  // Dai debt to add
+            );
+        }
         // Remove the collateral from Maker
         vat.flux("ETH-A", user, address(this), wethAmount);
         wethJoin.exit(address(this), wethAmount); // Splitter will hold the weth temporarily
