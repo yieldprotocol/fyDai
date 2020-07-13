@@ -212,7 +212,9 @@ contract('Splitter', async (accounts) =>  {
             dai.address,
             wethJoin.address,
             daiJoin.address,
+            pot.address,
             chai.address,
+            treasury.address,
             yDai1.address,
             dealer.address,
             market1.address,
@@ -244,8 +246,16 @@ contract('Splitter', async (accounts) =>  {
     it("moves maker vault to yield", async() => {
         await getDai(user, daiTokens1);
 
-        await market1.addDelegate(splitter1.address, { from: user });
-        await yDai1.approve(market1.address, yDaiTokens1, { from: user });
-        await splitter1.makerToYield(user, yDaiTokens1, daiTokens1, wethTokens1, { from: user });
+        // Remove these three lines once I find amounts of weth and dai that I can move with both Yield and Maker being safe
+        await weth.deposit({ from: user, value: wethTokens1 });
+        await weth.approve(treasury.address, wethTokens1, { from: user });
+        await dealer.post(WETH, user, user, wethTokens1, { from: user });
+
+        await dealer.addDelegate(splitter1.address, { from: user }); // Allowing Splitter to create debt for use in Yield
+        // TODO: Pass on an extra parameter (user) in the data of the flash minting, and flash mint directly on Splitter's wallet. Then remove the next two lines.
+        await market1.addDelegate(splitter1.address, { from: user }); // Allowing Splitter to trade for user in Market
+        await yDai1.approve(market1.address, yDaiTokens1, { from: user }); // TODO: Ok, this is weird, but the user needs to approve the market to take yDai from him, because the Splitter is going to flash mint in the user's wallet. Refactor so that the Splitter flash mints to itself.
+        await vat.hope(splitter1.address, { from: user }); // Allowing Splitter to manipulate debt for user in MakerDAO
+        await splitter1.makerToYield(user, yDaiTokens1, wethTokens1.div(2), daiTokens1.div(2), { from: user });
     });
 });

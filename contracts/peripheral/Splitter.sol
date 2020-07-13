@@ -1,16 +1,18 @@
 pragma solidity ^0.6.10;
 
+import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../helpers/DecimalMath.sol";
 import "../interfaces/IVat.sol";
 import "../interfaces/IGemJoin.sol";
 import "../interfaces/IDaiJoin.sol";
+import "../interfaces/IPot.sol";
 import "../interfaces/IChai.sol";
 import "../interfaces/IYDai.sol";
 import "../interfaces/IDealer.sol";
 import "../interfaces/IMarket.sol";
 import "../interfaces/IFlashMinter.sol";
-// import "@nomiclabs/buidler/console.sol";
+import "@nomiclabs/buidler/console.sol";
 
 
 /// @dev The Market contract exchanges Dai for yDai at a price defined by a specific formula.
@@ -25,6 +27,7 @@ contract Splitter is IFlashMinter, DecimalMath {
     IERC20 public dai;
     IGemJoin public wethJoin;
     IDaiJoin public daiJoin;
+    IPot public pot;
     IChai public chai;
     IYDai public yDai;
     IDealer public dealer;
@@ -36,7 +39,9 @@ contract Splitter is IFlashMinter, DecimalMath {
         address dai_,
         address wethJoin_,
         address daiJoin_,
+        address pot_,
         address chai_,
+        address treasury_,
         address yDai_,
         address dealer_,
         address market_
@@ -46,6 +51,7 @@ contract Splitter is IFlashMinter, DecimalMath {
         dai = IERC20(dai_);
         wethJoin = IGemJoin(wethJoin_);
         daiJoin = IDaiJoin(daiJoin_);
+        pot = IPot(pot_);
         chai = IChai(chai_);
         yDai = IYDai(yDai_);
         dealer = IDealer(dealer_);
@@ -58,6 +64,7 @@ contract Splitter is IFlashMinter, DecimalMath {
         yDai.approve(market_, uint256(-1));
         dai.approve(daiJoin_, uint(-1));
         weth.approve(wethJoin_, uint(-1));
+        weth.approve(treasury_, uint(-1));
     }
 
     /// @dev Safe casting from uint256 to int256
@@ -87,26 +94,42 @@ contract Splitter is IFlashMinter, DecimalMath {
         if(direction == YTM) _yieldToMaker(user, yDaiAmount, wethAmount, daiAmount); // TODO: Consider parameter order
     }
 
+    /// @dev Internal function to transfer debt and collateral from MakerDAO to Yield
+    /// @param yDaiAmount yDai that was flash-minted, needs to be high enough to buy the chai in the market
+    /// @param wethAmount weth to move from MakerDAO to Yield. Needs to be high enough to collateralize the dai debt in Yield,
+    /// and low enough to make sure that debt left in MakerDAO is also collateralized.
+    /// @param daiAmount dai debt to move from MakerDAO to Yield. Denominated in Dai (= art * rate)
     function _makerToYield(address user, uint256 yDaiAmount, uint256 wethAmount, uint256 daiAmount) internal {
-        // Sell the YDai for Chai
-        // TODO: Calculate how much dai, then chai is needed, and use buyChai
-        // Splitter will hold the chai temporarily - TODO: Consider SafeCast
-        market.sellYDai(user, address(this), uint128(yDaiAmount));
+        // Calculate how much dai should be repaid as the minimum between daiAmount and the existing user debt
+        (, uint256 rate,,,) = vat.ilks("ETH-A");
+        (uint256 ink, uint256 art) = vat.urns(WETH, user);
+        uint256 daiToRepay = Math.min(daiAmount, muld(art, rate));
+        uint256 wethToWithdraw = Math.min(wethAmount, ink);
+        console.log(daiAmount);
+        console.log(daiToRepay);
+        console.log(wethToWithdraw);
+        // Calculate how much chai is the daiToRepay equivalent to
+        uint256 chi = (now > pot.rho()) ? pot.drip() : pot.chi();
+        uint256 chaiToBuy = divdrup(daiToRepay, chi);
+        console.log(chaiToBuy);
+        // Market will take as much YDai as needed, if available. Splitter will hold the chai temporarily
+        // uint256 yDaiSold = market.buyChai(user, address(this), uint128(chaiToBuy)); // TODO: Consider SafeCast
+        market.buyChai(user, address(this), uint128(chaiToBuy)); // TODO: Consider SafeCast
         // Unpack the Chai into Dai
         chai.exit(address(this), chai.balanceOf(address(this)));
         // Put the Dai in Maker
         // TODO: daiJoin.hope(splitter.address, { from: user });
-        daiJoin.join(user, daiAmount);
+        console.log(dai.balanceOf(address(this)));
+        daiJoin.join(user, daiToRepay);
         // Pay the debt in Maker
-        (, uint256 rate,,,) = vat.ilks("ETH-A");            // Retrieve the MakerDAO stability fee for Weth
-        // TODO: vat.hope(splitter.address, { from: user });
+        // Needs vat.hope(splitter.address, { from: user });
         vat.frob(
             "ETH-A",
             user,
             user,
             user,
-            -toInt(wethAmount),                           // Weth collateral to add
-            -toInt(divd(daiAmount, rate))  // Dai debt to remove
+            -toInt(wethToWithdraw),         // Weth collateral to add
+            -toInt(divd(daiToRepay, rate))  // Dai debt to add
         );
         // Remove the collateral from Maker
         vat.flux("ETH-A", user, address(this), wethAmount);
@@ -114,8 +137,7 @@ contract Splitter is IFlashMinter, DecimalMath {
         // Add the collateral to Yield
         dealer.post(WETH, address(this), user, wethAmount);
         // Borrow the Dai
-        // TODO: dealer.addDelegate(splitter.address, { from: user });
-        dealer.borrow(WETH, yDai.maturity(), user, yDaiAmount);
+        dealer.borrow(WETH, yDai.maturity(), user, yDaiAmount - yDai.balanceOf(address(this))); // TODO: Use the output from buyChai instead
     }
 
     function _yieldToMaker(address user, uint256 yDaiAmount, uint256 wethAmount, uint256 daiAmount) internal {
