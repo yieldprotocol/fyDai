@@ -130,7 +130,7 @@ contract Market is IMarket, ERC20, Delegable {
     }
 
     /// @dev Returns how much yDai would be obtained by selling `chaiIn` chai
-    function sellChaiPreview(uint128 chaiIn) external view returns(uint256) {
+    function sellChaiPreview(uint128 chaiIn) external view override returns(uint256) {
         return YieldMath.yDaiOutForChaiIn(
             toUint128(chai.balanceOf(address(this))),
             toUint128(yDai.balanceOf(address(this))),
@@ -173,7 +173,7 @@ contract Market is IMarket, ERC20, Delegable {
     }
 
     /// @dev Returns how much yDai would be required to buy `chaiOut` chai
-    function buyChaiPreview(uint128 chaiOut) external view returns(uint256) {
+    function buyChaiPreview(uint128 chaiOut) external view override returns(uint256) {
         return YieldMath.yDaiInForChaiOut(
             toUint128(chai.balanceOf(address(this))),
             toUint128(yDai.balanceOf(address(this))),
@@ -215,7 +215,7 @@ contract Market is IMarket, ERC20, Delegable {
     }
 
     /// @dev Returns how much chai would be obtained by selling `yDaiIn` yDai
-    function sellYDaiPreview(uint128 yDaiIn) external view returns(uint256) {
+    function sellYDaiPreview(uint128 yDaiIn) external view override returns(uint256) {
         return YieldMath.chaiOutForYDaiIn(
             toUint128(chai.balanceOf(address(this))),
             toUint128(yDai.balanceOf(address(this))),
@@ -258,7 +258,7 @@ contract Market is IMarket, ERC20, Delegable {
 
 
     /// @dev Returns how much chai would be required to buy `yDaiOut` yDai
-    function buyYDaiPreview(uint128 yDaiOut) external view returns(uint256) {
+    function buyYDaiPreview(uint128 yDaiOut) external view override returns(uint256) {
         return YieldMath.chaiInForYDaiOut(
             toUint128(chai.balanceOf(address(this))),
             toUint128(yDai.balanceOf(address(this))),

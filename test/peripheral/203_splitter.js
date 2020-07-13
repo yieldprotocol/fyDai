@@ -258,4 +258,23 @@ contract('Splitter', async (accounts) =>  {
         await vat.hope(splitter1.address, { from: user }); // Allowing Splitter to manipulate debt for user in MakerDAO
         await splitter1.makerToYield(user, yDaiTokens1, wethTokens1.div(2), daiTokens1.div(2), { from: user });
     });
+
+    it("moves maker vault to yield with exact amounts", async() => {
+        const debtToMove = daiTokens1.div(10);
+        console.log("D: " + debtToMove.toString());
+        await getDai(user, debtToMove);
+
+        const wethToMove = await splitter1.wethForDai(debtToMove, { from: user });
+        console.log("W: " + wethToMove.toString());
+
+        const yDaiToMint = await splitter1.yDaiForDai(debtToMove, { from: user });
+        console.log("Y: " + yDaiToMint.toString());
+
+        await dealer.addDelegate(splitter1.address, { from: user }); // Allowing Splitter to create debt for use in Yield
+        // TODO: Pass on an extra parameter (user) in the data of the flash minting, and flash mint directly on Splitter's wallet. Then remove the next two lines.
+        await market1.addDelegate(splitter1.address, { from: user }); // Allowing Splitter to trade for user in Market
+        await yDai1.approve(market1.address, yDaiToMint, { from: user }); // TODO: Ok, this is weird, but the user needs to approve the market to take yDai from him, because the Splitter is going to flash mint in the user's wallet. Refactor so that the Splitter flash mints to itself.
+        await vat.hope(splitter1.address, { from: user }); // Allowing Splitter to manipulate debt for user in MakerDAO
+        await splitter1.makerToYield(user, yDaiToMint, wethToMove, debtToMove, { from: user });
+    });
 });

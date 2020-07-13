@@ -94,6 +94,17 @@ contract Splitter is IFlashMinter, DecimalMath {
         if(direction == YTM) _yieldToMaker(user, yDaiAmount, wethAmount, daiAmount); // TODO: Consider parameter order
     }
 
+    function wethForDai(uint256 daiAmount) public view returns (uint256) {
+        (,, uint256 spot,,) = vat.ilks("ETH-A");
+        return divd(daiAmount, spot);
+    }
+
+    function yDaiForDai(uint256 daiAmount) public view returns (uint256) {
+        uint256 chi = pot.chi(); // Being just a preview, we don't call drip()
+        uint256 chaiToBuy = divdrup(daiAmount, chi);
+        return market.buyChaiPreview(uint128(chaiToBuy));
+    }
+
     /// @dev Internal function to transfer debt and collateral from MakerDAO to Yield
     /// @param yDaiAmount yDai that was flash-minted, needs to be high enough to buy the chai in the market
     /// @param wethAmount weth to move from MakerDAO to Yield. Needs to be high enough to collateralize the dai debt in Yield,
@@ -101,17 +112,21 @@ contract Splitter is IFlashMinter, DecimalMath {
     /// @param daiAmount dai debt to move from MakerDAO to Yield. Denominated in Dai (= art * rate)
     function _makerToYield(address user, uint256 yDaiAmount, uint256 wethAmount, uint256 daiAmount) internal {
         // Calculate how much dai should be repaid as the minimum between daiAmount and the existing user debt
-        (, uint256 rate,,,) = vat.ilks("ETH-A");
         (uint256 ink, uint256 art) = vat.urns(WETH, user);
+        uint256 wethToWithdraw = Math.min(wethAmount, ink);
+        (, uint256 rate,,,) = vat.ilks("ETH-A");
+        uint256 daiToRepay = Math.min(daiAmount, muld(art, rate));
+        // Calculate how much chai is the daiToRepay equivalent to
+        // uint256 chi = (now > pot.rho()) ? pot.drip() : pot.chi();
+        uint256 chaiToBuy = divdrup(
+            daiToRepay,
+            (now > pot.rho()) ? pot.drip() : pot.chi()
+        );
+        // Market will take as much YDai as needed, if available. Splitter will hold the chai temporarily
+        // uint256 yDaiSold = market.buyChai(user, address(this), uint128(chaiToBuy)); // TODO: Consider SafeCast
+        // TODO: Why isn't 1 dai == 1 yDai?
+        uint256 yDaiSold = market.buyChai(user, address(this), uint128(chaiToBuy)); // TODO: Consider SafeCast
         { // Working around the stack too deep issue
-            uint256 daiToRepay = Math.min(daiAmount, muld(art, rate));
-            uint256 wethToWithdraw = Math.min(wethAmount, ink);
-            // Calculate how much chai is the daiToRepay equivalent to
-            uint256 chi = (now > pot.rho()) ? pot.drip() : pot.chi();
-            uint256 chaiToBuy = divdrup(daiToRepay, chi);
-            // Market will take as much YDai as needed, if available. Splitter will hold the chai temporarily
-            // uint256 yDaiSold = market.buyChai(user, address(this), uint128(chaiToBuy)); // TODO: Consider SafeCast
-            market.buyChai(user, address(this), uint128(chaiToBuy)); // TODO: Consider SafeCast
             // Unpack the Chai into Dai
             chai.exit(address(this), chai.balanceOf(address(this)));
             // Put the Dai in Maker
@@ -127,14 +142,15 @@ contract Splitter is IFlashMinter, DecimalMath {
                 -toInt(wethToWithdraw),         // Weth collateral to add
                 -toInt(divd(daiToRepay, rate))  // Dai debt to add
             );
+            // Remove the collateral from Maker
+            vat.flux("ETH-A", user, address(this), wethToWithdraw);
+            wethJoin.exit(address(this), wethToWithdraw); // Splitter will hold the weth temporarily
+            // Add the collateral to Yield
+            dealer.post(WETH, address(this), user, wethToWithdraw);
+            // Borrow the Dai
+            console.log(yDaiSold);
+            dealer.borrow(WETH, yDai.maturity(), user, user, yDaiSold);
         }
-        // Remove the collateral from Maker
-        vat.flux("ETH-A", user, address(this), wethAmount);
-        wethJoin.exit(address(this), wethAmount); // Splitter will hold the weth temporarily
-        // Add the collateral to Yield
-        dealer.post(WETH, address(this), user, wethAmount);
-        // Borrow the Dai
-        dealer.borrow(WETH, yDai.maturity(), user, user, yDaiAmount - yDai.balanceOf(address(this))); // TODO: Use the output from buyChai instead
     }
 
     function _yieldToMaker(address user, uint256 yDaiAmount, uint256 wethAmount, uint256 daiAmount) internal {
