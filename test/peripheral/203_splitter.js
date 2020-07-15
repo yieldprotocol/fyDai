@@ -15,7 +15,7 @@ const Treasury = artifacts.require('Treasury');
 
 // YDai
 const YDai = artifacts.require('YDai');
-const Dealer = artifacts.require('Dealer');
+const Controller = artifacts.require('Controller');
 
 // Market
 const Market = artifacts.require('Market');
@@ -49,7 +49,7 @@ contract('Splitter', async (accounts) =>  {
     let treasury;
     let yDai1;
     let yDai2;
-    let dealer;
+    let controller;
     let market1;
     let splitter1;
     let flashMinter;
@@ -168,8 +168,8 @@ contract('Splitter', async (accounts) =>  {
         // Setup GasToken
         gasToken = await GasToken.new();
 
-        // Setup Dealer
-        dealer = await Dealer.new(
+        // Setup Controller
+        controller = await Controller.new(
             vat.address,
             weth.address,
             dai.address,
@@ -179,7 +179,7 @@ contract('Splitter', async (accounts) =>  {
             treasury.address,
             { from: owner },
         );
-        treasury.orchestrate(dealer.address, { from: owner });
+        treasury.orchestrate(controller.address, { from: owner });
         
         // Setup yDai1
         const block = await web3.eth.getBlockNumber();
@@ -194,13 +194,12 @@ contract('Splitter', async (accounts) =>  {
             "Symbol"
         );
         await treasury.orchestrate(yDai1.address, { from: owner });
-        dealer.addSeries(yDai1.address, { from: owner });
-        yDai1.orchestrate(dealer.address, { from: owner });
+        controller.addSeries(yDai1.address, { from: owner });
+        yDai1.orchestrate(controller.address, { from: owner });
 
         // Setup Market
         market1 = await Market.new(
-            pot.address,
-            chai.address,
+            dai.address,
             yDai1.address,
             { from: owner }
         );
@@ -212,11 +211,9 @@ contract('Splitter', async (accounts) =>  {
             dai.address,
             wethJoin.address,
             daiJoin.address,
-            pot.address,
-            chai.address,
             treasury.address,
             yDai1.address,
-            dealer.address,
+            controller.address,
             market1.address,
             { from: owner }
         );
@@ -227,7 +224,7 @@ contract('Splitter', async (accounts) =>  {
         await vat.fold(ilk, vat.address, subBN(rate1, toRay(1)), { from: owner }); // Fold only the increase from 1.0
         await pot.setChi(chi1, { from: owner }); // Set the savings accumulator
 
-        // Allow owner to mint yDai the sneaky way, without recording a debt in dealer
+        // Allow owner to mint yDai the sneaky way, without recording a debt in controller
         await yDai1.orchestrate(owner, { from: owner });
 
         // Initialize Market1
@@ -249,9 +246,9 @@ contract('Splitter', async (accounts) =>  {
         // Remove these three lines once I find amounts of weth and dai that I can move with both Yield and Maker being safe
         await weth.deposit({ from: user, value: wethTokens1 });
         await weth.approve(treasury.address, wethTokens1, { from: user });
-        await dealer.post(WETH, user, user, wethTokens1, { from: user });
+        await controller.post(WETH, user, user, wethTokens1, { from: user });
 
-        await dealer.addDelegate(splitter1.address, { from: user }); // Allowing Splitter to create debt for use in Yield
+        await controller.addDelegate(splitter1.address, { from: user }); // Allowing Splitter to create debt for use in Yield
         // TODO: Pass on an extra parameter (user) in the data of the flash minting, and flash mint directly on Splitter's wallet. Then remove the next two lines.
         await market1.addDelegate(splitter1.address, { from: user }); // Allowing Splitter to trade for user in Market
         await yDai1.approve(market1.address, yDaiTokens1, { from: user }); // TODO: Ok, this is weird, but the user needs to approve the market to take yDai from him, because the Splitter is going to flash mint in the user's wallet. Refactor so that the Splitter flash mints to itself.
@@ -270,7 +267,7 @@ contract('Splitter', async (accounts) =>  {
         const yDaiToMint = await splitter1.yDaiForDai(debtToMove, { from: user });
         console.log("Y: " + yDaiToMint.toString());
 
-        await dealer.addDelegate(splitter1.address, { from: user }); // Allowing Splitter to create debt for use in Yield
+        await controller.addDelegate(splitter1.address, { from: user }); // Allowing Splitter to create debt for use in Yield
         // TODO: Pass on an extra parameter (user) in the data of the flash minting, and flash mint directly on Splitter's wallet. Then remove the next two lines.
         await market1.addDelegate(splitter1.address, { from: user }); // Allowing Splitter to trade for user in Market
         await yDai1.approve(market1.address, yDaiToMint, { from: user }); // TODO: Ok, this is weird, but the user needs to approve the market to take yDai from him, because the Splitter is going to flash mint in the user's wallet. Refactor so that the Splitter flash mints to itself.
