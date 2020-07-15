@@ -94,9 +94,16 @@ contract Splitter is IFlashMinter, DecimalMath {
         if(direction == YTM) _yieldToMaker(user, yDaiAmount, wethAmount, daiAmount); // TODO: Consider parameter order
     }
 
+    /// @dev Minimum weth needed to collateralize an amount of dai in MakerDAO
     function wethForDai(uint256 daiAmount) public view returns (uint256) {
         (,, uint256 spot,,) = vat.ilks("ETH-A");
         return divd(daiAmount, spot);
+    }
+
+    /// @dev Minimum weth needed to collateralize an amount of yDai in Yield. Yes, it's the same formula.
+    function wethForYDai(uint256 yDaiAmount) public view returns (uint256) {
+        (,, uint256 spot,,) = vat.ilks("ETH-A");
+        return divd(yDaiAmount, spot);
     }
 
     function yDaiForDai(uint256 daiAmount) public view returns (uint256) {
@@ -113,25 +120,34 @@ contract Splitter is IFlashMinter, DecimalMath {
     function _makerToYield(address user, uint256 yDaiAmount, uint256 wethAmount, uint256 daiAmount) internal {
         // Calculate how much dai should be repaid as the minimum between daiAmount and the existing user debt
         (uint256 ink, uint256 art) = vat.urns(WETH, user);
-        uint256 wethToWithdraw = Math.min(wethAmount, ink);
         (, uint256 rate,,,) = vat.ilks("ETH-A");
-        uint256 daiToRepay = Math.min(daiAmount, muld(art, rate));
-        // Calculate how much chai is the daiToRepay equivalent to
+        require(
+            daiAmount >= muld(art, rate),
+            "Splitter: Not enough debt in Maker"
+        );
+        // Calculate how much chai is the daiAmount equivalent to
         // uint256 chi = (now > pot.rho()) ? pot.drip() : pot.chi();
         uint256 chaiToBuy = divdrup(
-            daiToRepay,
+            daiAmount,
             (now > pot.rho()) ? pot.drip() : pot.chi()
         );
         // Market will take as much YDai as needed, if available. Splitter will hold the chai temporarily
-        // uint256 yDaiSold = market.buyChai(user, address(this), uint128(chaiToBuy)); // TODO: Consider SafeCast
-        // TODO: Why isn't 1 dai == 1 yDai?
         uint256 yDaiSold = market.buyChai(user, address(this), uint128(chaiToBuy)); // TODO: Consider SafeCast
+        uint256 wethToWithdraw = Math.max(wethForDai(daiAmount), wethForYDai(yDaiSold));
+        require(
+            wethToWithdraw >= wethAmount,
+            "Splitter: Not enough collateral provided"
+        );
+        require(
+            wethToWithdraw >= ink,
+            "Splitter: Not enough collateral in Maker"
+        );
         { // Working around the stack too deep issue
             // Unpack the Chai into Dai
             chai.exit(address(this), chai.balanceOf(address(this)));
             // Put the Dai in Maker
             // TODO: daiJoin.hope(splitter.address, { from: user });
-            daiJoin.join(user, daiToRepay);
+            daiJoin.join(user, daiAmount);
             // Pay the debt in Maker
             // Needs vat.hope(splitter.address, { from: user });
             vat.frob(
@@ -140,7 +156,7 @@ contract Splitter is IFlashMinter, DecimalMath {
                 user,
                 user,
                 -toInt(wethToWithdraw),         // Weth collateral to add
-                -toInt(divd(daiToRepay, rate))  // Dai debt to add
+                -toInt(divd(daiAmount, rate))  // Dai debt to add
             );
             // Remove the collateral from Maker
             vat.flux("ETH-A", user, address(this), wethToWithdraw);
