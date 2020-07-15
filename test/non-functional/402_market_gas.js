@@ -15,15 +15,12 @@ const Treasury = artifacts.require('Treasury');
 
 // YDai
 const YDai = artifacts.require('YDai');
-const Controller = artifacts.require('Controller');
+const Dealer = artifacts.require('Dealer');
 
 // Peripheral
 const EthProxy = artifacts.require('EthProxy');
 const Unwind = artifacts.require('Unwind');
-
-// Market
 const Market = artifacts.require('Market');
-const LimitMarket = artifacts.require('LimitMarket');
 
 // Mocks
 const FlashMinterMock = artifacts.require('FlashMinterMock');
@@ -34,7 +31,7 @@ const { toWad, toRay, toRad, addBN, subBN, mulRay, divRay } = require('../shared
 const { BN, expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 const { assert, expect } = require('chai');
 
-contract('LimitMarket', async (accounts) =>  {
+contract('Market', async (accounts) =>  {
     let [ owner, user1, operator, from, to ] = accounts;
     let vat;
     let weth;
@@ -49,10 +46,9 @@ contract('LimitMarket', async (accounts) =>  {
     let treasury;
     let yDai1;
     let yDai2;
-    let controller;
+    let dealer;
     let splitter;
     let market;
-    let limitMarket;
     let flashMinter;
 
     let ilk = web3.utils.fromAscii("ETH-A");
@@ -72,7 +68,13 @@ contract('LimitMarket', async (accounts) =>  {
     const yDaiTokens1 = daiTokens1;
     const wethTokens1 = divRay(daiTokens1, spot);
 
+    const daiReserves = daiTokens1;
+    const yDaiReserves = yDaiTokens1;
+
     let maturity;
+
+    const results = new Set();
+    results.add(['trade', 'daiReserves', 'yDaiReserves', 'tokensIn', 'tokensOut']);
 
     // Convert eth to weth and use it to borrow `daiTokens` from MakerDAO
     // This function shadows and uses global variables, careful.
@@ -162,21 +164,13 @@ contract('LimitMarket', async (accounts) =>  {
             { from: owner }
         );
 
-        // Setup LimitMarket
-        limitMarket = await LimitMarket.new(
-            dai.address,
-            yDai1.address,
-            market.address,
-            { from: owner }
-        );
-
         // Test setup
         
         // Increase the rate accumulator
         await vat.fold(ilk, vat.address, subBN(rate1, toRay(1)), { from: owner }); // Fold only the increase from 1.0
         await pot.setChi(chi1, { from: owner }); // Set the savings accumulator
 
-        // Allow owner to mint yDai the sneaky way, without recording a debt in controller
+        // Allow owner to mint yDai the sneaky way, without recording a debt in dealer
         await yDai1.orchestrate(owner, { from: owner });
 
     });
@@ -185,10 +179,28 @@ contract('LimitMarket', async (accounts) =>  {
         await helper.revertToSnapshot(snapshotId);
     });
 
+    it("get the size of the contract", async() => {
+        console.log();
+        console.log("    ·--------------------|------------------|------------------|------------------·");
+        console.log("    |  Contract          ·  Bytecode        ·  Deployed        ·  Constructor     |");
+        console.log("    ·····················|··················|··················|···················");
+        
+        const bytecode = market.constructor._json.bytecode;
+        const deployed = market.constructor._json.deployedBytecode;
+        const sizeOfB  = bytecode.length / 2;
+        const sizeOfD  = deployed.length / 2;
+        const sizeOfC  = sizeOfB - sizeOfD;
+        console.log(
+            "    |  " + (market.constructor._json.contractName).padEnd(18, ' ') +
+            "|" + ("" + sizeOfB).padStart(16, ' ') + "  " +
+            "|" + ("" + sizeOfD).padStart(16, ' ') + "  " +
+            "|" + ("" + sizeOfC).padStart(16, ' ') + "  |");
+        console.log("    ·--------------------|------------------|------------------|------------------·");
+        console.log();
+    });
+
     describe("with liquidity", () => {
         beforeEach(async() => {
-            const daiReserves = daiTokens1;
-            const yDaiReserves = yDaiTokens1;
             await getDai(user1, daiReserves)
             await yDai1.mint(user1, yDaiReserves, { from: owner });
     
@@ -198,129 +210,64 @@ contract('LimitMarket', async (accounts) =>  {
         });
 
         it("sells dai", async() => {
-            const oneToken = toWad(1);
+            const tradeSize = toWad(1).div(1000);
             await getDai(from, daiTokens1);
 
-            await market.addDelegate(limitMarket.address, { from: from });
-            await dai.approve(market.address, oneToken, { from: from });
-            await limitMarket.sellDai(from, to, oneToken, oneToken.div(2), { from: from });
+            await market.addDelegate(operator, { from: from });
+            await dai.approve(market.address, tradeSize, { from: from });
+            await market.sellDai(from, to, tradeSize, { from: operator });
 
-            assert.equal(
-                await dai.balanceOf(from),
-                daiTokens1.sub(oneToken).toString(),
-                "'From' wallet should have " + daiTokens1.sub(oneToken) + " dai tokens",
-            );
-
-            const expectedYDaiOut = (new BN(oneToken.toString())).mul(new BN('99814')).div(new BN('100000')); // I just hate javascript
             const yDaiOut = new BN(await yDai1.balanceOf(to));
-            expect(yDaiOut).to.be.bignumber.gt(expectedYDaiOut.mul(new BN('9999')).div(new BN('10000')));
-            expect(yDaiOut).to.be.bignumber.lt(expectedYDaiOut.mul(new BN('10001')).div(new BN('10000')));
-        });
 
-        it("doesn't sell dai if limit not reached", async() => {
-            const oneToken = toWad(1);
-            await getDai(from, daiTokens1);
-
-            await market.addDelegate(limitMarket.address, { from: from });
-            await dai.approve(market.address, oneToken, { from: from });
-
-            await expectRevert(
-                limitMarket.sellDai(from, to, oneToken, oneToken.mul(2), { from: from }),
-                "LimitMarket: Limit not reached",
-            );
+            results.add(['sellDai', daiReserves, yDaiReserves, tradeSize, yDaiOut]);
         });
 
         it("buys dai", async() => {
-            const oneToken = toWad(1);
-            await yDai1.mint(from, yDaiTokens1, { from: owner });
+            const tradeSize = toWad(1).div(1000);
+            await yDai1.mint(from, yDaiTokens1.div(1000), { from: owner });
 
-            await market.addDelegate(limitMarket.address, { from: from });
-            await yDai1.approve(market.address, yDaiTokens1, { from: from });
-            await limitMarket.buyDai(from, to, oneToken, oneToken.mul(2), { from: from });
+            await market.addDelegate(operator, { from: from });
+            await yDai1.approve(market.address, yDaiTokens1.div(1000), { from: from });
+            await market.buyDai(from, to, tradeSize, { from: operator });
 
-            const expectedYDaiIn = (new BN(oneToken.toString())).mul(new BN('10019')).div(new BN('10000')); // I just hate javascript
-            const yDaiIn = (new BN(yDaiTokens1.toString())).sub(new BN(await yDai1.balanceOf(from)));
-            expect(yDaiIn).to.be.bignumber.gt(expectedYDaiIn.mul(new BN('9999')).div(new BN('10000')));
-            expect(yDaiIn).to.be.bignumber.lt(expectedYDaiIn.mul(new BN('10001')).div(new BN('10000')));
-        });
+            const yDaiIn = (new BN(yDaiTokens1.div(1000).toString())).sub(new BN(await yDai1.balanceOf(from)));
 
-        it("doesn't buy dai if limit exceeded", async() => {
-            const oneToken = toWad(1);
-            await yDai1.mint(from, yDaiTokens1, { from: owner });
-
-            await market.addDelegate(limitMarket.address, { from: from });
-            await yDai1.approve(market.address, yDaiTokens1, { from: from });
-
-            await expectRevert(
-                limitMarket.buyDai(from, to, oneToken, oneToken.div(2), { from: from }),
-                "LimitMarket: Limit exceeded",
-            );
+            results.add(['buyDai', daiReserves, yDaiReserves, yDaiIn, tradeSize]);
         });
 
         it("sells yDai", async() => {
-            const oneToken = toWad(1);
-            await yDai1.mint(from, oneToken, { from: owner });
+            const tradeSize = toWad(1).div(1000);
+            await yDai1.mint(from, tradeSize, { from: owner });
 
-            await market.addDelegate(limitMarket.address, { from: from });
-            await yDai1.approve(market.address, oneToken, { from: from });
-            await limitMarket.sellYDai(from, to, oneToken, oneToken.div(2), { from: from });
+            await market.addDelegate(operator, { from: from });
+            await yDai1.approve(market.address, tradeSize, { from: from });
+            await market.sellYDai(from, to, tradeSize, { from: operator });
 
-            assert.equal(
-                await yDai1.balanceOf(from),
-                0,
-                "'From' wallet should have no yDai tokens",
-            );
-
-            const expectedDaiOut = (new BN(oneToken.toString())).mul(new BN('99814')).div(new BN('100000')); // I just hate javascript
             const daiOut = new BN(await dai.balanceOf(to));
-            expect(daiOut).to.be.bignumber.gt(expectedDaiOut.mul(new BN('9999')).div(new BN('10000')));
-            expect(daiOut).to.be.bignumber.lt(expectedDaiOut.mul(new BN('10001')).div(new BN('10000')));
-        });
-
-        it("doesn't sell yDai if limit not reached", async() => {
-            const oneToken = toWad(1);
-            await yDai1.mint(from, oneToken, { from: owner });
-
-            await market.addDelegate(limitMarket.address, { from: from });
-            await yDai1.approve(market.address, oneToken, { from: from });
-
-            await expectRevert(
-                limitMarket.sellYDai(from, to, oneToken, oneToken.mul(2), { from: from }),
-                "LimitMarket: Limit not reached",
-            );
+            results.add(['sellYDai', daiReserves, yDaiReserves, tradeSize, daiOut]);
         });
 
         it("buys yDai", async() => {
-            const oneToken = toWad(1);
-            await getDai(from, daiTokens1);
+            const tradeSize = toWad(1).div(1000);
+            await getDai(from, daiTokens1.div(1000));
 
-            await market.addDelegate(limitMarket.address, { from: from });
-            await dai.approve(market.address, daiTokens1, { from: from });
-            await limitMarket.buyYDai(from, to, oneToken, oneToken.mul(2), { from: from });
+            await market.addDelegate(operator, { from: from });
+            await dai.approve(market.address, daiTokens1.div(1000), { from: from });
+            await market.buyYDai(from, to, tradeSize, { from: operator });
 
-            assert.equal(
-                await yDai1.balanceOf(to),
-                oneToken.toString(),
-                "'To' wallet should have 1 yDai token",
-            );
-
-            const expectedDaiIn = (new BN(oneToken.toString())).mul(new BN('10019')).div(new BN('10000')); // I just hate javascript
-            const daiIn = (new BN(daiTokens1.toString())).sub(new BN(await dai.balanceOf(from)));
-            expect(daiIn).to.be.bignumber.gt(expectedDaiIn.mul(new BN('9999')).div(new BN('10000')));
-            expect(daiIn).to.be.bignumber.lt(expectedDaiIn.mul(new BN('10001')).div(new BN('10000')));
+            const daiIn = (new BN(daiTokens1.div(1000).toString())).sub(new BN(await dai.balanceOf(from)));
+            results.add(['buyYDai', daiReserves, yDaiReserves, daiIn, tradeSize]);
         });
 
-        it("doesn't buy yDai if limit exceeded", async() => {
-            const oneToken = toWad(1);
-            await getDai(from, daiTokens1);
-
-            await market.addDelegate(limitMarket.address, { from: from });
-            await dai.approve(market.address, daiTokens1, { from: from });
-
-            await expectRevert(
-                limitMarket.buyYDai(from, to, oneToken, oneToken.div(2), { from: from }),
-                "LimitMarket: Limit exceeded",
-            );
+        it("prints results", async() => {
+            for (line of results.values()) {
+                console.log("| " + 
+                    line[0].padEnd(10, ' ') + "· " +
+                    line[1].toString().padEnd(23, ' ') + "· " +
+                    line[2].toString().padEnd(23, ' ') + "· " +
+                    line[3].toString().padEnd(23, ' ') + "· " +
+                    line[4].toString().padEnd(23, ' ') + "|");
+            }
         });
     });
 });

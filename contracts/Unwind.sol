@@ -1,6 +1,5 @@
-pragma solidity ^0.6.0;
+pragma solidity ^0.6.10;
 
-import "@hq20/contracts/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -12,18 +11,24 @@ import "./interfaces/IPot.sol";
 import "./interfaces/IEnd.sol";
 import "./interfaces/IChai.sol";
 import "./interfaces/ITreasury.sol";
-import "./interfaces/IDealer.sol";
+import "./interfaces/IController.sol";
 import "./interfaces/IYDai.sol";
 import "./interfaces/ILiquidations.sol";
 import "./helpers/DecimalMath.sol";
 // import "@nomiclabs/buidler/console.sol";
 
 
-/// @dev Treasury manages the Dai, interacting with MakerDAO's vat and chai when needed.
+/**
+ * @dev Unwind allows everyone to recover their assets from the Yield protocol in the event of a MakerDAO shutdown.
+ * Unwind also allows to remove any protocol profits at any time to the beneficiary address using `skimWhileLive`.
+ * During the unwind process, the system debt to MakerDAO is settled first with `settleTreasury`, extracting all free weth.
+ * Once the Treasury is settled, any system savings are converted from Chai to Weth using `cashSavings`.
+ * At this point, users can settle their positions using `settle`. The MakerDAO rates will be used to convert all debt and collateral to a Weth payout.
+ * Users can also redeem here their yDai for a Weth payout, using `redeem`.
+ * Protocol profits can be transferred to the beneficiary also at this point, using `skimDssShutdown`.
+ */
 contract Unwind is Ownable(), DecimalMath {
-    using SafeCast for uint256;
     using SafeMath for uint256;
-
 
     bytes32 public constant CHAI = "CHAI";
     bytes32 public constant WETH = "ETH-A";
@@ -37,10 +42,10 @@ contract Unwind is Ownable(), DecimalMath {
     IEnd internal _end;
     IChai internal _chai;
     ITreasury internal _treasury;
-    IDealer internal _dealer;
+    IController internal _controller;
     ILiquidations internal _liquidations;
 
-    // TODO: Series related code is repeated with Dealer, can be extracted into a parent class.
+    // TODO: Series related code is repeated with Controller, can be extracted into a parent class.
     mapping(uint256 => IYDai) public series; // YDai series, indexed by maturity
     uint256[] internal seriesIterator;       // We need to know all the series
 
@@ -61,7 +66,7 @@ contract Unwind is Ownable(), DecimalMath {
         address end_,
         address chai_,
         address treasury_,
-        address dealer_,
+        address controller_,
         address liquidations_
     ) public {
         // These could be hardcoded for mainnet deployment.
@@ -74,7 +79,7 @@ contract Unwind is Ownable(), DecimalMath {
         _end = IEnd(end_);
         _chai = IChai(chai_);
         _treasury = ITreasury(treasury_);
-        _dealer = IDealer(dealer_);
+        _controller = IController(controller_);
         _liquidations = ILiquidations(liquidations_);
 
         _vat.hope(address(_treasury));
@@ -87,23 +92,32 @@ contract Unwind is Ownable(), DecimalMath {
         else return x - y;
     }
 
-    /// @dev Returns if a series has been added to the Dealer, for a given series identified by maturity
+    /// @dev Safe casting from uint256 to int256
+    function toInt(uint256 x) internal pure returns(int256) {
+        require(
+            x <= 57896044618658097711785492504343953926634992332820282019728792003956564819967,
+            "Treasury: Cast overflow"
+        );
+        return int256(x);
+    }
+
+    /// @dev Returns if a series has been added to the Controller, for a given series identified by maturity
     function containsSeries(uint256 maturity) public view returns (bool) {
         return address(series[maturity]) != address(0);
     }
 
-    /// @dev Adds an yDai series to this Dealer
+    /// @dev Adds an yDai series to this Controller
     function addSeries(address yDaiContract) public onlyOwner {
         uint256 maturity = IYDai(yDaiContract).maturity();
         require(
             !containsSeries(maturity),
-            "Dealer: Series already added"
+            "Controller: Series already added"
         );
         series[maturity] = IYDai(yDaiContract);
         seriesIterator.push(maturity);
     }
 
-    /// @dev Disables treasury and dealer.
+    /// @dev Disables treasury and controller.
     function unwind() public {
         require(
             _end.tag(WETH) != 0,
@@ -111,7 +125,7 @@ contract Unwind is Ownable(), DecimalMath {
         );
         live = false;
         _treasury.shutdown();
-        _dealer.shutdown();
+        _controller.shutdown();
         _liquidations.shutdown();
     }
 
@@ -140,7 +154,7 @@ contract Unwind is Ownable(), DecimalMath {
         uint256 profit = _chai.balanceOf(address(_treasury));
         profit = profit.add(_yDaiProfit(getChi(), getRate()));
         profit = profit.sub(divd(_treasury.debt(), getChi()));
-        profit = profit.sub(_dealer.systemPosted(CHAI));
+        profit = profit.sub(_controller.systemPosted(CHAI));
 
         _treasury.pullChai(beneficiary, profit);
     }
@@ -154,8 +168,8 @@ contract Unwind is Ownable(), DecimalMath {
         uint256 profit = _weth.balanceOf(address(this));
 
         profit = profit.add(muld(muld(_yDaiProfit(chi, rate), _fix), chi));
-        profit = profit.sub(_dealer.systemPosted(WETH));
-        profit = profit.sub(muld(muld(_dealer.systemPosted(CHAI), _fix), chi));
+        profit = profit.sub(_controller.systemPosted(WETH));
+        profit = profit.sub(muld(muld(_controller.systemPosted(CHAI), _fix), chi));
 
         _weth.transfer(beneficiary, profit);
     }
@@ -178,8 +192,8 @@ contract Unwind is Ownable(), DecimalMath {
                 rate0 = rate;
             }
 
-            profit = profit.add(divd(muld(_dealer.systemDebtYDai(WETH, maturity), divd(rate, rate0)), chi0));
-            profit = profit.add(divd(_dealer.systemDebtYDai(CHAI, maturity), chi0));
+            profit = profit.add(divd(muld(_controller.systemDebtYDai(WETH, maturity), divd(rate, rate0)), chi0));
+            profit = profit.add(divd(_controller.systemDebtYDai(CHAI, maturity), chi0));
             profit = profit.sub(divd(yDai.totalSupply(), chi0));
         }
 
@@ -197,8 +211,8 @@ contract Unwind is Ownable(), DecimalMath {
             WETH,
             address(_treasury),
             address(this),
-            ink.toInt(),
-            art.toInt()
+            toInt(ink),
+            toInt(art)
         );
         _end.skim(WETH, address(this));                // Settle debts
         _end.free(WETH);                               // Free collateral
@@ -230,13 +244,13 @@ contract Unwind is Ownable(), DecimalMath {
         _chi = _pot.chi();
     }
 
-    /// @dev Settles a series position in Dealer, and then returns any remaining collateral as weth using the unwind Dai to Weth price.
+    /// @dev Settles a series position in Controller, and then returns any remaining collateral as weth using the unwind Dai to Weth price.
     function settle(bytes32 collateral, address user) public {
         require(settled && cashedOut, "Unwind: Not ready");
 
-        uint256 debt = _dealer.totalDebtDai(collateral, user);
-        uint256 tokens = _dealer.posted(collateral, user);
-        _dealer.grab(collateral, user, debt, tokens);
+        uint256 debt = _controller.totalDebtDai(collateral, user);
+        uint256 tokens = _controller.posted(collateral, user);
+        _controller.grab(collateral, user, debt, tokens);
 
         uint256 remainder;
         if (collateral == WETH) {
@@ -250,7 +264,7 @@ contract Unwind is Ownable(), DecimalMath {
     /// @dev Redeems YDai for weth
     function redeem(uint256 maturity, uint256 yDaiAmount, address user) public {
         require(settled && cashedOut, "Unwind: Not ready");
-        IYDai yDai = _dealer.series(maturity);
+        IYDai yDai = _controller.series(maturity);
         yDai.burn(user, yDaiAmount);
         _weth.transfer(
             user,

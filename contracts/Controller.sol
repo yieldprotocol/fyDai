@@ -8,15 +8,27 @@ import "./interfaces/IPot.sol";
 import "./interfaces/IChai.sol";
 import "./interfaces/IGasToken.sol";
 import "./interfaces/ITreasury.sol";
-import "./interfaces/IDealer.sol";
+import "./interfaces/IController.sol";
 import "./interfaces/IYDai.sol";
 import "./helpers/Delegable.sol";
 import "./helpers/DecimalMath.sol";
 import "./helpers/Orchestrated.sol";
 // import "@nomiclabs/buidler/console.sol";
 
-/// @dev A dealer takes collateral and issues yDai.
-contract Dealer is IDealer, Orchestrated(), Delegable(), DecimalMath {
+/**
+ * @dev The Controller manages collateral and debt levels for all users, and it is a major user entry point for the Yield protocol.
+ * Controller keeps track of a number of yDai contracts.
+ * Controller allows users to post and withdraw Chai and Weth collateral.
+ * Controller allows users to borrow yDai against their Chai and Weth collateral.
+ * Controller allows users to repay their yDai debt with yDai or with Dai.
+ * Controller integrates with yDai contracts for minting yDai on borrowing, and burning yDai on repaying debt with yDai.
+ * Controller relies on Treasury for all other asset transfers.
+ * Controller allows orchestrated contracts to erase any amount of debt or collateral for an user. This is to be used during liquidations or during unwind.
+ * Users can delegate the control of their accounts in Controllers to any address.
+ * Controller takes a bond in GasTokens from users on their first borrow.
+ * This bond is released to the account causing the user debt to drop to zero. This could be the users themselves closing their positions, or liquidators.
+ */
+contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
     using SafeMath for uint256;
 
     event Posted(bytes32 indexed collateral, address indexed user, int256 amount);
@@ -62,24 +74,42 @@ contract Dealer is IDealer, Orchestrated(), Delegable(), DecimalMath {
     }
 
     modifier onlyLive() {
-        require(live == true, "Dealer: Not available during unwind");
+        require(live == true, "Controller: Not available during unwind");
         _;
     }
 
+    /// @dev Only series added through `addSeries` are valid.
     modifier validSeries(uint256 maturity) {
         require(
             containsSeries(maturity),
-            "Dealer: Unrecognized series"
+            "Controller: Unrecognized series"
         );
         _;
     }
 
+    /// @dev Only valid collateral types are Weth and Chai.
     modifier validCollateral(bytes32 collateral) {
         require(
             collateral == WETH || collateral == CHAI,
-            "Dealer: Unrecognized collateral"
+            "Controller: Unrecognized collateral"
         );
         _;
+    }
+
+    /// @dev Returns if a series has been added to the Controller, for a given series identified by maturity
+    function containsSeries(uint256 maturity) public view returns (bool) {
+        return address(series[maturity]) != address(0);
+    }
+
+    /// @dev Adds an yDai series to this Controller
+    function addSeries(address yDaiContract) public onlyOwner {
+        uint256 maturity = IYDai(yDaiContract).maturity();
+        require(
+            !containsSeries(maturity),
+            "Controller: Series already added"
+        );
+        series[maturity] = IYDai(yDaiContract);
+        seriesIterator.push(maturity);
     }
 
     /// @dev Disables post, withdraw, borrow and repay. To be called only when Treasury shuts down.
@@ -91,22 +121,6 @@ contract Dealer is IDealer, Orchestrated(), Delegable(), DecimalMath {
         live = false;
     }
 
-    /// @dev Returns if a series has been added to the Dealer, for a given series identified by maturity
-    function containsSeries(uint256 maturity) public view returns (bool) {
-        return address(series[maturity]) != address(0);
-    }
-
-    /// @dev Adds an yDai series to this Dealer
-    function addSeries(address yDaiContract) public onlyOwner {
-        uint256 maturity = IYDai(yDaiContract).maturity();
-        require(
-            !containsSeries(maturity),
-            "Dealer: Series already added"
-        );
-        series[maturity] = IYDai(yDaiContract);
-        seriesIterator.push(maturity);
-    }
-
     /// @dev Returns the dai equivalent of an yDai amount, for a given series identified by maturity
     function inDai(bytes32 collateral, uint256 maturity, uint256 yDaiAmount) public returns (uint256) {
         if (series[maturity].isMature()){
@@ -115,7 +129,7 @@ contract Dealer is IDealer, Orchestrated(), Delegable(), DecimalMath {
             } else if (collateral == CHAI) {
                 return muld(yDaiAmount, series[maturity].chiGrowth());
             } else {
-                revert("Dealer: Unsupported collateral");
+                revert("Controller: Unsupported collateral");
             }
         } else {
             return yDaiAmount;
@@ -130,7 +144,7 @@ contract Dealer is IDealer, Orchestrated(), Delegable(), DecimalMath {
             } else if (collateral == CHAI) {
                 return divd(daiAmount, series[maturity].chiGrowth());
             } else {
-                revert("Dealer: Unsupported collateral");
+                revert("Controller: Unsupported collateral");
             }
         } else {
             return daiAmount;
@@ -154,7 +168,7 @@ contract Dealer is IDealer, Orchestrated(), Delegable(), DecimalMath {
             if (debtYDai[collateral][seriesIterator[i]][user] > 0) {
                 totalDebt = totalDebt + debtDai(collateral, seriesIterator[i], user);
             }
-        } // We don't expect hundreds of maturities per dealer
+        } // We don't expect hundreds of maturities per controller
         return totalDebt;
     }
 
@@ -184,7 +198,7 @@ contract Dealer is IDealer, Orchestrated(), Delegable(), DecimalMath {
     function post(bytes32 collateral, address from, address to, uint256 amount)
         public override 
         validCollateral(collateral)
-        onlyHolderOrDelegate(from, "Dealer: Only Holder Or Delegate")
+        onlyHolderOrDelegate(from, "Controller: Only Holder Or Delegate")
         onlyLive
     {
         if (collateral == WETH){ // TODO: Refactor Treasury to be `push(collateral, amount)`
@@ -203,7 +217,7 @@ contract Dealer is IDealer, Orchestrated(), Delegable(), DecimalMath {
     function withdraw(bytes32 collateral, address from, address to, uint256 amount)
         public override
         validCollateral(collateral)
-        onlyHolderOrDelegate(from, "Dealer: Only Holder Or Delegate")
+        onlyHolderOrDelegate(from, "Controller: Only Holder Or Delegate")
         onlyLive
     {
         posted[collateral][from] = posted[collateral][from].sub(amount); // Will revert if not enough posted
@@ -211,7 +225,7 @@ contract Dealer is IDealer, Orchestrated(), Delegable(), DecimalMath {
 
         require(
             isCollateralized(collateral, from),
-            "Dealer: Too much debt"
+            "Controller: Too much debt"
         );
 
         if (collateral == WETH){ // TODO: Refactor Treasury to be `pull(collateral, amount)`
@@ -236,12 +250,12 @@ contract Dealer is IDealer, Orchestrated(), Delegable(), DecimalMath {
         public override
         validCollateral(collateral)
         validSeries(maturity)
-        onlyHolderOrDelegate(from, "Dealer: Only Holder Or Delegate")
+        onlyHolderOrDelegate(from, "Controller: Only Holder Or Delegate")
         onlyLive
     {
         require(
             series[maturity].isMature() != true,
-            "Dealer: No mature borrow"
+            "Controller: No mature borrow"
         );
 
         if (debtYDai[collateral][maturity][from] == 0 && yDaiAmount >= 0) {
@@ -252,7 +266,7 @@ contract Dealer is IDealer, Orchestrated(), Delegable(), DecimalMath {
 
         require(
             isCollateralized(collateral, from),
-            "Dealer: Too much debt"
+            "Controller: Too much debt"
         );
         series[maturity].mint(to, yDaiAmount);
         emit Borrowed(collateral, maturity, from, int256(yDaiAmount)); // TODO: Watch for overflow
@@ -269,7 +283,7 @@ contract Dealer is IDealer, Orchestrated(), Delegable(), DecimalMath {
         public override
         validCollateral(collateral)
         validSeries(maturity)
-        onlyHolderOrDelegate(from, "Dealer: Only Holder Or Delegate")
+        onlyHolderOrDelegate(from, "Controller: Only Holder Or Delegate")
         onlyLive
     {
         uint256 toRepay = Math.min(yDaiAmount, debtYDai[collateral][maturity][to]);
@@ -288,7 +302,7 @@ contract Dealer is IDealer, Orchestrated(), Delegable(), DecimalMath {
         public override
         validCollateral(collateral)
         validSeries(maturity)
-        onlyHolderOrDelegate(from, "Dealer: Only Holder Or Delegate")
+        onlyHolderOrDelegate(from, "Controller: Only Holder Or Delegate")
         onlyLive
     {
         uint256 toRepay = Math.min(daiAmount, debtDai(collateral, maturity, to));
@@ -317,12 +331,12 @@ contract Dealer is IDealer, Orchestrated(), Delegable(), DecimalMath {
     function grab(bytes32 collateral, address user, uint256 daiAmount, uint256 tokenAmount)
         public override
         validCollateral(collateral)
-        onlyOrchestrated("Dealer: Not Authorized")
+        onlyOrchestrated("Controller: Not Authorized")
     {
 
         posted[collateral][user] = posted[collateral][user].sub(
             tokenAmount,
-            "Dealer: Not enough collateral"
+            "Controller: Not enough collateral"
         );
         systemPosted[collateral] = systemPosted[collateral].sub(tokenAmount);
 
@@ -339,10 +353,10 @@ contract Dealer is IDealer, Orchestrated(), Delegable(), DecimalMath {
                 returnBond(10);
             }
             if (totalGrabbed == daiAmount) break;
-        } // We don't expect hundreds of maturities per dealer
+        } // We don't expect hundreds of maturities per controller
         require(
             totalGrabbed == daiAmount,
-            "Dealer: Not enough user debt"
+            "Controller: Not enough user debt"
         );
     }
 
