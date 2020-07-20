@@ -71,20 +71,28 @@ contract Splitter is IFlashMinter, DecimalMath {
         return int256(x);
     }
 
-    function makerToYield(address user, uint256 yDaiAmount, uint256 wethAmount, uint256 daiAmount) public {
+    function makerToYield(address user, uint256 wethAmount, uint256 daiAmount) public {
         // The user specifies the yDai he wants to mint to cover his maker debt, the weth to be passed on as collateral, and the dai debt to move
         // Flash mint the yDai
-        yDai.flashMint(user, yDaiAmount, abi.encode(MTY, wethAmount, daiAmount));
+        yDai.flashMint(
+            address(this),
+            yDaiForDai(daiAmount),
+            abi.encode(MTY, user, wethAmount, daiAmount)
+        );
     }
 
     function yieldToMaker(address user, uint256 yDaiAmount, uint256 wethAmount) public {
         // The user specifies the yDai he wants to move, and the weth to be passed on as collateral
         // Flash mint the yDai
-        yDai.flashMint( user, yDaiAmount, abi.encode(YTM, wethAmount, 0)); // The daiAmount encoded is ignored
+        yDai.flashMint(
+            address(this),
+            yDaiAmount,
+            abi.encode(YTM, user, wethAmount, 0)
+        ); // The daiAmount encoded is ignored
     }
 
-    function executeOnFlashMint(address user, uint256 yDaiAmount, bytes calldata data) external override {
-        (bool direction, uint256 wethAmount, uint256 daiAmount) = abi.decode(data, (bool, uint256, uint256));
+    function executeOnFlashMint(address, uint256 yDaiAmount, bytes calldata data) external override {
+        (bool direction, address user, uint256 wethAmount, uint256 daiAmount) = abi.decode(data, (bool, address, uint256, uint256));
         if(direction == MTY) _makerToYield(user, yDaiAmount, wethAmount, daiAmount); // TODO: Consider parameter order
         if(direction == YTM) _yieldToMaker(user, yDaiAmount, wethAmount, daiAmount); // TODO: Consider parameter order
     }
@@ -119,7 +127,7 @@ contract Splitter is IFlashMinter, DecimalMath {
             "Splitter: Not enough debt in Maker"
         );
         // Market will take as much YDai as needed, if available. Splitter will hold the chai temporarily
-        uint256 yDaiSold = market.buyDai(user, address(this), uint128(daiAmount)); // TODO: Consider SafeCast
+        uint256 yDaiSold = market.buyDai(address(this), address(this), uint128(daiAmount)); // TODO: Consider SafeCast
 
         require(
             wethAmount <= ink,
@@ -139,7 +147,7 @@ contract Splitter is IFlashMinter, DecimalMath {
         vat.flux("ETH-A", user, address(this), wethAmount);             // Remove the collateral from Maker
         wethJoin.exit(address(this), wethAmount);                       // Hold the weth in Splitter
         controller.post(WETH, address(this), user, wethAmount);         // Add the collateral to Yield
-        controller.borrow(WETH, yDai.maturity(), user, user, yDaiSold); // Borrow the Dai
+        controller.borrow(WETH, yDai.maturity(), user, address(this), yDaiSold); // Borrow the Dai
     }
 
     function _yieldToMaker(address user, uint256 yDaiAmount, uint256 wethAmount, uint256 daiAmount) internal {
