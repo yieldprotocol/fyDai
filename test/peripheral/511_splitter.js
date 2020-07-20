@@ -79,7 +79,7 @@ contract('Splitter', async (accounts) =>  {
     const daiTokens2 = mulRay(daiTokens1, chiDifferential);
     const wethTokens2 = mulRay(wethTokens1, chiDifferential)
 
-    let maturity;
+    let maturity1;
 
     // Scenario in which the user mints daiTokens2 yDai1, chi increases by a 25%, and user redeems daiTokens1 yDai1
     const daiDebt2 = mulRay(daiDebt1, chiDifferential);
@@ -90,27 +90,26 @@ contract('Splitter', async (accounts) =>  {
 
     // Convert eth to weth and use it to borrow `daiTokens` from MakerDAO
     // This function shadows and uses global variables, careful.
-    async function getDai(user, daiTokens){
+    async function getDai(user, daiTokens_){
         await vat.hope(daiJoin.address, { from: user });
         await vat.hope(wethJoin.address, { from: user });
 
-        const daiDebt = divRay(daiTokens, rate1);
-        const wethTokens = divRay(daiTokens, spot);
+        const daiDebt_ = divRay(daiTokens_, rate1);
+        const wethTokens_ = divRay(daiTokens_, spot);
 
-        await weth.deposit({ from: user, value: wethTokens });
-        await weth.approve(wethJoin.address, wethTokens, { from: user });
-        await wethJoin.join(user, wethTokens, { from: user });
-        await vat.frob(ilk, user, user, user, wethTokens, daiDebt, { from: user });
-        await daiJoin.exit(user, daiTokens, { from: user });
+        await weth.deposit({ from: user, value: wethTokens_ });
+        await weth.approve(wethJoin.address, wethTokens_, { from: user });
+        await wethJoin.join(user, wethTokens_, { from: user });
+        await vat.frob(ilk, user, user, user, wethTokens_, daiDebt_, { from: user });
+        await daiJoin.exit(user, daiTokens_, { from: user });
     }
 
-    // From eth, borrow `daiTokens` from MakerDAO and convert them to chai
+    // Convert eth to weth and post it to yDai
     // This function shadows and uses global variables, careful.
-    async function getChai(user, chaiTokens){
-        const daiTokens = mulRay(chaiTokens, chi1);
-        await getDai(user, daiTokens);
-        await dai.approve(chai.address, daiTokens, { from: user });
-        await chai.join(user, daiTokens, { from: user });
+    async function postWeth(user, wethTokens){
+        await weth.deposit({ from: user, value: wethTokens });
+        await weth.approve(treasury.address, wethTokens, { from: user });
+        await controller.post(WETH, user, user, wethTokens, { from: user });
     }
 
     beforeEach(async() => {
@@ -179,13 +178,13 @@ contract('Splitter', async (accounts) =>  {
         
         // Setup yDai1
         const block = await web3.eth.getBlockNumber();
-        maturity = (await web3.eth.getBlock(block)).timestamp + 31556952; // One year
+        maturity1 = (await web3.eth.getBlock(block)).timestamp + 31556952; // One year
         yDai1 = await YDai.new(
             vat.address,
             jug.address,
             pot.address,
             treasury.address,
-            maturity,
+            maturity1,
             "Name",
             "Symbol"
         );
@@ -224,12 +223,14 @@ contract('Splitter', async (accounts) =>  {
         await yDai1.orchestrate(owner, { from: owner });
 
         // Initialize Market1
-        await getDai(owner, daiTokens1)
-        await yDai1.mint(owner, yDaiTokens1, { from: owner });
+        const daiReserves = daiTokens1.mul(5);
+        const yDaiReserves = yDaiTokens1.mul(10);
+        await getDai(owner, daiReserves)
+        await yDai1.mint(owner, yDaiReserves, { from: owner });
 
-        await dai.approve(market1.address, daiTokens1, { from: owner });
-        await yDai1.approve(market1.address, yDaiTokens1, { from: owner });
-        await market1.init(daiTokens1, yDaiTokens1, { from: owner });
+        await dai.approve(market1.address, daiReserves, { from: owner });
+        await yDai1.approve(market1.address, yDaiReserves, { from: owner });
+        await market1.init(daiReserves, yDaiReserves, { from: owner });
     });
 
     afterEach(async() => {
@@ -261,5 +262,19 @@ contract('Splitter', async (accounts) =>  {
         await vat.hope(splitter1.address, { from: user }); // Allowing Splitter to manipulate debt for user in MakerDAO
         // Go!!!
         await splitter1.makerToYield(user, wethTokens1, daiTokens1, { from: user });
+    });
+
+    it("moves yield vault to maker", async() => {
+        console.log("      Dai: " + daiTokens1.toString());
+        console.log("      Weth: " + wethTokens1.toString());
+        await postWeth(user, wethTokens1);
+        await controller.borrow(WETH, maturity1, user, user, yDaiTokens1, { from: user });
+        console.log("      YDai: " + yDaiTokens1.toString());
+        
+        // Add permissions for vault migration
+        await controller.addDelegate(splitter1.address, { from: user }); // Allowing Splitter to create debt for use in Yield
+        await vat.hope(splitter1.address, { from: user }); // Allowing Splitter to manipulate debt for user in MakerDAO
+        // Go!!!
+        await splitter1.yieldToMaker(user, yDaiTokens1, wethTokens1, { from: user });
     });
 });

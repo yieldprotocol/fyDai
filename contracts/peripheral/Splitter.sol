@@ -93,8 +93,8 @@ contract Splitter is IFlashMinter, DecimalMath {
 
     function executeOnFlashMint(address, uint256 yDaiAmount, bytes calldata data) external override {
         (bool direction, address user, uint256 wethAmount, uint256 daiAmount) = abi.decode(data, (bool, address, uint256, uint256));
-        if(direction == MTY) _makerToYield(user, yDaiAmount, wethAmount, daiAmount); // TODO: Consider parameter order
-        if(direction == YTM) _yieldToMaker(user, yDaiAmount, wethAmount, daiAmount); // TODO: Consider parameter order
+        if(direction == MTY) _makerToYield(user, wethAmount, daiAmount); // TODO: Consider parameter order
+        if(direction == YTM) _yieldToMaker(user, yDaiAmount, wethAmount); // TODO: Consider parameter order
     }
 
     /// @dev Minimum weth needed to collateralize an amount of dai in MakerDAO
@@ -114,12 +114,12 @@ contract Splitter is IFlashMinter, DecimalMath {
     }
 
     /// @dev Internal function to transfer debt and collateral from MakerDAO to Yield
-    /// @param yDaiAmount yDai that was flash-minted, needs to be high enough to buy the dai in the market
     /// @param wethAmount weth to move from MakerDAO to Yield. Needs to be high enough to collateralize the dai debt in Yield,
     /// and low enough to make sure that debt left in MakerDAO is also collateralized.
     /// @param daiAmount dai debt to move from MakerDAO to Yield. Denominated in Dai (= art * rate)
     /// Needs vat.hope(splitter.address, { from: user });
-    function _makerToYield(address user, uint256 yDaiAmount, uint256 wethAmount, uint256 daiAmount) internal {
+    /// Needs controller.addDelegate(splitter.address, { from: user });
+    function _makerToYield(address user, uint256 wethAmount, uint256 daiAmount) internal {
         (uint256 ink, uint256 art) = vat.urns(WETH, user);
         (, uint256 rate,,,) = vat.ilks("ETH-A");
         require(
@@ -150,31 +150,36 @@ contract Splitter is IFlashMinter, DecimalMath {
         controller.borrow(WETH, yDai.maturity(), user, address(this), yDaiSold); // Borrow the Dai
     }
 
-    function _yieldToMaker(address user, uint256 yDaiAmount, uint256 wethAmount, uint256 daiAmount) internal {
-        // Pay the Yield debt
-        controller.repayYDai(WETH, yDai.maturity(), user, user, yDaiAmount); // repayYDai wil only take what is needed
-        // Withdraw the collateral from Yield
-        // TODO: controller.addProxy(splitter.address, { from: user });
+    /// Needs vat.hope(splitter.address, { from: user });
+    /// Needs controller.addDelegate(splitter.address, { from: user });
+    function _yieldToMaker(address user, uint256 yDaiAmount, uint256 wethAmount) internal {
+        // Pay the Yield debt - Splitter pays YDai to remove the debt of `user`
+        controller.repayYDai(WETH, yDai.maturity(), address(this), user, yDaiAmount); // repayYDai wil only take what is needed
+
+        // Withdraw the collateral from Yield, Splitter will hold it
         controller.withdraw(WETH, user, address(this), wethAmount);
-        // Post the collateral to Maker
-        // TODO: wethJoin.hope(splitter.address, { from: user });
+
+        // Post the collateral to Maker, in the `user` vault
+        // TODO: wethJoin.hope(splitter.address, { from: user }); ?
         wethJoin.join(user, wethAmount);
+
+        // We are going to need to buy the YDai back with Dai borrowed from Maker
+        uint256 daiAmount = market.buyYDaiPreview(uint128(yDaiAmount)); // TODO: Consider SafeCast
+
         // Borrow the Dai from Maker
         (, uint256 rate,,,) = vat.ilks("ETH-A");            // Retrieve the MakerDAO stability fee for Weth
-        // TODO: vat.hope(splitter.address, { from: user });
         vat.frob(
             "ETH-A",
             user,
             user,
             user,
-            toInt(wethAmount),                           // Weth collateral to add
+            toInt(wethAmount),            // Weth collateral to add
             toInt(divd(daiAmount, rate))  // Dai debt to remove
         );
-        vat.move(user, address(this), daiAmount);
-        daiJoin.exit(address(this), daiAmount); // Splitter will hold the dai temporarily
+        vat.move(user, address(this), daiAmount.mul(UNIT)); // Transfer the Dai to Splitter within MakerDAO, and `move` operates in RAD
+        daiJoin.exit(address(this), daiAmount);   // Splitter will hold the dai temporarily
 
         // Sell the Dai for YDai at Market - It should make up for what was taken with repayYdai
-        // Splitter will hold the dai temporarily - TODO: Consider SafeCast
-        market.sellDai(user, address(this), uint128(dai.balanceOf(address(this))));
+        market.sellDai(address(this), address(this), uint128(dai.balanceOf(address(this)))); // TODO: Consider SafeCast
     }
 }
