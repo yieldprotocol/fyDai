@@ -260,6 +260,7 @@ contract('Splitter', async (accounts) =>  {
 
         // This lot can be avoided if the user is certain that he has enough Weth in Controller
         // The amount of yDai to be borrowed can be obtained from Market through Splitter
+        // As time passes, the amount of yDai required decreases, so this value will always be slightly higher than needed
         const yDaiNeeded = await splitter1.yDaiForDai(daiTokens1);
         // console.log("      YDai: " + yDaiNeeded.toString());
 
@@ -296,6 +297,18 @@ contract('Splitter', async (accounts) =>  {
         await splitter1.makerToYield(user, wethTokens1, daiTokens1, { from: user });
         
         assert.equal(
+            await yDai1.balanceOf(splitter1.address),
+            0,
+        );
+        assert.equal(
+            await dai.balanceOf(splitter1.address),
+            0,
+        );
+        assert.equal(
+            await weth.balanceOf(splitter1.address),
+            0,
+        );
+        assert.equal(
             (await vat.urns(WETH, user)).ink,
             0,
         );
@@ -303,14 +316,13 @@ contract('Splitter', async (accounts) =>  {
             (await vat.urns(WETH, user)).art,
             0,
         );
-        /* assert.equal(
+        assert.equal(
             (await controller.posted(WETH, user)).toString(),
             wethInController.toString(),
-        ); 
-        assert.equal(
-            (await controller.debtYDai(WETH, maturity1, user)).toString(),
-            yDaiNeeded.toString(),
-        ); */ // TODO: Find out why these are not 100% precise
+        );
+        const yDaiDebt = await controller.debtYDai(WETH, maturity1, user);
+        expect(yDaiDebt).to.be.bignumber.lt(yDaiNeeded);
+        expect(yDaiDebt).to.be.bignumber.gt(yDaiNeeded.mul(new BN('9999')).div(new BN('10000')));
     });
 
     it("does not allow to move more debt than existing in yield", async() => {

@@ -93,8 +93,6 @@ contract Splitter is IFlashMinter, DecimalMath {
 
     function yieldToMaker(address user, uint256 yDaiAmount, uint256 wethAmount) public {
         // The user specifies the yDai he wants to move, and the weth to be passed on as collateral
-        // TODO: require yDaiAmount <= yDai debt in Yield
-        // TODO: require wethAmount <= weth collateral in Yield
         require(
             yDaiAmount <= controller.debtYDai(WETH, yDai.maturity(), user),
             "Splitter: Not enough debt in Yield"
