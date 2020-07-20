@@ -353,7 +353,54 @@ contract('Splitter', async (accounts) =>  {
         await controller.addDelegate(splitter1.address, { from: user }); // Allowing Splitter to create debt for use in Yield
         await vat.hope(splitter1.address, { from: user }); // Allowing Splitter to manipulate debt for user in MakerDAO
         // Go!!!
+        assert.equal(
+            (await controller.posted(WETH, user)).toString(),
+            wethTokens1.toString(),
+        );
+        assert.equal(
+            (await controller.debtYDai(WETH, maturity1, user)).toString(),
+            yDaiTokens1.toString(),
+        );
+        assert.equal(
+            (await vat.urns(WETH, user)).ink,
+            0,
+        );
+        assert.equal(
+            (await vat.urns(WETH, user)).art,
+            0,
+        );
+
+        // Will need this one for testing. As time passes, even for one block, the resulting dai debt will be higher than this value
+        const makerDebtEstimate = new BN(await splitter1.daiForYDai(yDaiTokens1));
+
         await splitter1.yieldToMaker(user, yDaiTokens1, wethTokens1, { from: user });
-        // TODO: Test resulting values
+
+        assert.equal(
+            await yDai1.balanceOf(splitter1.address),
+            0,
+        );
+        assert.equal(
+            await dai.balanceOf(splitter1.address),
+            0,
+        );
+        assert.equal(
+            await weth.balanceOf(splitter1.address),
+            0,
+        );
+        assert.equal(
+            (await controller.posted(WETH, user)).toString(),
+            0,
+        );
+        assert.equal(
+            (await controller.debtYDai(WETH, maturity1, user)).toString(),
+            0,
+        );
+        assert.equal(
+            (await vat.urns(WETH, user)).ink,
+            wethTokens1.toString(),
+        );
+        const makerDebt = (mulRay(((await vat.urns(WETH, user)).art).toString(), rate1)).toString();
+        expect(makerDebt).to.be.bignumber.gt(makerDebtEstimate);
+        expect(makerDebt).to.be.bignumber.lt(makerDebtEstimate.mul(new BN('10001')).div(new BN('10000')));
     });
 });

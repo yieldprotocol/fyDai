@@ -13,7 +13,7 @@ import "../interfaces/IYDai.sol";
 import "../interfaces/IController.sol";
 import "../interfaces/IMarket.sol";
 import "../interfaces/IFlashMinter.sol";
-import "@nomiclabs/buidler/console.sol";
+// import "@nomiclabs/buidler/console.sol";
 
 
 /// @dev Splitter migrates vaults between MakerDAO and Yield using flash minting.
@@ -71,6 +71,13 @@ contract Splitter is IFlashMinter, DecimalMath {
         return int256(x);
     }
 
+    /// @dev Transfer debt and collateral from MakerDAO to Yield
+    /// @param user Vault to migrate.
+    /// @param wethAmount weth to move from MakerDAO to Yield. Needs to be high enough to collateralize the dai debt in Yield,
+    /// and low enough to make sure that debt left in MakerDAO is also collateralized.
+    /// @param daiAmount dai debt to move from MakerDAO to Yield. Denominated in Dai (= art * rate)
+    /// Needs vat.hope(splitter.address, { from: user });
+    /// Needs controller.addDelegate(splitter.address, { from: user });
     function makerToYield(address user, uint256 wethAmount, uint256 daiAmount) public {
         // The user specifies the yDai he wants to mint to cover his maker debt, the weth to be passed on as collateral, and the dai debt to move
         (uint256 ink, uint256 art) = vat.urns(WETH, user);
@@ -91,6 +98,13 @@ contract Splitter is IFlashMinter, DecimalMath {
         );
     }
 
+    /// @dev Transfer debt and collateral from Yield to MakerDAO
+    /// @param user Vault to migrate.
+    /// @param yDaiAmount yDai debt to move from Yield to MakerDAO.
+    /// @param wethAmount weth to move from Yield to MakerDAO. Needs to be high enough to collateralize the dai debt in MakerDAO,
+    /// and low enough to make sure that debt left in Yield is also collateralized.
+    /// Needs vat.hope(splitter.address, { from: user });
+    /// Needs controller.addDelegate(splitter.address, { from: user });
     function yieldToMaker(address user, uint256 yDaiAmount, uint256 wethAmount) public {
         // The user specifies the yDai he wants to move, and the weth to be passed on as collateral
         require(
@@ -109,6 +123,7 @@ contract Splitter is IFlashMinter, DecimalMath {
         ); // The daiAmount encoded is ignored
     }
 
+    /// @dev Callback from `YDai.flashMint()`
     function executeOnFlashMint(address, uint256 yDaiAmount, bytes calldata data) external override {
         (bool direction, address user, uint256 wethAmount, uint256 daiAmount) = abi.decode(data, (bool, address, uint256, uint256));
         if(direction == MTY) _makerToYield(user, wethAmount, daiAmount); // TODO: Consider parameter order
@@ -127,11 +142,18 @@ contract Splitter is IFlashMinter, DecimalMath {
         return divd(yDaiAmount, spot);
     }
 
+    /// @dev Amount of yDai debt that will result from migrating Dai debt from MakerDAO to Yield
     function yDaiForDai(uint256 daiAmount) public view returns (uint256) {
         return market.buyDaiPreview(uint128(daiAmount));
     }
 
+    /// @dev Amount of dai debt that will result from migrating yDai debt from Yield to MakerDAO
+    function daiForYDai(uint256 yDaiAmount) public view returns (uint256) {
+        return market.buyYDaiPreview(uint128(yDaiAmount));
+    }
+
     /// @dev Internal function to transfer debt and collateral from MakerDAO to Yield
+    /// @param user Vault to migrate.
     /// @param wethAmount weth to move from MakerDAO to Yield. Needs to be high enough to collateralize the dai debt in Yield,
     /// and low enough to make sure that debt left in MakerDAO is also collateralized.
     /// @param daiAmount dai debt to move from MakerDAO to Yield. Denominated in Dai (= art * rate)
@@ -159,6 +181,12 @@ contract Splitter is IFlashMinter, DecimalMath {
         controller.borrow(WETH, yDai.maturity(), user, address(this), yDaiSold); // Borrow the Dai
     }
 
+
+    /// @dev Internal function to transfer debt and collateral from Yield to MakerDAO
+    /// @param user Vault to migrate.
+    /// @param yDaiAmount yDai debt to move from Yield to MakerDAO.
+    /// @param wethAmount weth to move from Yield to MakerDAO. Needs to be high enough to collateralize the dai debt in MakerDAO,
+    /// and low enough to make sure that debt left in Yield is also collateralized.
     /// Needs vat.hope(splitter.address, { from: user });
     /// Needs controller.addDelegate(splitter.address, { from: user });
     function _yieldToMaker(address user, uint256 yDaiAmount, uint256 wethAmount) internal {
