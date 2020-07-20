@@ -237,15 +237,31 @@ contract('Splitter', async (accounts) =>  {
         await helper.revertToSnapshot(snapshotId);
     });
 
+    it("does not allow to move more debt than existing in maker", async() => {
+        await expectRevert(
+            splitter1.makerToYield(user, wethTokens1, daiTokens1, { from: user }),
+            "Splitter: Not enough debt in Maker",
+        );
+    });
+
+    it("does not allow to move more weth than posted in maker", async() => {
+        await getDai(user, daiTokens1);
+
+        await expectRevert(
+            splitter1.makerToYield(user, wethTokens1.mul(2), daiTokens1, { from: user }),
+            "Splitter: Not enough collateral in Maker",
+        );
+    });
+
     it("moves maker vault to yield", async() => {
-        console.log("      Dai: " + daiTokens1.toString());
-        console.log("      Weth: " + wethTokens1.toString());
+        // console.log("      Dai: " + daiTokens1.toString());
+        // console.log("      Weth: " + wethTokens1.toString());
         await getDai(user, daiTokens1);
 
         { // This block can be avoided if the user is certain that he has enough Weth in Controller
             // The amount of yDai to be borrowed can be obtained from Market through Splitter
             const yDaiNeeded = await splitter1.yDaiForDai(daiTokens1);
-            console.log("      YDai: " + yDaiNeeded.toString());
+            // console.log("      YDai: " + yDaiNeeded.toString());
 
             // Once we know how much yDai debt we will have, we can see how much weth we need to move
             const wethInController = new BN(await splitter1.wethForYDai(yDaiNeeded, { from: user }));
@@ -265,12 +281,29 @@ contract('Splitter', async (accounts) =>  {
         // TODO: Test resulting values
     });
 
-    it("moves yield vault to maker", async() => {
-        console.log("      Dai: " + daiTokens1.toString());
-        console.log("      Weth: " + wethTokens1.toString());
+    it("does not allow to move more debt than existing in yield", async() => {
+        await expectRevert(
+            splitter1.yieldToMaker(user, yDaiTokens1, wethTokens1, { from: user }),
+            "Splitter: Not enough debt in Yield",
+        );
+    });
+
+    it("does not allow to move more weth than posted in yield", async() => {
         await postWeth(user, wethTokens1);
         await controller.borrow(WETH, maturity1, user, user, yDaiTokens1, { from: user });
-        console.log("      YDai: " + yDaiTokens1.toString());
+
+        await expectRevert(
+            splitter1.yieldToMaker(user, yDaiTokens1, wethTokens1.mul(2), { from: user }),
+            "Splitter: Not enough collateral in Yield",
+        );
+    });
+
+    it("moves yield vault to maker", async() => {
+        // console.log("      Dai: " + daiTokens1.toString());
+        // console.log("      Weth: " + wethTokens1.toString());
+        await postWeth(user, wethTokens1);
+        await controller.borrow(WETH, maturity1, user, user, yDaiTokens1, { from: user });
+        // console.log("      YDai: " + yDaiTokens1.toString());
         
         // Add permissions for vault migration
         await controller.addDelegate(splitter1.address, { from: user }); // Allowing Splitter to create debt for use in Yield

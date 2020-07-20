@@ -73,8 +73,16 @@ contract Splitter is IFlashMinter, DecimalMath {
 
     function makerToYield(address user, uint256 wethAmount, uint256 daiAmount) public {
         // The user specifies the yDai he wants to mint to cover his maker debt, the weth to be passed on as collateral, and the dai debt to move
-        // TODO: require daiAmount <= dai debt in Maker
-        // TODO: require wethAmount <= weth collateral in Maker
+        (uint256 ink, uint256 art) = vat.urns(WETH, user);
+        (, uint256 rate,,,) = vat.ilks("ETH-A");
+        require(
+            daiAmount <= muld(art, rate),
+            "Splitter: Not enough debt in Maker"
+        );
+        require(
+            wethAmount <= ink,
+            "Splitter: Not enough collateral in Maker"
+        );
         // Flash mint the yDai
         yDai.flashMint(
             address(this),
@@ -87,6 +95,14 @@ contract Splitter is IFlashMinter, DecimalMath {
         // The user specifies the yDai he wants to move, and the weth to be passed on as collateral
         // TODO: require yDaiAmount <= yDai debt in Yield
         // TODO: require wethAmount <= weth collateral in Yield
+        require(
+            yDaiAmount <= controller.debtYDai(WETH, yDai.maturity(), user),
+            "Splitter: Not enough debt in Yield"
+        );
+        require(
+            wethAmount <= controller.posted(WETH, user),
+            "Splitter: Not enough collateral in Yield"
+        );
         // Flash mint the yDai
         yDai.flashMint(
             address(this),
@@ -124,21 +140,12 @@ contract Splitter is IFlashMinter, DecimalMath {
     /// Needs vat.hope(splitter.address, { from: user });
     /// Needs controller.addDelegate(splitter.address, { from: user });
     function _makerToYield(address user, uint256 wethAmount, uint256 daiAmount) internal {
-        (uint256 ink, uint256 art) = vat.urns(WETH, user);
-        (, uint256 rate,,,) = vat.ilks("ETH-A");
-        require(
-            daiAmount <= muld(art, rate),
-            "Splitter: Not enough debt in Maker"
-        );
-        // Market will take as much YDai as needed, if available. Splitter will hold the chai temporarily
+
+        // Market should take exactly all yDai flash minted. Splitter will hold the dai temporarily
         uint256 yDaiSold = market.buyDai(address(this), address(this), uint128(daiAmount)); // TODO: Consider SafeCast
 
-        require(
-            wethAmount <= ink,
-            "Splitter: Not enough collateral in Maker"
-        );
-
         daiJoin.join(user, daiAmount);      // Put the Dai in Maker
+        (, uint256 rate,,,) = vat.ilks("ETH-A");
         vat.frob(                           // Pay the debt and unlock collateral in Maker
             "ETH-A",
             user,
@@ -158,6 +165,7 @@ contract Splitter is IFlashMinter, DecimalMath {
     /// Needs controller.addDelegate(splitter.address, { from: user });
     function _yieldToMaker(address user, uint256 yDaiAmount, uint256 wethAmount) internal {
         // Pay the Yield debt - Splitter pays YDai to remove the debt of `user`
+        // Controller should take exactly all yDai flash minted.
         controller.repayYDai(WETH, yDai.maturity(), address(this), user, yDaiAmount); // repayYDai wil only take what is needed
 
         // Withdraw the collateral from Yield, Splitter will hold it
