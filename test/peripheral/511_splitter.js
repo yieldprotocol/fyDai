@@ -171,11 +171,7 @@ contract('Splitter', async (accounts) =>  {
         // Setup Controller
         controller = await Controller.new(
             vat.address,
-            weth.address,
-            dai.address,
             pot.address,
-            chai.address,
-            gasToken.address,
             treasury.address,
             { from: owner },
         );
@@ -228,12 +224,12 @@ contract('Splitter', async (accounts) =>  {
         await yDai1.orchestrate(owner, { from: owner });
 
         // Initialize Market1
-        await getChai(owner, chaiTokens1)
+        await getDai(owner, daiTokens1)
         await yDai1.mint(owner, yDaiTokens1, { from: owner });
 
-        await chai.approve(market1.address, chaiTokens1, { from: owner });
+        await dai.approve(market1.address, daiTokens1, { from: owner });
         await yDai1.approve(market1.address, yDaiTokens1, { from: owner });
-        await market1.init(chaiTokens1, yDaiTokens1, { from: owner });
+        await market1.init(daiTokens1, yDaiTokens1, { from: owner });
     });
 
     afterEach(async() => {
@@ -241,37 +237,30 @@ contract('Splitter', async (accounts) =>  {
     });
 
     it("moves maker vault to yield", async() => {
+        console.log("D: " + daiTokens1.toString());
+        console.log("W: " + wethTokens1.toString());
         await getDai(user, daiTokens1);
 
-        // Remove these three lines once I find amounts of weth and dai that I can move with both Yield and Maker being safe
-        await weth.deposit({ from: user, value: wethTokens1 });
-        await weth.approve(treasury.address, wethTokens1, { from: user });
-        await controller.post(WETH, user, user, wethTokens1, { from: user });
+        // The amount of yDai to be borrowed can be obtained from Market through Splitter
+        const yDaiNeeded = await splitter1.yDaiForDai(daiTokens1);
+        console.log("Y: " + yDaiNeeded.toString());
 
+        // Once we know how much yDai debt we will have, we can see how much weth we need to move
+        const wethInController = new BN(await splitter1.wethForYDai(yDaiNeeded, { from: user }));
+
+        // If we need any extra, we are posting it directly on Controller
+        const extraWethNeeded = wethInController.sub(new BN(wethTokens1.toString())); // It will always be zero or more
+        await weth.deposit({ from: user, value: extraWethNeeded });
+        await weth.approve(treasury.address, extraWethNeeded, { from: user });
+        await controller.post(WETH, user, user, extraWethNeeded, { from: user });
+
+        // Add permissions for vault migration
         await controller.addDelegate(splitter1.address, { from: user }); // Allowing Splitter to create debt for use in Yield
         // TODO: Pass on an extra parameter (user) in the data of the flash minting, and flash mint directly on Splitter's wallet. Then remove the next two lines.
         await market1.addDelegate(splitter1.address, { from: user }); // Allowing Splitter to trade for user in Market
-        await yDai1.approve(market1.address, yDaiTokens1, { from: user }); // TODO: Ok, this is weird, but the user needs to approve the market to take yDai from him, because the Splitter is going to flash mint in the user's wallet. Refactor so that the Splitter flash mints to itself.
+        await yDai1.approve(market1.address, yDaiNeeded, { from: user }); // TODO: Ok, this is weird, but the user needs to approve the market to take yDai from him, because the Splitter is going to flash mint in the user's wallet. Refactor so that the Splitter flash mints to itself.
         await vat.hope(splitter1.address, { from: user }); // Allowing Splitter to manipulate debt for user in MakerDAO
-        await splitter1.makerToYield(user, yDaiTokens1, wethTokens1.div(2), daiTokens1.div(2), { from: user });
-    });
-
-    it("moves maker vault to yield with exact amounts", async() => {
-        const debtToMove = daiTokens1.div(10);
-        console.log("D: " + debtToMove.toString());
-        await getDai(user, debtToMove);
-
-        const wethToMove = await splitter1.wethForDai(debtToMove, { from: user });
-        console.log("W: " + wethToMove.toString());
-
-        const yDaiToMint = await splitter1.yDaiForDai(debtToMove, { from: user });
-        console.log("Y: " + yDaiToMint.toString());
-
-        await controller.addDelegate(splitter1.address, { from: user }); // Allowing Splitter to create debt for use in Yield
-        // TODO: Pass on an extra parameter (user) in the data of the flash minting, and flash mint directly on Splitter's wallet. Then remove the next two lines.
-        await market1.addDelegate(splitter1.address, { from: user }); // Allowing Splitter to trade for user in Market
-        await yDai1.approve(market1.address, yDaiToMint, { from: user }); // TODO: Ok, this is weird, but the user needs to approve the market to take yDai from him, because the Splitter is going to flash mint in the user's wallet. Refactor so that the Splitter flash mints to itself.
-        await vat.hope(splitter1.address, { from: user }); // Allowing Splitter to manipulate debt for user in MakerDAO
-        await splitter1.makerToYield(user, yDaiToMint, wethToMove, debtToMove, { from: user });
+        // Go!!!
+        await splitter1.makerToYield(user, yDaiNeeded, wethTokens1, daiTokens1, { from: user });
     });
 });
