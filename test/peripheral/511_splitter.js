@@ -258,27 +258,59 @@ contract('Splitter', async (accounts) =>  {
         // console.log("      Weth: " + wethTokens1.toString());
         await getDai(user, daiTokens1);
 
-        { // This block can be avoided if the user is certain that he has enough Weth in Controller
-            // The amount of yDai to be borrowed can be obtained from Market through Splitter
-            const yDaiNeeded = await splitter1.yDaiForDai(daiTokens1);
-            // console.log("      YDai: " + yDaiNeeded.toString());
+        // This lot can be avoided if the user is certain that he has enough Weth in Controller
+        // The amount of yDai to be borrowed can be obtained from Market through Splitter
+        const yDaiNeeded = await splitter1.yDaiForDai(daiTokens1);
+        // console.log("      YDai: " + yDaiNeeded.toString());
 
-            // Once we know how much yDai debt we will have, we can see how much weth we need to move
-            const wethInController = new BN(await splitter1.wethForYDai(yDaiNeeded, { from: user }));
+        // Once we know how much yDai debt we will have, we can see how much weth we need to move
+        const wethInController = new BN(await splitter1.wethForYDai(yDaiNeeded, { from: user }));
 
-            // If we need any extra, we are posting it directly on Controller
-            const extraWethNeeded = wethInController.sub(new BN(wethTokens1.toString())); // It will always be zero or more
-            await weth.deposit({ from: user, value: extraWethNeeded });
-            await weth.approve(treasury.address, extraWethNeeded, { from: user });
-            await controller.post(WETH, user, user, extraWethNeeded, { from: user });
-        }
-        
+        // If we need any extra, we are posting it directly on Controller
+        const extraWethNeeded = wethInController.sub(new BN(wethTokens1.toString())); // It will always be zero or more
+        await weth.deposit({ from: user, value: extraWethNeeded });
+        await weth.approve(treasury.address, extraWethNeeded, { from: user });
+        await controller.post(WETH, user, user, extraWethNeeded, { from: user });
+    
         // Add permissions for vault migration
         await controller.addDelegate(splitter1.address, { from: user }); // Allowing Splitter to create debt for use in Yield
         await vat.hope(splitter1.address, { from: user }); // Allowing Splitter to manipulate debt for user in MakerDAO
         // Go!!!
+        assert.equal(
+            (await vat.urns(WETH, user)).ink,
+            wethTokens1.toString(),
+        );
+        assert.equal(
+            (await vat.urns(WETH, user)).art,
+            divRay(daiTokens1, rate1).toString(),
+        );
+        assert.equal(
+            (await controller.posted(WETH, user)).toString(),
+            extraWethNeeded.toString(),
+        );
+        assert.equal(
+            (await controller.debtYDai(WETH, maturity1, user)).toString(),
+            0,
+        );
+        
         await splitter1.makerToYield(user, wethTokens1, daiTokens1, { from: user });
-        // TODO: Test resulting values
+        
+        assert.equal(
+            (await vat.urns(WETH, user)).ink,
+            0,
+        );
+        assert.equal(
+            (await vat.urns(WETH, user)).art,
+            0,
+        );
+        /* assert.equal(
+            (await controller.posted(WETH, user)).toString(),
+            wethInController.toString(),
+        ); 
+        assert.equal(
+            (await controller.debtYDai(WETH, maturity1, user)).toString(),
+            yDaiNeeded.toString(),
+        ); */ // TODO: Find out why these are not 100% precise
     });
 
     it("does not allow to move more debt than existing in yield", async() => {
