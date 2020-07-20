@@ -1,32 +1,29 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.6.10;
 
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IVat.sol";
 import "./interfaces/IPot.sol";
-import "./interfaces/IChai.sol";
-import "./interfaces/IGasToken.sol";
 import "./interfaces/ITreasury.sol";
 import "./interfaces/IController.sol";
 import "./interfaces/IYDai.sol";
 import "./helpers/Delegable.sol";
 import "./helpers/DecimalMath.sol";
 import "./helpers/Orchestrated.sol";
-// import "@nomiclabs/buidler/console.sol";
+import "@nomiclabs/buidler/console.sol";
 
 /**
  * @dev The Controller manages collateral and debt levels for all users, and it is a major user entry point for the Yield protocol.
  * Controller keeps track of a number of yDai contracts.
  * Controller allows users to post and withdraw Chai and Weth collateral.
+ * Any transactions resulting in a user weth collateral below dust are reverted.
  * Controller allows users to borrow yDai against their Chai and Weth collateral.
  * Controller allows users to repay their yDai debt with yDai or with Dai.
  * Controller integrates with yDai contracts for minting yDai on borrowing, and burning yDai on repaying debt with yDai.
  * Controller relies on Treasury for all other asset transfers.
  * Controller allows orchestrated contracts to erase any amount of debt or collateral for an user. This is to be used during liquidations or during unwind.
  * Users can delegate the control of their accounts in Controllers to any address.
- * Controller takes a bond in GasTokens from users on their first borrow.
- * This bond is released to the account causing the user debt to drop to zero. This could be the users themselves closing their positions, or liquidators.
  */
 contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
     using SafeMath for uint256;
@@ -36,54 +33,35 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
 
     bytes32 public constant CHAI = "CHAI";
     bytes32 public constant WETH = "ETH-A";
+    uint256 public constant DUST = 50000000000000000; // 0.05 ETH
 
     IVat internal _vat;
-    IERC20 internal _dai;
     IPot internal _pot;
-    IGasToken internal _gasToken;
     ITreasury internal _treasury;
 
-    mapping(bytes32 => IERC20) internal _token;                       // Weth or Chai
     mapping(uint256 => IYDai) public override series;                 // YDai series, indexed by maturity
-    uint256[] internal seriesIterator;                                // We need to know all the series
+    uint256[] public override seriesIterator;                         // We need to know all the series
 
-    mapping(bytes32 => mapping(address => uint256)) public override posted;               // Collateral posted by each user
+    mapping(bytes32 => mapping(address => uint256)) public override posted;                        // Collateral posted by each user
     mapping(bytes32 => mapping(uint256 => mapping(address => uint256))) public override debtYDai;  // Debt owed by each user, by series
 
-    mapping(bytes32 => uint256) public override systemPosted;                        // Sum of collateral posted by all users
-    mapping(bytes32 => mapping(uint256 => uint256)) public override systemDebtYDai;  // Sum of debt owed by all users, by series
+    uint256 public override totalChaiPosted;                                        // Sum of Chai posted by all users. Needed for skimming profits
+    mapping(bytes32 => mapping(uint256 => uint256)) public override totalDebtYDai;  // Sum of debt owed by all users, by series
 
     bool public live = true;
 
     constructor (
         address vat_,
-        address weth_,
-        address dai_,
         address pot_,
-        address chai_,
-        address gasToken_,
         address treasury_
     ) public {
         _vat = IVat(vat_);
-        _dai = IERC20(dai_);
         _pot = IPot(pot_);
-        _gasToken = IGasToken(gasToken_);
         _treasury = ITreasury(treasury_);
-        _token[WETH] = IERC20(weth_);
-        _token[CHAI] = IERC20(chai_);
     }
 
     modifier onlyLive() {
         require(live == true, "Controller: Not available during unwind");
-        _;
-    }
-
-    /// @dev Only series added through `addSeries` are valid.
-    modifier validSeries(uint256 maturity) {
-        require(
-            containsSeries(maturity),
-            "Controller: Unrecognized series"
-        );
         _;
     }
 
@@ -96,8 +74,22 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
         _;
     }
 
+    /// @dev Only series added through `addSeries` are valid.
+    modifier validSeries(uint256 maturity) {
+        require(
+            containsSeries(maturity),
+            "Controller: Unrecognized series"
+        );
+        _;
+    }
+
+    /// @dev Return the total number of series registered
+    function totalSeries() public view override returns (uint256) {
+        return seriesIterator.length;
+    }
+
     /// @dev Returns if a series has been added to the Controller, for a given series identified by maturity
-    function containsSeries(uint256 maturity) public view returns (bool) {
+    function containsSeries(uint256 maturity) public view override returns (bool) {
         return address(series[maturity]) != address(0);
     }
 
@@ -116,7 +108,7 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
     function shutdown() public override {
         require(
             _treasury.live() == false,
-            "Dealer: Treasury is live"
+            "Controller: Treasury is live"
         );
         live = false;
     }
@@ -174,7 +166,7 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
 
     /// @dev Maximum borrowing power of an user in dai for a given collateral
     //
-    // powerOf[user](wad) = posted[user](wad) * oracle.price()(ray)
+    // powerOf[user](wad) = posted[user](wad) * price()(ray)
     //
     function powerOf(bytes32 collateral, address user) public returns (uint256) {
         // dai = price * collateral
@@ -193,6 +185,11 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
         return powerOf(collateral, user) >= totalDebtDai(collateral, user);
     }
 
+    /// @dev Return if the collateral of an user is between zero and the dust level
+    function aboveDustOrZero(bytes32 collateral, address user) public view returns (bool) {
+        return posted[collateral][user] == 0 || DUST < posted[collateral][user];
+    }
+
     /// @dev Takes collateral _token from `from` address, and credits it to `to` collateral account.
     // from --- Token ---> us(to)
     function post(bytes32 collateral, address from, address to, uint256 amount)
@@ -201,14 +198,19 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
         onlyHolderOrDelegate(from, "Controller: Only Holder Or Delegate")
         onlyLive
     {
+        posted[collateral][to] = posted[collateral][to].add(amount);
+
         if (collateral == WETH){ // TODO: Refactor Treasury to be `push(collateral, amount)`
+            require(
+                aboveDustOrZero(collateral, to),
+                "Controller: Below dust"
+            );
             _treasury.pushWeth(from, amount);
         } else if (collateral == CHAI) {
+            totalChaiPosted = totalChaiPosted.add(amount);
             _treasury.pushChai(from, amount);
         }
         
-        posted[collateral][to] = posted[collateral][to].add(amount);
-        systemPosted[collateral] = systemPosted[collateral].add(amount);
         emit Posted(collateral, to, int256(amount)); // TODO: Watch for overflow
     }
 
@@ -221,7 +223,6 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
         onlyLive
     {
         posted[collateral][from] = posted[collateral][from].sub(amount); // Will revert if not enough posted
-        systemPosted[collateral] = systemPosted[collateral].sub(amount);
 
         require(
             isCollateralized(collateral, from),
@@ -229,14 +230,16 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
         );
 
         if (collateral == WETH){ // TODO: Refactor Treasury to be `pull(collateral, amount)`
+            require(
+                aboveDustOrZero(collateral, to),
+                "Controller: Below dust"
+            );
             _treasury.pullWeth(to, amount);
         } else if (collateral == CHAI) {
+            totalChaiPosted = totalChaiPosted.sub(amount);
             _treasury.pullChai(to, amount);
         }
 
-        if (posted[collateral][from] == 0 && amount >= 0) {
-            returnBond(10);
-        }
         emit Posted(collateral, from, -int256(amount)); // TODO: Watch for overflow
     }
 
@@ -258,16 +261,14 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
             "Controller: No mature borrow"
         );
 
-        if (debtYDai[collateral][maturity][from] == 0 && yDaiAmount >= 0) {
-            lockBond(10);
-        }
         debtYDai[collateral][maturity][from] = debtYDai[collateral][maturity][from].add(yDaiAmount);
-        systemDebtYDai[collateral][maturity] = systemDebtYDai[collateral][maturity].add(yDaiAmount);
+        totalDebtYDai[collateral][maturity] = totalDebtYDai[collateral][maturity].add(yDaiAmount);
 
         require(
             isCollateralized(collateral, from),
             "Controller: Too much debt"
         );
+
         series[maturity].mint(to, yDaiAmount);
         emit Borrowed(collateral, maturity, from, int256(yDaiAmount)); // TODO: Watch for overflow
     }
@@ -317,58 +318,32 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
     //                                          principal + interest
     //    
     function _repay(bytes32 collateral, uint256 maturity, address user, uint256 yDaiAmount) internal {
-        // `inDai` calculates the interest accrued for a given amount and series
-
         debtYDai[collateral][maturity][user] = debtYDai[collateral][maturity][user].sub(yDaiAmount);
-        systemDebtYDai[collateral][maturity] = systemDebtYDai[collateral][maturity].sub(yDaiAmount);
-        if (debtYDai[collateral][maturity][user] == 0 && yDaiAmount >= 0) {
-            returnBond(10);
-        }
+        totalDebtYDai[collateral][maturity] = totalDebtYDai[collateral][maturity].sub(yDaiAmount);
+
         emit Borrowed(collateral, maturity, user, -int256(yDaiAmount)); // TODO: Watch for overflow
     }
 
-    /// @dev Removes collateral and debt for an user.
-    function grab(bytes32 collateral, address user, uint256 daiAmount, uint256 tokenAmount)
+    /// @dev Removes all collateral and debt for an user, for a given collateral type.
+    function erase(bytes32 collateral, address user)
         public override
         validCollateral(collateral)
         onlyOrchestrated("Controller: Not Authorized")
+        returns (uint256, uint256)
     {
+        uint256 userCollateral = posted[collateral][user];
+        delete posted[collateral][user];
+        if (collateral == CHAI) totalChaiPosted = totalChaiPosted.sub(userCollateral);
 
-        posted[collateral][user] = posted[collateral][user].sub(
-            tokenAmount,
-            "Controller: Not enough collateral"
-        );
-        systemPosted[collateral] = systemPosted[collateral].sub(tokenAmount);
-
-        uint256 totalGrabbed;
+        uint256 userDebt;
         for (uint256 i = 0; i < seriesIterator.length; i += 1) {
             uint256 maturity = seriesIterator[i];
-            uint256 thisGrab = Math.min(debtDai(collateral, maturity, user), daiAmount.sub(totalGrabbed));
-            totalGrabbed = totalGrabbed.add(thisGrab); // SafeMath shouldn't be needed
-            debtYDai[collateral][maturity][user] =
-                debtYDai[collateral][maturity][user].sub(inYDai(collateral, maturity, thisGrab)); // SafeMath shouldn't be needed
-            systemDebtYDai[collateral][maturity] =
-                systemDebtYDai[collateral][maturity].sub(inYDai(collateral, maturity, thisGrab)); // SafeMath shouldn't be needed
-            if (debtYDai[collateral][maturity][user] == 0){
-                returnBond(10);
-            }
-            if (totalGrabbed == daiAmount) break;
+            userDebt = userDebt.add(debtDai(collateral, maturity, user)); // SafeMath shouldn't be needed
+            totalDebtYDai[collateral][maturity] =
+                totalDebtYDai[collateral][maturity].sub(debtYDai[collateral][maturity][user]); // SafeMath shouldn't be needed
+            delete debtYDai[collateral][maturity][user];
         } // We don't expect hundreds of maturities per controller
-        require(
-            totalGrabbed == daiAmount,
-            "Controller: Not enough user debt"
-        );
-    }
 
-    /// @dev Locks a liquidation bond in gas tokens
-    function lockBond(uint256 value) internal {
-        if (!_gasToken.transferFrom(msg.sender, address(this), value)) {
-            _gasToken.mint(value);
-        }
-    }
-
-    /// @dev Frees a liquidation bond in gas tokens
-    function returnBond(uint256 value) internal {
-        _gasToken.transfer(msg.sender, value);
+        return (userCollateral, userDebt);
     }
 }

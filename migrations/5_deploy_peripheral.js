@@ -9,13 +9,13 @@ const Jug = artifacts.require("Jug");
 const Pot = artifacts.require("Pot");
 const End = artifacts.require("End");
 const Chai = artifacts.require("Chai");
-const GasToken = artifacts.require("GasToken1");
 const Treasury = artifacts.require("Treasury");
+const YDai = artifacts.require("YDai");
 const Controller = artifacts.require("Controller");
 const Liquidations = artifacts.require("Liquidations");
 const EthProxy = artifacts.require("EthProxy");
 const Unwind = artifacts.require("Unwind");
-
+const ControllerView = artifacts.require("ControllerView");
 
 module.exports = async (deployer, network, accounts) => {
   const migrations = await Migrations.deployed();
@@ -29,15 +29,15 @@ module.exports = async (deployer, network, accounts) => {
   let potAddress;
   let endAddress;
   let chaiAddress;
-  let gasTokenAddress;
   let treasuryAddress;
   let controllerAddress;
   let splitterAddress;
   let liquidationsAddress;
   let ethProxyAddress;
   let unwindAddress;
+  let controlerViewAddress;
 
-  const auctionTime = 3600; // TODO: Think where to store this parameter.
+  const yDaiNames = ['yDai1', 'yDai2', 'yDai3', 'yDai4']; // TODO: Consider iterating until the address returned is 0
 
   if (network !== 'development') {
     vatAddress = fixed_addrs[network].vatAddress ;
@@ -65,7 +65,6 @@ module.exports = async (deployer, network, accounts) => {
 
   const treasury = await Treasury.deployed();
   treasuryAddress = treasury.address;
-  gasTokenAddress = (await GasToken.deployed()).address;
   const controller = await Controller.deployed();
   controllerAddress = controller.address;
 
@@ -75,7 +74,6 @@ module.exports = async (deployer, network, accounts) => {
     daiAddress,
     treasuryAddress,
     controllerAddress,
-    auctionTime,
   )
   liquidationsAddress = (await Liquidations.deployed()).address;
   await controller.orchestrate(liquidationsAddress);
@@ -101,11 +99,12 @@ module.exports = async (deployer, network, accounts) => {
   await controller.orchestrate(unwindAddress);
   await treasury.orchestrate(unwindAddress);
   await treasury.registerUnwind(unwindAddress);
-  // TODO: Retrieve the addresses for yDai contracts
-  // await yDai1.orchestrate(unwindAddress);
-  // await yDai2.orchestrate(unwindAddress);
-  // await unwind.addSeries(yDai1.address, { from: owner });
-  // await unwind.addSeries(yDai2.address, { from: owner });
+  
+  for (yDaiName of yDaiNames) {
+    yDaiAddress = await migrations.contracts(web3.utils.fromAscii(yDaiName));
+    const yDai = await YDai.at(yDaiAddress);
+    await yDai.orchestrate(unwindAddress);
+  }
 
   // Setup EthProxy
   await deployer.deploy(
@@ -117,10 +116,21 @@ module.exports = async (deployer, network, accounts) => {
   ethProxyAddress = (await EthProxy.deployed()).address;
   await controller.addDelegate(ethProxyAddress);
   
+  // Setup ControllerView
+  await deployer.deploy(
+    ControllerView,
+    vatAddress,
+    potAddress,
+    controllerAddress,
+  );
+  const controllerView = await ControllerView.deployed();
+  controllerViewAddress = controllerView.address;
+
   const deployedPeripheral = {
     'Liquidations': liquidationsAddress,
     'Unwind': unwindAddress,
     'EthProxy': ethProxyAddress,
+    'ControllerView': controllerViewAddress,
   }
 
   for (name in deployedPeripheral) {

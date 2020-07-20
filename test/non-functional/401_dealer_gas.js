@@ -8,7 +8,6 @@ const Jug = artifacts.require('Jug');
 const Pot = artifacts.require('Pot');
 const End = artifacts.require('End');
 const Chai = artifacts.require('Chai');
-const GasToken = artifacts.require('GasToken1');
 
 // Common
 const Treasury = artifacts.require('Treasury');
@@ -38,7 +37,6 @@ contract('Gas Usage', async (accounts) =>  {
     let pot;
     let end;
     let chai;
-    let gasToken;
     let treasury;
     let yDai1;
     let yDai2;
@@ -71,8 +69,6 @@ contract('Gas Usage', async (accounts) =>  {
     const tag  = divRay(toRay(1.0), spot); // Irrelevant to the final users
     const fix  = divRay(toRay(1.0), mulRay(spot, toRay(1.1)));
     const fixedWeth = mulRay(daiTokens, fix);
-
-    const auctionTime = 3600; // One hour
 
     // Convert eth to weth and use it to borrow `daiTokens` from MakerDAO
     // This function shadows and uses global variables, careful.
@@ -182,9 +178,6 @@ contract('Gas Usage', async (accounts) =>  {
             { from: owner },
         );
 
-        // Setup GasToken
-        gasToken = await GasToken.new();
-
         // Set treasury
         treasury = await Treasury.new(
             vat.address,
@@ -200,11 +193,7 @@ contract('Gas Usage', async (accounts) =>  {
         // Setup Controller
         controller = await Controller.new(
             vat.address,
-            weth.address,
-            dai.address,
             pot.address,
-            chai.address,
-            gasToken.address,
             treasury.address,
             { from: owner },
         );
@@ -247,7 +236,6 @@ contract('Gas Usage', async (accounts) =>  {
             dai.address,
             treasury.address,
             controller.address,
-            auctionTime,
             { from: owner },
         );
         await controller.orchestrate(liquidations.address, { from: owner });
@@ -266,7 +254,6 @@ contract('Gas Usage', async (accounts) =>  {
             dai.address,
             treasury.address,
             controller.address,
-            auctionTime,
             { from: owner },
         );
         await controller.orchestrate(liquidations.address, { from: owner });
@@ -292,8 +279,6 @@ contract('Gas Usage', async (accounts) =>  {
         await treasury.registerUnwind(unwind.address, { from: owner });
         await yDai1.orchestrate(unwind.address, { from: owner });
         await yDai2.orchestrate(unwind.address, { from: owner });
-        await unwind.addSeries(yDai1.address, { from: owner });
-        await unwind.addSeries(yDai2.address, { from: owner });
         await liquidations.orchestrate(unwind.address, { from: owner });
 
         // Tests setup

@@ -8,14 +8,13 @@ const Jug = artifacts.require('Jug');
 const Pot = artifacts.require('Pot');
 const End = artifacts.require('End');
 const Chai = artifacts.require('Chai');
-const GasToken = artifacts.require('GasToken1');
 
 // Common
 const Treasury = artifacts.require('Treasury');
 
 // YDai
 const YDai = artifacts.require('YDai');
-const Dealer = artifacts.require('Dealer');
+const Controller = artifacts.require('Controller');
 
 // Peripheral
 const EthProxy = artifacts.require('EthProxy');
@@ -42,11 +41,10 @@ contract('Market', async (accounts) =>  {
     let pot;
     let end;
     let chai;
-    let gasToken;
     let treasury;
     let yDai1;
     let yDai2;
-    let dealer;
+    let controller;
     let splitter;
     let market;
     let flashMinter;
@@ -170,7 +168,7 @@ contract('Market', async (accounts) =>  {
         await vat.fold(ilk, vat.address, subBN(rate1, toRay(1)), { from: owner }); // Fold only the increase from 1.0
         await pot.setChi(chi1, { from: owner }); // Set the savings accumulator
 
-        // Allow owner to mint yDai the sneaky way, without recording a debt in dealer
+        // Allow owner to mint yDai the sneaky way, without recording a debt in controller
         await yDai1.orchestrate(owner, { from: owner });
 
     });
@@ -209,19 +207,6 @@ contract('Market', async (accounts) =>  {
             await market.init(daiReserves, yDaiReserves, { from: user1 });
         });
 
-        it("sells dai", async() => {
-            const tradeSize = toWad(1).div(1000);
-            await getDai(from, daiTokens1);
-
-            await market.addDelegate(operator, { from: from });
-            await dai.approve(market.address, tradeSize, { from: from });
-            await market.sellDai(from, to, tradeSize, { from: operator });
-
-            const yDaiOut = new BN(await yDai1.balanceOf(to));
-
-            results.add(['sellDai', daiReserves, yDaiReserves, tradeSize, yDaiOut]);
-        });
-
         it("buys dai", async() => {
             const tradeSize = toWad(1).div(1000);
             await yDai1.mint(from, yDaiTokens1.div(1000), { from: owner });
@@ -247,27 +232,49 @@ contract('Market', async (accounts) =>  {
             results.add(['sellYDai', daiReserves, yDaiReserves, tradeSize, daiOut]);
         });
 
-        it("buys yDai", async() => {
-            const tradeSize = toWad(1).div(1000);
-            await getDai(from, daiTokens1.div(1000));
+        describe("with extra yDai reserves", () => {
+            beforeEach(async() => {
+                const additionalYDaiReserves = toWad(34.4);
+                await yDai1.mint(operator, additionalYDaiReserves, { from: owner });
+                await yDai1.approve(market.address, additionalYDaiReserves, { from: operator });
+                await market.sellYDai(operator, operator, additionalYDaiReserves, { from: operator });
+            });
 
-            await market.addDelegate(operator, { from: from });
-            await dai.approve(market.address, daiTokens1.div(1000), { from: from });
-            await market.buyYDai(from, to, tradeSize, { from: operator });
+            it("sells dai", async() => {
+                const tradeSize = toWad(1).div(1000);
+                await getDai(from, daiTokens1);
+    
+                await market.addDelegate(operator, { from: from });
+                await dai.approve(market.address, tradeSize, { from: from });
+                await market.sellDai(from, to, tradeSize, { from: operator });
+    
+                const yDaiOut = new BN(await yDai1.balanceOf(to));
+    
+                results.add(['sellDai', daiReserves, yDaiReserves, tradeSize, yDaiOut]);
+            });
 
-            const daiIn = (new BN(daiTokens1.div(1000).toString())).sub(new BN(await dai.balanceOf(from)));
-            results.add(['buyYDai', daiReserves, yDaiReserves, daiIn, tradeSize]);
-        });
-
-        it("prints results", async() => {
-            for (line of results.values()) {
-                console.log("| " + 
-                    line[0].padEnd(10, ' ') + "· " +
-                    line[1].toString().padEnd(23, ' ') + "· " +
-                    line[2].toString().padEnd(23, ' ') + "· " +
-                    line[3].toString().padEnd(23, ' ') + "· " +
-                    line[4].toString().padEnd(23, ' ') + "|");
-            }
+            it("buys yDai", async() => {
+                const tradeSize = toWad(1).div(1000);
+                await getDai(from, daiTokens1.div(1000));
+    
+                await market.addDelegate(operator, { from: from });
+                await dai.approve(market.address, daiTokens1.div(1000), { from: from });
+                await market.buyYDai(from, to, tradeSize, { from: operator });
+    
+                const daiIn = (new BN(daiTokens1.div(1000).toString())).sub(new BN(await dai.balanceOf(from)));
+                results.add(['buyYDai', daiReserves, yDaiReserves, daiIn, tradeSize]);
+            });
+            
+            it("prints results", async() => {
+                for (line of results.values()) {
+                    console.log("| " + 
+                        line[0].padEnd(10, ' ') + "· " +
+                        line[1].toString().padEnd(23, ' ') + "· " +
+                        line[2].toString().padEnd(23, ' ') + "· " +
+                        line[3].toString().padEnd(23, ' ') + "· " +
+                        line[4].toString().padEnd(23, ' ') + "|");
+                }
+            });        
         });
     });
 });

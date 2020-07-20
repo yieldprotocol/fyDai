@@ -1,7 +1,7 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.6.10;
 
 import "@openzeppelin/contracts/math/Math.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./interfaces/IVat.sol";
 import "./interfaces/IJug.sol";
 import "./interfaces/IPot.sol";
@@ -11,6 +11,7 @@ import "./interfaces/IFlashMinter.sol";
 import "./helpers/Delegable.sol";
 import "./helpers/DecimalMath.sol";
 import "./helpers/Orchestrated.sol";
+import "./helpers/ERC20Permit.sol";
 // import "@nomiclabs/buidler/console.sol";
 
 
@@ -23,7 +24,7 @@ import "./helpers/Orchestrated.sol";
  * Minting and burning of yDai is restricted to orchestrated contracts. Redeeming and flash-minting is allowed to anyone.
  */
 
-contract YDai is Orchestrated(), Delegable(), DecimalMath, ERC20, IYDai  {
+contract YDai is Orchestrated(), Delegable(), DecimalMath, ERC20Permit, IYDai  {
 
     event Redeemed(address indexed from, address indexed to, uint256 yDaiIn, uint256 daiOut);
     event Matured(uint256 rate, uint256 chi);
