@@ -73,6 +73,8 @@ contract Splitter is IFlashMinter, DecimalMath {
 
     function makerToYield(address user, uint256 wethAmount, uint256 daiAmount) public {
         // The user specifies the yDai he wants to mint to cover his maker debt, the weth to be passed on as collateral, and the dai debt to move
+        // TODO: require daiAmount <= dai debt in Maker
+        // TODO: require wethAmount <= weth collateral in Maker
         // Flash mint the yDai
         yDai.flashMint(
             address(this),
@@ -83,6 +85,8 @@ contract Splitter is IFlashMinter, DecimalMath {
 
     function yieldToMaker(address user, uint256 yDaiAmount, uint256 wethAmount) public {
         // The user specifies the yDai he wants to move, and the weth to be passed on as collateral
+        // TODO: require yDaiAmount <= yDai debt in Yield
+        // TODO: require wethAmount <= weth collateral in Yield
         // Flash mint the yDai
         yDai.flashMint(
             address(this),
@@ -160,21 +164,21 @@ contract Splitter is IFlashMinter, DecimalMath {
         controller.withdraw(WETH, user, address(this), wethAmount);
 
         // Post the collateral to Maker, in the `user` vault
-        // TODO: wethJoin.hope(splitter.address, { from: user }); ?
         wethJoin.join(user, wethAmount);
 
         // We are going to need to buy the YDai back with Dai borrowed from Maker
+        // TODO: What if `repayYDai` didn't take all the YDai
         uint256 daiAmount = market.buyYDaiPreview(uint128(yDaiAmount)); // TODO: Consider SafeCast
 
         // Borrow the Dai from Maker
-        (, uint256 rate,,,) = vat.ilks("ETH-A");            // Retrieve the MakerDAO stability fee for Weth
+        (, uint256 rate,,,) = vat.ilks("ETH-A"); // Retrieve the MakerDAO stability fee for Weth
         vat.frob(
             "ETH-A",
             user,
             user,
             user,
-            toInt(wethAmount),            // Weth collateral to add
-            toInt(divd(daiAmount, rate))  // Dai debt to remove
+            toInt(wethAmount),                   // Weth collateral to add
+            toInt(divd(daiAmount, rate))         // Dai debt to remove
         );
         vat.move(user, address(this), daiAmount.mul(UNIT)); // Transfer the Dai to Splitter within MakerDAO, and `move` operates in RAD
         daiJoin.exit(address(this), daiAmount);   // Splitter will hold the dai temporarily

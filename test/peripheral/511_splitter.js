@@ -262,6 +262,7 @@ contract('Splitter', async (accounts) =>  {
         await vat.hope(splitter1.address, { from: user }); // Allowing Splitter to manipulate debt for user in MakerDAO
         // Go!!!
         await splitter1.makerToYield(user, wethTokens1, daiTokens1, { from: user });
+        // TODO: Test resulting values
     });
 
     it("moves yield vault to maker", async() => {
@@ -276,5 +277,6 @@ contract('Splitter', async (accounts) =>  {
         await vat.hope(splitter1.address, { from: user }); // Allowing Splitter to manipulate debt for user in MakerDAO
         // Go!!!
         await splitter1.yieldToMaker(user, yDaiTokens1, wethTokens1, { from: user });
+        // TODO: Test resulting values
     });
 });
