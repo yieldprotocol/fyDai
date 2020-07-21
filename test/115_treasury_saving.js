@@ -25,8 +25,8 @@ contract('Treasury - Saving', async (accounts) =>  {
             dai,
             daiJoin,
             pot,
-            chai,
             jug,
+            chai,
             treasury
         } = await setupYield(owner, user))
 

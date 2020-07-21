@@ -72,8 +72,8 @@ const setupYield = async(owner, user) => {
         dai,
         daiJoin,
         pot,
-        chai,
         jug,
+        chai,
         treasury
     }
 }
