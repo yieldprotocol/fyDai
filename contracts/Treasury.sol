@@ -3,6 +3,7 @@ pragma solidity ^0.6.10;
 
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./interfaces/IDssDeploy.sol";
 import "./interfaces/IVat.sol";
 import "./interfaces/IDaiJoin.sol";
 import "./interfaces/IGemJoin.sol";
@@ -25,18 +26,20 @@ import "./helpers/Orchestrated.sol";
 contract Treasury is ITreasury, Orchestrated(), DecimalMath {
     bytes32 constant WETH = "ETH-A";
 
-    IERC20 internal _dai;
-    IChai internal _chai;
-    IPot internal _pot;
-    IERC20 internal _weth;
-    IDaiJoin internal _daiJoin;
-    IGemJoin internal _wethJoin;
+    IDssDeploy internal _dssDeploy;
     IVat internal _vat;
+    IERC20 internal _weth;
+    IERC20 internal _dai;
+    IGemJoin internal _wethJoin;
+    IDaiJoin internal _daiJoin;
+    IPot internal _pot;
+    IChai internal _chai;
     address internal _unwind;
 
     bool public override live = true;
 
     constructor (
+        address dssDeploy_,
         address vat_,
         address weth_,
         address dai_,
@@ -46,13 +49,14 @@ contract Treasury is ITreasury, Orchestrated(), DecimalMath {
         address chai_
     ) public {
         // These could be hardcoded for mainnet deployment.
-        _dai = IERC20(dai_);
-        _chai = IChai(chai_);
-        _pot = IPot(pot_);
-        _weth = IERC20(weth_);
-        _daiJoin = IDaiJoin(daiJoin_);
-        _wethJoin = IGemJoin(wethJoin_);
+        _dssDeploy = IDssDeploy(dssDeploy_);
         _vat = IVat(vat_);
+        _weth = IERC20(weth_);
+        _dai = IERC20(dai_);
+        _wethJoin = IGemJoin(wethJoin_);
+        _daiJoin = IDaiJoin(daiJoin_);
+        _pot = IPot(pot_);
+        _chai = IChai(chai_);
         _vat.hope(wethJoin_);
         _vat.hope(daiJoin_);
 
@@ -244,4 +248,26 @@ contract Treasury is ITreasury, Orchestrated(), DecimalMath {
         _chai.approve(address(_unwind), uint256(-1)); // Unwind will never cheat on us
         _vat.hope(address(_unwind));                  // Unwind will never cheat on us
     }
+
+    /// @dev Upgrade the vat contract from MakerDAO's DssDeploy
+    function upgradeVat() external {
+        if (address(_dssDeploy.vat()) != address(0)) _vat = IVat(address(_dssDeploy.vat()));
+    }
+    
+    /// @dev Upgrade the dai contract from MakerDAO's DssDeploy
+    function upgradeDai() external {
+        if (address(_dssDeploy.dai()) != address(0)) _dai = IERC20(address(_dssDeploy.dai()));
+    }
+    
+    /// @dev Upgrade the daiJoin contract from MakerDAO's DssDeploy
+    function upgradeDaiJoin() external {
+        if (address(_dssDeploy.daiJoin()) != address(0)) _daiJoin = IDaiJoin(address(_dssDeploy.daiJoin()));
+    }
+    
+    /// @dev Upgrade the pot contract from MakerDAO's DssDeploy
+    function upgradePot() external {
+        if (address(_dssDeploy.pot()) != address(0)) _pot = IPot(address(_dssDeploy.pot()));
+    }
+
+    // There isn't a source for _weth, wethJoin or chai    
 }
