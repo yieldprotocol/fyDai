@@ -156,7 +156,7 @@ contract('Treasury - Lending', async (accounts) =>  {
             );
             await expectRevert(
                 treasury.pullDai(user, 1, { from: owner }), // Not a wei more borrowing
-                "Vat/sub",
+                "Vat/not-safe",
             );
         });
     

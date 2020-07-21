@@ -75,9 +75,9 @@ contract('yDai', async (accounts) =>  {
         );
         
         // Deposit some weth to treasury so that redeem can pull some dai
-        await weth.deposit({ from: owner, value: wethTokens2 });
-        await weth.approve(treasury.address, wethTokens2, { from: owner });
-        await treasury.pushWeth(owner, wethTokens2, { from: owner });
+        await weth.deposit({ from: owner, value: wethTokens2.mul(2) });
+        await weth.approve(treasury.address, wethTokens2.mul(2), { from: owner });
+        await treasury.pushWeth(owner, wethTokens2.mul(2), { from: owner });
 
         // Mint some yDai1 the sneaky way, only difference is that the Controller doesn't record the user debt.
         await yDai1.orchestrate(owner, { from: owner });
@@ -278,8 +278,8 @@ contract('yDai', async (accounts) =>  {
     
             it("redeem with increased chi returns more dai", async() => {
                 // Redeem `daiTokens1` yDai to obtain `daiTokens1` * `chiDifferential`
-                await vat.fold(WETH, vat.address, subBN(rate2, rate1), { from: owner }); // Keeping above chi
-                await pot.setChi(chi2, { from: owner });
+                // await vat.fold(WETH, vat.address, subBN(rate2, rate1), { from: owner }); // Keeping above chi
+                // await pot.setChi(chi2, { from: owner });
 
                 assert.equal(
                     await yDai1.balanceOf(user1),

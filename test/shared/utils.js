@@ -74,7 +74,7 @@ const linel = toBytes32("line");
 const limits =  toRad(10000);
 const spot = toRay(150);
 const chi1 = toRay(1.2);
-const rate1 = toRay(1.4); // TODO: If this is changed to 1.2, the `redeem with increased chi returns more dai` test fails
+const rate1 = toRay(1.4);
 
 const daiDebt = toWad(120);
 const daiTokens1 = mulRay(daiDebt, rate1);
