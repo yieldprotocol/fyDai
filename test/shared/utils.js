@@ -73,13 +73,13 @@ const linel = toBytes32("line");
 
 const limits =  toRad(10000);
 const spot = toRay(150);
-const chi = toRay(1.2);
-const rate = toRay(1.4); // TODO: If this is changed to 1.2, the `redeem with increased chi returns more dai` test fails
+const chi1 = toRay(1.2);
+const rate1 = toRay(1.4); // TODO: If this is changed to 1.2, the `redeem with increased chi returns more dai` test fails
 
 const daiDebt = toWad(120);
-const daiTokens = mulRay(daiDebt, rate);
-const wethTokens = divRay(daiTokens, spot);
-const chaiTokens = divRay(daiTokens, chi);
+const daiTokens1 = mulRay(daiDebt, rate1);
+const wethTokens1 = divRay(daiTokens1, spot);
+const chaiTokens1 = divRay(daiTokens1, chi1);
 
 
 module.exports = {
@@ -99,10 +99,10 @@ module.exports = {
     linel,
     limits,
     spot,
-    rate,
-    chi,
+    rate1,
+    chi1,
     daiDebt,
-    daiTokens,
-    wethTokens,
-    chaiTokens,
+    daiTokens1,
+    wethTokens1,
+    chaiTokens1,
 }

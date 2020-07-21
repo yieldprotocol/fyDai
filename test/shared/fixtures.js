@@ -10,7 +10,7 @@ const Treasury = artifacts.require('Treasury');
 const YDai = artifacts.require('YDai');
 const Controller = artifacts.require('Controller');
 
-const { WETH, Line, spotName, linel, limits, spot, rate, chi, toRay, subBN } = require("./utils");
+const { WETH, Line, spotName, linel, limits, spot, rate1, chi1, toRay, subBN } = require("./utils");
 
 const setupYield = async(owner, user) => {
     // Set up vat, join and weth
@@ -27,7 +27,7 @@ const setupYield = async(owner, user) => {
     await vat.file(WETH, spotName, spot, { from: owner });
     await vat.file(WETH, linel, limits, { from: owner });
     await vat.file(Line, limits); 
-    await vat.fold(WETH, vat.address, subBN(rate, toRay(1)), { from: owner }); // Fold only the increase from 1.0
+    await vat.fold(WETH, vat.address, subBN(rate1, toRay(1)), { from: owner }); // Fold only the increase from 1.0
 
     // Setup pot
     pot = await Pot.new(vat.address);
@@ -40,7 +40,7 @@ const setupYield = async(owner, user) => {
         dai.address,
     );
 
-    await pot.setChi(chi, { from: owner });
+    await pot.setChi(chi1, { from: owner });
 
     // Setup jug
     jug = await Jug.new(vat.address);
