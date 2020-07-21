@@ -4,7 +4,6 @@ const GemJoin = artifacts.require('GemJoin');
 const DaiJoin = artifacts.require('DaiJoin');
 const Weth = artifacts.require("WETH9");
 const ERC20 = artifacts.require("TestERC20");
-const Jug = artifacts.require('Jug');
 const Pot = artifacts.require('Pot');
 const End = artifacts.require('End');
 const Chai = artifacts.require('Chai');
@@ -40,7 +39,6 @@ contract('LimitMarket', async (accounts) =>  {
     let wethJoin;
     let dai;
     let daiJoin;
-    let jug;
     let pot;
     let end;
     let chai;
@@ -106,10 +104,6 @@ contract('LimitMarket', async (accounts) =>  {
         await vat.file(ilk, linel, limits, { from: owner });
         await vat.file(Line, limits);
 
-        // Setup jug
-        jug = await Jug.new(vat.address);
-        await jug.init(ilk, { from: owner }); // Set ilk duty (stability fee) to 1.0
-
         // Setup pot
         pot = await Pot.new(vat.address);
 
@@ -117,7 +111,6 @@ contract('LimitMarket', async (accounts) =>  {
         await vat.rely(vat.address, { from: owner });
         await vat.rely(wethJoin.address, { from: owner });
         await vat.rely(daiJoin.address, { from: owner });
-        await vat.rely(jug.address, { from: owner });
         await vat.rely(pot.address, { from: owner });
         await vat.hope(daiJoin.address, { from: owner });
 
@@ -144,7 +137,6 @@ contract('LimitMarket', async (accounts) =>  {
         maturity = (await web3.eth.getBlock(block)).timestamp + 31556952; // One year
         yDai1 = await YDai.new(
             vat.address,
-            jug.address,
             pot.address,
             treasury.address,
             maturity,

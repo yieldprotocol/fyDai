@@ -4,7 +4,6 @@ const GemJoin = artifacts.require('GemJoin');
 const DaiJoin = artifacts.require('DaiJoin');
 const Weth = artifacts.require("WETH9");
 const ERC20 = artifacts.require("TestERC20");
-const Jug = artifacts.require('Jug');
 const Pot = artifacts.require('Pot');
 const End = artifacts.require('End');
 const Chai = artifacts.require('Chai');
@@ -33,7 +32,6 @@ contract('Gas Usage', async (accounts) =>  {
     let wethJoin;
     let dai;
     let daiJoin;
-    let jug;
     let pot;
     let end;
     let chai;
@@ -116,7 +114,6 @@ contract('Gas Usage', async (accounts) =>  {
     async function addYDai(maturity){
         yDai = await YDai.new(
             vat.address,
-            jug.address,
             pot.address,
             treasury.address,
             maturity,
@@ -149,10 +146,6 @@ contract('Gas Usage', async (accounts) =>  {
         await vat.file(WETH, linel, limits, { from: owner });
         await vat.file(Line, limits);
 
-        // Setup jug
-        jug = await Jug.new(vat.address);
-        await jug.init(WETH, { from: owner }); // Set WETH duty (stability fee) to 1.0
-
         // Setup pot
         pot = await Pot.new(vat.address);
 
@@ -164,7 +157,6 @@ contract('Gas Usage', async (accounts) =>  {
         await vat.rely(vat.address, { from: owner });
         await vat.rely(wethJoin.address, { from: owner });
         await vat.rely(daiJoin.address, { from: owner });
-        await vat.rely(jug.address, { from: owner });
         await vat.rely(pot.address, { from: owner });
         await vat.rely(end.address, { from: owner });
         await vat.hope(daiJoin.address, { from: owner });
@@ -204,7 +196,6 @@ contract('Gas Usage', async (accounts) =>  {
         maturity1 = (await web3.eth.getBlock(block)).timestamp + 1000;
         yDai1 = await YDai.new(
             vat.address,
-            jug.address,
             pot.address,
             treasury.address,
             maturity1,
@@ -219,7 +210,6 @@ contract('Gas Usage', async (accounts) =>  {
         maturity2 = (await web3.eth.getBlock(block)).timestamp + 2000;
         yDai2 = await YDai.new(
             vat.address,
-            jug.address,
             pot.address,
             treasury.address,
             maturity2,
@@ -265,7 +255,6 @@ contract('Gas Usage', async (accounts) =>  {
             daiJoin.address,
             weth.address,
             wethJoin.address,
-            jug.address,
             pot.address,
             end.address,
             chai.address,

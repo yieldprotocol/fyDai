@@ -2,12 +2,12 @@
 pragma solidity ^0.6.10;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IVat.sol";
 import "./interfaces/IDaiJoin.sol";
 import "./interfaces/IGemJoin.sol";
-import "./interfaces/IJug.sol";
 import "./interfaces/IPot.sol";
 import "./interfaces/IEnd.sol";
 import "./interfaces/IChai.sol";
@@ -38,7 +38,6 @@ contract Unwind is Ownable(), DecimalMath {
     IDaiJoin internal _daiJoin;
     IERC20 internal _weth;
     IGemJoin internal _wethJoin;
-    IJug internal _jug;
     IPot internal _pot;
     IEnd internal _end;
     IChai internal _chai;
@@ -60,7 +59,6 @@ contract Unwind is Ownable(), DecimalMath {
         address daiJoin_,
         address weth_,
         address wethJoin_,
-        address jug_,
         address pot_,
         address end_,
         address chai_,
@@ -73,7 +71,6 @@ contract Unwind is Ownable(), DecimalMath {
         _daiJoin = IDaiJoin(daiJoin_);
         _weth = IERC20(weth_);
         _wethJoin = IGemJoin(wethJoin_);
-        _jug = IJug(jug_);
         _pot = IPot(pot_);
         _end = IEnd(end_);
         _chai = IChai(chai_);
@@ -116,14 +113,8 @@ contract Unwind is Ownable(), DecimalMath {
         return (now > _pot.rho()) ? _pot.drip() : _pot.chi();
     }
 
-    function getRate() public returns (uint256) {
-        uint256 rate;
-        (, uint256 rho) = _jug.ilks(WETH);
-        if (now > rho) {
-            rate = _jug.drip(WETH);
-        } else {
-            (, rate,,,) = _vat.ilks(WETH);
-        }
+    function getRate() public view returns (uint256) {
+        (, uint256 rate,,,) = _vat.ilks(WETH);
         return rate;
     }
 
@@ -165,18 +156,28 @@ contract Unwind is Ownable(), DecimalMath {
             uint256 maturity = _controller.seriesIterator(i);
             IYDai yDai = _controller.series(maturity);
 
-            uint256 chi0;
-            uint256 rate0;
+            uint256 chi0 = chi;
+            uint256 rate0 = rate;
             if (yDai.isMature()){
                 chi0 = yDai.chi0();
                 rate0 = yDai.rate0();
-            } else {
-                chi0 = chi;
-                rate0 = rate;
             }
 
-            profit = profit.add(divd(muld(_controller.totalDebtYDai(WETH, maturity), divd(rate, rate0)), chi0));
-            profit = profit.add(divd(_controller.totalDebtYDai(CHAI, maturity), chi0));
+            profit = profit.add(
+                divd(
+                    muld(
+                        _controller.totalDebtYDai(WETH, maturity),
+                        Math.max(UNIT, divd(rate, rate0)) // rate growth since maturity, floored at 1.0
+                    ),                                    // muld(yDaiDebt, rateGrowth) - Convert Weth collateralized YDai debt to Dai debt
+                    chi                                   // divd(daiDebt, chi) - Convert Dai debt to Chai debt
+                )
+            );
+            profit = profit.add(
+                divd(
+                    _controller.totalDebtYDai(CHAI, maturity),
+                    chi0                                  // divd(yDaiDebt, chi0) - Convert Chai collateralized YDai debt to Chai debt
+                )
+            );
             profit = profit.sub(divd(yDai.totalSupply(), chi0));
         }
 

@@ -10,7 +10,7 @@ interface IYDai is IERC20 {
     function chi0() external view returns(uint);
     function rate0() external view returns(uint);
     function chiGrowth() external returns(uint);
-    function rateGrowth() external returns(uint);
+    function rateGrowth() external view returns(uint);
     function mature() external;
     function mint(address, uint) external;
     function burn(address, uint) external;

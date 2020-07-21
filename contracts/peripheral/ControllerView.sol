@@ -94,6 +94,13 @@ contract ControllerView is DecimalMath {
         return 0;
     }
 
+    /// @dev Chi differential between maturity and now in RAY. Returns 1.0 if not mature.
+    /// If rateGrowth < chiGrowth, returns rate.
+    //
+    //                rate_now
+    // rateGrowth() = ----------
+    //                rate_mat
+    //
     function chiGrowth(uint256 maturity)
         public view
         returns(uint256)
@@ -104,10 +111,11 @@ contract ControllerView is DecimalMath {
     }
 
     /// @dev Rate differential between maturity and now in RAY. Returns 1.0 if not mature.
+    /// rateGrowth is floored at 1.0
     //
-    //           rate_now
+    //                 rate_now
     // rateGrowth() = ----------
-    //           rate_mat
+    //                 rate_mat
     //
     function rateGrowth(uint256 maturity)
         public view
@@ -117,7 +125,7 @@ contract ControllerView is DecimalMath {
         if (yDai.isMature() != true) return yDai.rate0();
         else {
             (, uint256 rateNow,,,) = _vat.ilks(WETH);
-            return divd(rateNow, yDai.rate0());
+            return Math.max(UNIT, divd(rateNow, yDai.rate0()));
         }
     }
 

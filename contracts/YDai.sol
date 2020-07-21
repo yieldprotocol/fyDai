@@ -3,7 +3,6 @@ pragma solidity ^0.6.10;
 
 import "@openzeppelin/contracts/math/Math.sol";
 import "./interfaces/IVat.sol";
-import "./interfaces/IJug.sol";
 import "./interfaces/IPot.sol";
 import "./interfaces/ITreasury.sol";
 import "./interfaces/IYDai.sol";
@@ -32,7 +31,6 @@ contract YDai is Orchestrated(), Delegable(), DecimalMath, ERC20Permit, IYDai  {
     bytes32 public constant WETH = "ETH-A";
 
     IVat internal _vat;
-    IJug internal _jug;
     IPot internal _pot;
     ITreasury internal _treasury;
 
@@ -43,7 +41,6 @@ contract YDai is Orchestrated(), Delegable(), DecimalMath, ERC20Permit, IYDai  {
 
     constructor(
         address vat_,
-        address jug_,
         address pot_,
         address treasury_,
         uint256 maturity_,
@@ -51,7 +48,6 @@ contract YDai is Orchestrated(), Delegable(), DecimalMath, ERC20Permit, IYDai  {
         string memory symbol
     ) public ERC20(name, symbol) {
         _vat = IVat(vat_);
-        _jug = IJug(jug_);
         _pot = IPot(pot_);
         _treasury = ITreasury(treasury_);
         maturity = maturity_;
@@ -73,22 +69,16 @@ contract YDai is Orchestrated(), Delegable(), DecimalMath, ERC20Permit, IYDai  {
     }
 
     /// @dev Rate differential between maturity and now in RAY. Returns 1.0 if not mature.
+    /// rateGrowth is floored at 1.0
     //
-    //           rate_now
+    //                 rate_now
     // rateGrowth() = ----------
-    //           rate_mat
+    //                 rate_mat
     //
-    function rateGrowth() public override returns(uint256){
+    function rateGrowth() public view override returns(uint256){
         if (isMature != true) return rate0;
-        uint256 rateNow;
-        (, uint256 rho) = _jug.ilks(WETH);
-        if (now > rho) {
-            rateNow = _jug.drip(WETH);
-            // console.log(rateNow);
-        } else {
-            (, rateNow,,,) = _vat.ilks(WETH);
-        }
-        return divd(rateNow, rate0);
+        (, uint256 rateNow,,,) = _vat.ilks(WETH);
+        return Math.max(UNIT, divd(rateNow, rate0));
     }
 
     /// @dev Mature yDai and capture maturity data
