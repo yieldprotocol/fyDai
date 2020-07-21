@@ -72,7 +72,7 @@ const spotName = toBytes32("spot");
 const linel = toBytes32("line");
 
 const limits =  toRad(10000);
-const spot = toRay(1.5);
+const spot = toRay(150);
 const chi = toRay(1.2);
 const rate = toRay(1.4); // TODO: If this is changed to 1.2, the `redeem with increased chi returns more dai` test fails
 
