@@ -1,39 +1,15 @@
-// External
-const Vat = artifacts.require('Vat');
-const GemJoin = artifacts.require('GemJoin');
-const DaiJoin = artifacts.require('DaiJoin');
-const Weth = artifacts.require("WETH9");
-const ERC20 = artifacts.require("TestERC20");
-const Jug = artifacts.require('Jug');
-const Pot = artifacts.require('Pot');
-const End = artifacts.require('End');
-const Chai = artifacts.require('Chai');
-
-// Common
-const Treasury = artifacts.require('Treasury');
-
-// YDai
-const YDai = artifacts.require('YDai');
-const Controller = artifacts.require('Controller');
-
-// Peripheral
-const EthProxy = artifacts.require('EthProxy');
-const Unwind = artifacts.require('Unwind');
-
 const helper = require('ganache-time-traveler');
-const truffleAssert = require('truffle-assertions');
 const { BN, expectRevert } = require('@openzeppelin/test-helpers');
-const { rate1, chi1, daiTokens1, chaiTokens1, toWad, toRay, toRad, addBN, subBN, mulRay, divRay } = require('./shared/utils');
+const { spot, rate1, chi1, daiTokens1, chaiTokens1, toRay, toRad, addBN, subBN, mulRay, divRay } = require('./shared/utils');
 const { setupMaker, newTreasury, newController, newYDai } = require("./shared/fixtures");
 
 contract('Controller - Chai', async (accounts) =>  {
-    let [ owner, user1, user2 ] = accounts;
+    let [ owner, user1 ] = accounts;
     let vat;
     let weth;
     let wethJoin;
     let dai;
     let daiJoin;
-    let jug;
     let pot;
     let chai;
     let treasury;
@@ -43,19 +19,12 @@ contract('Controller - Chai', async (accounts) =>  {
 
     let WETH = web3.utils.fromAscii("ETH-A");
     let CHAI = web3.utils.fromAscii("CHAI");
-    let Line = web3.utils.fromAscii("Line");
-    let spotName = web3.utils.fromAscii("spot");
-    let linel = web3.utils.fromAscii("line");
 
     let snapshot;
     let snapshotId;
 
-    const limits = toRad(10000);
-    const spot  = toRay(1.5);
-
     let maturity1;
     let maturity2;
-
 
     // Convert eth to weth and use it to borrow `_daiTokens` from MakerDAO
     // This function uses global variables, careful.
