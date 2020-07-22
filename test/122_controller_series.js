@@ -1,6 +1,5 @@
 // YDai
 const YDai = artifacts.require('YDai');
-const Controller = artifacts.require('Controller');
 
 const helper = require('ganache-time-traveler');
 const { expectRevert } = require('@openzeppelin/test-helpers');
