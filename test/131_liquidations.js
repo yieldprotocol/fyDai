@@ -24,7 +24,8 @@ const Unwind = artifacts.require('Unwind');
 const helper = require('ganache-time-traveler');
 const truffleAssert = require('truffle-assertions');
 const { BN, expectRevert, expectEvent } = require('@openzeppelin/test-helpers');
-const { spot, rate1, chi1, daiTokens1, wethTokens1, chaiTokens1, toWad, toRay, toRad, addBN, subBN, mulRay, divRay } = require('./shared/utils');
+const { WETH, CHAI, spot, rate1, chi1, daiTokens1, wethTokens1, chaiTokens1, toWad, toRay, toRad, addBN, subBN, mulRay, divRay } = require('./shared/utils');
+const { setupMaker, newTreasury, newController, newYDai } = require("./shared/fixtures");
 const { assert } = require('chai');
 
 contract('Liquidations', async (accounts) =>  {
@@ -45,18 +46,11 @@ contract('Liquidations', async (accounts) =>  {
     let liquidations;
     let unwind;
 
-    let WETH = web3.utils.fromAscii("ETH-A");
-    let CHAI = web3.utils.fromAscii("CHAI");
-    let Line = web3.utils.fromAscii("Line");
-    let spotName = web3.utils.fromAscii("spot");
-    let linel = web3.utils.fromAscii("line");
-
     let snapshot;
     let snapshotId;
 
-    const limits = toRad(10000);
     const rate2  = toRay(1.5);
-    
+
     const yDaiTokens1 = daiTokens1;
     let maturity1;
     let maturity2;
@@ -102,100 +96,27 @@ contract('Liquidations', async (accounts) =>  {
         snapshot = await helper.takeSnapshot();
         snapshotId = snapshot['result'];
 
-        // Setup vat
-        vat = await Vat.new();
-        await vat.init(WETH, { from: owner });
+        ({
+            vat,
+            weth,
+            wethJoin,
+            dai,
+            daiJoin,
+            pot,
+            jug,
+            end,
+            chai
+        } = await setupMaker());
 
-        weth = await Weth.new({ from: owner });
-        wethJoin = await GemJoin.new(vat.address, WETH, weth.address, { from: owner });
-
-        dai = await ERC20.new(0, { from: owner });
-        daiJoin = await DaiJoin.new(vat.address, dai.address, { from: owner });
-
-        await vat.file(WETH, spotName, spot, { from: owner });
-        await vat.file(WETH, linel, limits, { from: owner });
-        await vat.file(Line, limits); 
-
-        // Setup pot
-        pot = await Pot.new(vat.address);
-
-        // Setup jug
-        jug = await Jug.new(vat.address);
-        await jug.init(WETH, { from: owner }); // Set WETH duty (stability fee) to 1.0
-
-        // Setup end
-        end = await End.new({ from: owner });
-        await end.file(web3.utils.fromAscii("vat"), vat.address);
-
-        // Permissions
-        await vat.rely(vat.address, { from: owner });
-        await vat.rely(wethJoin.address, { from: owner });
-        await vat.rely(daiJoin.address, { from: owner });
-        await vat.rely(jug.address, { from: owner });
-        await vat.rely(pot.address, { from: owner });
-        await vat.rely(end.address, { from: owner });
-
-        // Setup chai
-        chai = await Chai.new(
-            vat.address,
-            pot.address,
-            daiJoin.address,
-            dai.address,
-            { from: owner },
-        );
-
-        // Set treasury
-        treasury = await Treasury.new(
-            vat.address,
-            weth.address,
-            dai.address,
-            wethJoin.address,
-            daiJoin.address,
-            pot.address,
-            chai.address,
-            { from: owner },
-        );
-
-        // Setup controller
-        controller = await Controller.new(
-            vat.address,
-            pot.address,
-            treasury.address,
-            { from: owner },
-        );
-        await treasury.orchestrate(controller.address, { from: owner });
+        treasury = await newTreasury();
+        controller = await newController();
 
         // Setup yDai
         const block = await web3.eth.getBlockNumber();
         maturity1 = (await web3.eth.getBlock(block)).timestamp + 1000;
-        yDai1 = await YDai.new(
-            vat.address,
-            jug.address,
-            pot.address,
-            treasury.address,
-            maturity1,
-            "Name",
-            "Symbol",
-            { from: owner },
-        );
-        await controller.addSeries(yDai1.address, { from: owner });
-        await yDai1.orchestrate(controller.address, { from: owner });
-        await treasury.orchestrate(yDai1.address, { from: owner });
-
         maturity2 = (await web3.eth.getBlock(block)).timestamp + 2000;
-        yDai2 = await YDai.new(
-            vat.address,
-            jug.address,
-            pot.address,
-            treasury.address,
-            maturity2,
-            "Name2",
-            "Symbol2",
-            { from: owner },
-        );
-        await controller.addSeries(yDai2.address, { from: owner });
-        await yDai2.orchestrate(controller.address, { from: owner })
-        await treasury.orchestrate(yDai2.address, { from: owner });
+        yDai1 = await newYDai(maturity1, "Name", "Symbol");
+        yDai2 = await newYDai(maturity2, "Name", "Symbol");
 
         // Setup Liquidations
         liquidations = await Liquidations.new(
@@ -206,40 +127,6 @@ contract('Liquidations', async (accounts) =>  {
         );
         await controller.orchestrate(liquidations.address, { from: owner });
         await treasury.orchestrate(liquidations.address, { from: owner });
-
-        // Setup Unwind
-        unwind = await Unwind.new(
-            vat.address,
-            daiJoin.address,
-            weth.address,
-            wethJoin.address,
-            jug.address,
-            pot.address,
-            end.address,
-            chai.address,
-            treasury.address,
-            controller.address,
-            liquidations.address,
-            { from: owner },
-        );
-        await treasury.orchestrate(unwind.address, { from: owner });
-        await treasury.registerUnwind(unwind.address, { from: owner });
-        await controller.orchestrate(unwind.address, { from: owner });
-        await yDai1.orchestrate(unwind.address, { from: owner });
-        await yDai2.orchestrate(unwind.address, { from: owner });
-        await liquidations.orchestrate(unwind.address, { from: owner });
-
-        // Testing permissions
-        await vat.hope(daiJoin.address, { from: owner });
-        await vat.hope(wethJoin.address, { from: owner });
-        await vat.hope(daiJoin.address, { from: buyer });
-        await vat.hope(wethJoin.address, { from: buyer });
-        await treasury.orchestrate(owner, { from: owner });
-        await end.rely(owner, { from: owner });       // `owner` replaces MKR governance
-
-        // Setup tests
-        await vat.fold(WETH, vat.address, subBN(rate1, toRay(1)), { from: owner }); // Fold only the increase from 1.0
-        await pot.setChi(chi1, { from: owner });
     });
 
     afterEach(async() => {
@@ -430,7 +317,7 @@ contract('Liquidations', async (accounts) =>  {
                     assert.equal(
                         await liquidations.debt(user2, { from: buyer }),
                         divRay(userDebt, toRay(2)).toString(),
-                        "User debt should be " + divRay(userDebt, toRay(2)) + ", instead is " + await liquidations.debt(user2, { from: buyer }),
+                        "User debt should be " + addBN(divRay(userDebt, toRay(2)), 1) + ", instead is " + await liquidations.debt(user2, { from: buyer }),
                     );
                     // The buy will happen a few seconds after the start of the liquidation, so the collateral received will be slightly above the 1/4 of the total posted.
                     expect(
