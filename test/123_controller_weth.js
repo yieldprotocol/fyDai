@@ -1,7 +1,7 @@
 const helper = require('ganache-time-traveler');
 const { BN, expectRevert } = require('@openzeppelin/test-helpers');
 const { WETH, spot, rate1, daiTokens1, wethTokens1, toRay, mulRay, divRay, addBN, subBN } = require('./shared/utils');
-const { setupMaker, newTreasury, newController, newYDai } = require("./shared/fixtures");
+const { setupMaker, newTreasury, newController, newYDai, getDai } = require("./shared/fixtures");
 
 contract('Controller - Weth', async (accounts) =>  {
     let [ owner, user1, user2, user3 ] = accounts;
@@ -20,22 +20,6 @@ contract('Controller - Weth', async (accounts) =>  {
 
     let maturity1;
     let maturity2;
-
-    // Convert eth to weth and use it to borrow `_daiTokens` from MakerDAO
-    // This function uses global variables, careful.
-    async function getDai(user, _daiTokens, _rate){
-        await vat.hope(daiJoin.address, { from: user });
-        await vat.hope(wethJoin.address, { from: user });
-
-        const _daiDebt = addBN(divRay(_daiTokens, _rate), 1); // TODO: This should round up instead of adding one
-        const _wethTokens = divRay(_daiTokens, spot).mul(2); // Cover ourselves for future rate increases
-
-        await weth.deposit({ from: user, value: _wethTokens });
-        await weth.approve(wethJoin.address, _wethTokens, { from: user });
-        await wethJoin.join(user, _wethTokens, { from: user });
-        await vat.frob(WETH, user, user, user, _wethTokens, _daiDebt, { from: user });
-        await daiJoin.exit(user, _daiTokens, { from: user });
-    }
 
     beforeEach(async() => {
         snapshot = await helper.takeSnapshot();

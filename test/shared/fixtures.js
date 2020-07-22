@@ -14,11 +14,7 @@ const Treasury = artifacts.require('Treasury');
 const YDai = artifacts.require('YDai');
 const Controller = artifacts.require('Controller');
 
-const { WETH, limits, spot, rate1, chi1, toRay, subBN } = require("./utils");
-
-const Line = toBytes32("Line");
-const spotName = toBytes32("spot");
-const linel = toBytes32("line");
+const { WETH, Line, spotName, linel, limits, spot, rate1, chi1, toRay, addBN, subBN, divRay, mulRay } = require("./utils");
 
 const setupMaker = async() => {
     // Set up vat, join and weth
@@ -124,9 +120,33 @@ async function newController() {
     return controller;
 }
 
+async function getDai(user, _daiTokens, _rate){
+    await vat.hope(daiJoin.address, { from: user });
+    await vat.hope(wethJoin.address, { from: user });
+
+    const _daiDebt = addBN(divRay(_daiTokens, _rate), 1);
+    const _wethTokens = divRay(_daiTokens, spot).mul(2);
+
+    await weth.deposit({ from: user, value: _wethTokens });
+    await weth.approve(wethJoin.address, _wethTokens, { from: user });
+    await wethJoin.join(user, _wethTokens, { from: user });
+    await vat.frob(WETH, user, user, user, _wethTokens, _daiDebt, { from: user });
+    await daiJoin.exit(user, _daiTokens, { from: user });
+}
+
+async function getChai(user, _chaiTokens, _chi, _rate){
+    const _daiTokens = mulRay(_chaiTokens, _chi);
+    await getDai(user, _daiTokens, _rate);
+    await dai.approve(chai.address, _daiTokens, { from: user });
+    await chai.join(user, _daiTokens, { from: user });
+}
+
+
 module.exports = {
     setupMaker,
     newTreasury,
     newYDai,
     newController,
+    getDai,
+    getChai,
 }

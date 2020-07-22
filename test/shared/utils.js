@@ -4,23 +4,6 @@ const bigNumberify = ethers.utils.bigNumberify;
 
 // Helper functions
 
-// Convert eth to weth and use it to borrow `daiTokens` from MakerDAO
-// This function shadows and uses global variables, careful.
-async function getDai(user, _daiTokens){
-    await vat.hope(daiJoin.address, { from: user });
-    await vat.hope(wethJoin.address, { from: user });
-
-    const _daiDebt = divRay(_daiTokens, rate);
-    const _wethTokens = addBN(divRay(_daiTokens, spot), 1);
-
-    await weth.deposit({ from: user, value: _wethTokens });
-    await weth.approve(wethJoin.address, _wethTokens, { from: user });
-    await wethJoin.join(user, _wethTokens, { from: user });
-    await vat.frob(WETH, user, user, user, _wethTokens, _daiDebt, { from: user });
-    await daiJoin.exit(user, _daiTokens, { from: user });
-}
-
-
 /// @dev Converts a number to WAD precision, for number up to 10 decimal places
 const toWad = function(value) {
     let exponent = bigNumberify('10').pow(bigNumberify('8'));
@@ -69,6 +52,10 @@ const divRay = function(x, ray) {
 const WETH = toBytes32("ETH-A");
 const CHAI = toBytes32("CHAI");
 
+const Line = toBytes32("Line");
+const spotName = toBytes32("spot");
+const linel = toBytes32("line");
+
 const limits =  toRad(10000);
 const spot = toRay(150);
 const chi1 = toRay(1.2);
@@ -81,7 +68,6 @@ const chaiTokens1 = divRay(daiTokens1, chi1);
 
 
 module.exports = {
-    getDai,
     toWad,
     toRay,
     toRad,
@@ -91,6 +77,9 @@ module.exports = {
     divRay,
 
     // constants
+    Line,
+    spotName,
+    linel,
     WETH,
     CHAI,
     limits,

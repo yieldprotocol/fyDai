@@ -1,7 +1,7 @@
 const helper = require('ganache-time-traveler');
 const { BN, expectRevert } = require('@openzeppelin/test-helpers');
 const { WETH, CHAI, spot, rate1, chi1, daiTokens1, chaiTokens1, toRay, toRad, addBN, subBN, mulRay, divRay } = require('./shared/utils');
-const { setupMaker, newTreasury, newController, newYDai } = require("./shared/fixtures");
+const { setupMaker, newTreasury, newController, newYDai, getDai, getChai } = require("./shared/fixtures");
 
 contract('Controller - Chai', async (accounts) =>  {
     let [ owner, user1 ] = accounts;
@@ -22,31 +22,6 @@ contract('Controller - Chai', async (accounts) =>  {
 
     let maturity1;
     let maturity2;
-
-    // Convert eth to weth and use it to borrow `_daiTokens` from MakerDAO
-    // This function uses global variables, careful.
-    async function getDai(user, _daiTokens, _rate){
-        await vat.hope(daiJoin.address, { from: user });
-        await vat.hope(wethJoin.address, { from: user });
-
-        const _daiDebt = addBN(divRay(_daiTokens, _rate), 1); // TODO: This should round up instead of adding one
-        const _wethTokens = divRay(_daiTokens, spot).mul(2); // Cover ourselves for future rate increases
-
-        await weth.deposit({ from: user, value: _wethTokens });
-        await weth.approve(wethJoin.address, _wethTokens, { from: user });
-        await wethJoin.join(user, _wethTokens, { from: user });
-        await vat.frob(WETH, user, user, user, _wethTokens, _daiDebt, { from: user });
-        await daiJoin.exit(user, _daiTokens, { from: user });
-    }
-
-    // From eth, borrow `daiTokens` from MakerDAO and convert them to chai
-    // This function shadows and uses global variables, careful.
-    async function getChai(user, _chaiTokens, _chi, _rate){
-        const _daiTokens = mulRay(_chaiTokens, _chi);
-        await getDai(user, _daiTokens, _rate);
-        await dai.approve(chai.address, _daiTokens, { from: user });
-        await chai.join(user, _daiTokens, { from: user });
-    }
 
     beforeEach(async() => {
         snapshot = await helper.takeSnapshot();
