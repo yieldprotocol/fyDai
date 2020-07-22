@@ -1,7 +1,6 @@
 const Market = artifacts.require('Market');
 const LimitMarket = artifacts.require('LimitMarket');
 
-const helper = require('ganache-time-traveler');
 const { toWad, toRay, mulRay } = require('../shared/utils');
 const { setupMaker, newTreasury, newController, newYDai, getDai } = require("../shared/fixtures");
 const { BN, expectRevert } = require('@openzeppelin/test-helpers');
@@ -14,6 +13,7 @@ contract('LimitMarket', async (accounts) =>  {
     let yDai1;
     let controller;
     let market;
+    let limitMarket;
 
     // These values impact the market results
     const rate1 = toRay(1.4);
@@ -24,9 +24,6 @@ contract('LimitMarket', async (accounts) =>  {
     let maturity1;
 
     beforeEach(async() => {
-        snapshot = await helper.takeSnapshot();
-        snapshotId = snapshot['result'];
-
         ({
             vat,
             weth,
@@ -67,10 +64,6 @@ contract('LimitMarket', async (accounts) =>  {
         // Allow owner to mint yDai the sneaky way, without recording a debt in controller
         await yDai1.orchestrate(owner, { from: owner });
 
-    });
-
-    afterEach(async() => {
-        await helper.revertToSnapshot(snapshotId);
     });
 
     describe("with liquidity", () => {
