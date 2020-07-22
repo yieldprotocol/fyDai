@@ -23,7 +23,7 @@ const Unwind = artifacts.require('Unwind');
 const helper = require('ganache-time-traveler');
 const truffleAssert = require('truffle-assertions');
 const { BN, expectRevert } = require('@openzeppelin/test-helpers');
-const { toWad, toRay, toRad, addBN, subBN, mulRay, divRay } = require('./shared/utils');
+const { rate1, toWad, toRay, toRad, addBN, subBN, mulRay, divRay } = require('./shared/utils');
 
 contract('Controller - Chai', async (accounts) =>  {
     let [ owner, user1, user2 ] = accounts;
@@ -51,7 +51,6 @@ contract('Controller - Chai', async (accounts) =>  {
 
     const limits = toRad(10000);
     const spot  = toRay(1.5);
-    let rate;
     let chi;
     let daiDebt;
     let daiTokens;
@@ -91,10 +90,9 @@ contract('Controller - Chai', async (accounts) =>  {
         snapshot = await helper.takeSnapshot();
         snapshotId = snapshot['result'];
 
-        rate  = toRay(1.25);
         chi  = toRay(1.25);
         daiDebt = toWad(120);
-        daiTokens = mulRay(daiDebt, rate);
+        daiTokens = mulRay(daiDebt, rate1);
         wethTokens = divRay(daiTokens, spot);
         chaiTokens = divRay(daiTokens, chi);
 
@@ -191,10 +189,10 @@ contract('Controller - Chai', async (accounts) =>  {
 
         // Tests setup
         await pot.setChi(chi, { from: owner });
-        await vat.fold(WETH, vat.address, subBN(rate, toRay(1)), { from: owner }); // Fold only the increase from 1.0
+        await vat.fold(WETH, vat.address, subBN(rate1, toRay(1)), { from: owner }); // Fold only the increase from 1.0
 
         // Borrow dai
-        await getChai(user1, chaiTokens, chi, rate);
+        await getChai(user1, chaiTokens, chi, rate1);
     });
 
     afterEach(async() => {
@@ -391,7 +389,7 @@ contract('Controller - Chai', async (accounts) =>  {
 
             it("allows to repay yDai with dai", async() => {
                 // Borrow dai
-                await getDai(user1, daiTokens, rate);
+                await getDai(user1, daiTokens, rate1);
 
                 assert.equal(
                     await dai.balanceOf(user1),
@@ -456,12 +454,13 @@ contract('Controller - Chai', async (accounts) =>  {
             let chiDifferential;
             let increasedDebt;
             let debtIncrease;
+            let rate2;
 
             describe("after maturity, with a chi increase", () => {
                 beforeEach(async() => {
                     // Set rate to 1.75
                     rateIncrease = toRay(0.5);
-                    rate = rate.add(rateIncrease);
+                    rate2 = rate1.add(rateIncrease);
                     // Set chi to 1.5
                     chiIncrease = toRay(0.25);
                     chiDifferential = divRay(addBN(chi, chiIncrease), chi);
@@ -511,7 +510,7 @@ contract('Controller - Chai', async (accounts) =>  {
                 // TODO: Test that when yDai is provided in excess for repayment, only the necessary amount is taken
     
                 it("more Dai is required to repay after maturity as chi increases", async() => {
-                    await getDai(user1, daiTokens, rate); // daiTokens is not going to be enough anymore
+                    await getDai(user1, daiTokens, rate1); // daiTokens is not going to be enough anymore
                     await dai.approve(treasury.address, daiTokens, { from: user1 });
                     await controller.repayDai(CHAI, maturity1, user1, daiTokens, { from: user1 });
         
