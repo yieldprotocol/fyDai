@@ -23,7 +23,7 @@ const Unwind = artifacts.require('Unwind');
 const helper = require('ganache-time-traveler');
 const truffleAssert = require('truffle-assertions');
 const { BN, expectRevert } = require('@openzeppelin/test-helpers');
-const { rate1, chi1, daiTokens1, wethTokens1, chaiTokens1, toWad, toRay, toRad, addBN, subBN, mulRay, divRay } = require('./shared/utils');
+const { rate1, chi1, daiTokens1, chaiTokens1, toWad, toRay, toRad, addBN, subBN, mulRay, divRay } = require('./shared/utils');
 
 contract('Controller - Chai', async (accounts) =>  {
     let [ owner, user1, user2 ] = accounts;
@@ -51,9 +51,6 @@ contract('Controller - Chai', async (accounts) =>  {
 
     const limits = toRad(10000);
     const spot  = toRay(1.5);
-    let daiDebt;
-    let wethTokens;
-    let chaiTokens;
 
     let maturity1;
     let maturity2;
@@ -87,10 +84,6 @@ contract('Controller - Chai', async (accounts) =>  {
     beforeEach(async() => {
         snapshot = await helper.takeSnapshot();
         snapshotId = snapshot['result'];
-
-        daiDebt = toWad(120);
-        wethTokens = divRay(daiTokens1, spot);
-        chaiTokens = divRay(daiTokens1, chi1);
 
         // Setup vat, join and weth
         vat = await Vat.new();
@@ -188,32 +181,12 @@ contract('Controller - Chai', async (accounts) =>  {
         await vat.fold(WETH, vat.address, subBN(rate1, toRay(1)), { from: owner }); // Fold only the increase from 1.0
 
         // Borrow dai
-        await getChai(user1, chaiTokens, chi1, rate1);
+        await getChai(user1, chaiTokens1, chi1, rate1);
     });
 
     afterEach(async() => {
         await helper.revertToSnapshot(snapshotId);
     });
-
-    /* it("get the size of the contract", async() => {
-        console.log();
-        console.log("·--------------------|------------------|------------------|------------------·");
-        console.log("|  Contract          ·  Bytecode        ·  Deployed        ·  Constructor     |");
-        console.log("·····················|··················|··················|···················");
-        
-        const bytecode = controller.constructor._json.bytecode;
-        const deployed = controller.constructor._json.deployedBytecode;
-        const sizeOfB  = bytecode.length / 2;
-        const sizeOfD  = deployed.length / 2;
-        const sizeOfC  = sizeOfB - sizeOfD;
-        console.log(
-            "|  " + (controller.constructor._json.contractName).padEnd(18, ' ') +
-            "|" + ("" + sizeOfB).padStart(16, ' ') + "  " +
-            "|" + ("" + sizeOfD).padStart(16, ' ') + "  " +
-            "|" + ("" + sizeOfC).padStart(16, ' ') + "  |");
-        console.log("·--------------------|------------------|------------------|------------------·");
-        console.log();
-    }); */
 
     it("allows user to post chai", async() => {
         assert.equal(
@@ -227,12 +200,12 @@ contract('Controller - Chai', async (accounts) =>  {
             "User1 has borrowing power",
         );
         
-        await chai.approve(treasury.address, chaiTokens, { from: user1 });
-        await controller.post(CHAI, user1, user1, chaiTokens, { from: user1 });
+        await chai.approve(treasury.address, chaiTokens1, { from: user1 });
+        await controller.post(CHAI, user1, user1, chaiTokens1, { from: user1 });
 
         assert.equal(
             await chai.balanceOf(treasury.address),
-            chaiTokens.toString(),
+            chaiTokens1.toString(),
             "Treasury should have chai",
         );
         assert.equal(
@@ -244,14 +217,14 @@ contract('Controller - Chai', async (accounts) =>  {
 
     describe("with posted chai", () => {
         beforeEach(async() => {
-            await chai.approve(treasury.address, chaiTokens, { from: user1 });
-            await controller.post(CHAI, user1, user1, chaiTokens, { from: user1 });
+            await chai.approve(treasury.address, chaiTokens1, { from: user1 });
+            await controller.post(CHAI, user1, user1, chaiTokens1, { from: user1 });
         });
 
         it("allows user to withdraw chai", async() => {
             assert.equal(
                 await chai.balanceOf(treasury.address),
-                chaiTokens.toString(),
+                chaiTokens1.toString(),
                 "Treasury does not have chai",
             );
             assert.equal(
@@ -265,11 +238,11 @@ contract('Controller - Chai', async (accounts) =>  {
                 "User1 has collateral in hand"
             );
             
-            await controller.withdraw(CHAI, user1, user1, chaiTokens, { from: user1 });
+            await controller.withdraw(CHAI, user1, user1, chaiTokens1, { from: user1 });
 
             assert.equal(
                 await chai.balanceOf(user1),
-                chaiTokens.toString(),
+                chaiTokens1.toString(),
                 "User1 should have collateral in hand"
             );
             assert.equal(
@@ -351,7 +324,7 @@ contract('Controller - Chai', async (accounts) =>  {
                 );
 
                 await expectRevert(
-                    controller.borrow(CHAI, maturity1, user1, user1, chaiTokens, { from: user1 }),
+                    controller.borrow(CHAI, maturity1, user1, user1, chaiTokens1, { from: user1 }),
                     "Controller: Too much debt",
                 );
             });
