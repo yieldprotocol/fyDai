@@ -24,7 +24,7 @@ const Unwind = artifacts.require('Unwind');
 const helper = require('ganache-time-traveler');
 const truffleAssert = require('truffle-assertions');
 const { BN, expectRevert, expectEvent } = require('@openzeppelin/test-helpers');
-const { rate1, toWad, toRay, toRad, addBN, subBN, mulRay, divRay } = require('./shared/utils');
+const { spot, rate1, chi1, daiTokens1, wethTokens1, chaiTokens1, toWad, toRay, toRad, addBN, subBN, mulRay, divRay } = require('./shared/utils');
 const { assert } = require('chai');
 
 contract('Liquidations', async (accounts) =>  {
@@ -55,15 +55,9 @@ contract('Liquidations', async (accounts) =>  {
     let snapshotId;
 
     const limits = toRad(10000);
-    const spot  = toRay(1.5);
-    // const rate1  = toRay(1.25);
     const rate2  = toRay(1.5);
-    const chi = toRay(1.2);
-    const daiDebt = toWad(120);
-    const daiTokens = mulRay(daiDebt, rate1);
-    const wethTokens = divRay(daiTokens, spot);
-    const chaiTokens = divRay(daiTokens, chi);
-    const yDaiTokens = daiTokens;
+    
+    const yDaiTokens1 = daiTokens1;
     let maturity1;
     let maturity2;
 
@@ -245,7 +239,7 @@ contract('Liquidations', async (accounts) =>  {
 
         // Setup tests
         await vat.fold(WETH, vat.address, subBN(rate1, toRay(1)), { from: owner }); // Fold only the increase from 1.0
-        await pot.setChi(chi, { from: owner });
+        await pot.setChi(chi1, { from: owner });
     });
 
     afterEach(async() => {
@@ -254,30 +248,23 @@ contract('Liquidations', async (accounts) =>  {
 
     describe("with posted collateral and borrowed yDai", () => {
         beforeEach(async() => {
-            await postWeth(user1, wethTokens);
+            await postWeth(user1, wethTokens1);
 
-            await postWeth(user2, wethTokens.add(1));
-            await controller.borrow(WETH, maturity1, user2, user2, daiTokens, { from: user2 });
+            await postWeth(user2, wethTokens1.add(1));
+            await controller.borrow(WETH, maturity1, user2, user2, daiTokens1, { from: user2 });
 
-            await postWeth(user3, wethTokens.mul(2));
-            await controller.borrow(WETH, maturity1, user3, user3, daiTokens, { from: user3 });
-            await controller.borrow(WETH, maturity2, user3, user3, daiTokens, { from: user3 });
+            await postWeth(user3, wethTokens1.mul(2));
+            await controller.borrow(WETH, maturity1, user3, user3, daiTokens1, { from: user3 });
+            await controller.borrow(WETH, maturity2, user3, user3, daiTokens1, { from: user3 });
 
-            await postChai(user1, chaiTokens, chi, rate1);
+            await postChai(user1, chaiTokens1, chi1, rate1);
 
-            const moreChai = mulRay(chaiTokens, toRay(1.1));
-            await postChai(user2, moreChai, chi, rate1);
-            await controller.borrow(CHAI, maturity1, user2, user2, daiTokens, { from: user2 });
+            const moreChai = mulRay(chaiTokens1, toRay(1.1));
+            await postChai(user2, moreChai, chi1, rate1);
+            await controller.borrow(CHAI, maturity1, user2, user2, daiTokens1, { from: user2 });
 
-            // user1 has chaiTokens in controller and no debt.
-            // user2 has chaiTokens * 1.1 in controller and daiTokens debt.
-
-            // Make sure that end.sol will have enough weth to cash chai savings
-            await weth.deposit({ from: owner, value: wethTokens.mul(10) });
-            await weth.approve(wethJoin.address, wethTokens.mul(10), { from: owner });
-            await wethJoin.join(owner, wethTokens.mul(10), { from: owner });
-            await vat.frob(WETH, owner, owner, owner, wethTokens.mul(10), daiDebt.mul(10), { from: owner });
-            await daiJoin.exit(owner, daiTokens.mul(10), { from: owner });
+            // user1 has chaiTokens1 in controller and no debt.
+            // user2 has chaiTokens1 * 1.1 in controller and daiTokens1 debt.
 
             assert.equal(
                 await weth.balanceOf(user1),
@@ -291,8 +278,8 @@ contract('Liquidations', async (accounts) =>  {
             );
             assert.equal(
                 await controller.debtYDai(WETH, maturity1, user2),
-                yDaiTokens.toString(),
-                'User2 should have ' + yDaiTokens.toString() + ' maturity1 weth debt, instead has ' + (await controller.debtYDai(WETH, maturity1, user2)).toString(),
+                yDaiTokens1.toString(),
+                'User2 should have ' + yDaiTokens1.toString() + ' maturity1 weth debt, instead has ' + (await controller.debtYDai(WETH, maturity1, user2)).toString(),
             );
         });
 
@@ -501,7 +488,7 @@ contract('Liquidations', async (accounts) =>  {
                     });
 
                     it("liquidations leaving dust revert", async() => {
-                        const liquidatorBuys = subBN(userDebt, 100);
+                        const liquidatorBuys = subBN(userDebt, 1500); // Can be calculated programmatically from `spot` and `dust`
 
                         await dai.approve(treasury.address, liquidatorBuys, { from: buyer });
 
