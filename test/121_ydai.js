@@ -1,6 +1,5 @@
 // External
-const Jug = artifacts.require('Jug');
-const { setupYield } = require("./shared/fixtures");
+const { setupMaker, newTreasury, newYDai, newController } = require("./shared/fixtures");
 
 // YDai
 const YDai = artifacts.require('YDai');
@@ -45,28 +44,15 @@ contract('yDai', async (accounts) =>  {
             daiJoin,
             pot,
             jug,
-            chai,
-            treasury
-        } = await setupYield(owner, owner))
+            chai
+        } = await setupMaker());
+        treasury = await newTreasury();
+        controller = await newController();
 
-        // Setup jug
-        jug = await Jug.new(vat.address);
-        await jug.init(WETH, { from: owner }); // Set WETH duty (stability fee) to 1.0
-        await vat.rely(jug.address, { from: owner });
-    
         // Setup yDai1
         const block = await web3.eth.getBlockNumber();
         maturity = (await web3.eth.getBlock(block)).timestamp + 1000;
-        yDai1 = await YDai.new(
-            vat.address,
-            jug.address,
-            pot.address,
-            treasury.address,
-            maturity,
-            "Name",
-            "Symbol"
-        );
-        await treasury.orchestrate(yDai1.address, { from: owner });
+        yDai1 = await newYDai(maturity, "Name", "Symbol")
 
         // Test setup
         // Setup Flash Minter
@@ -74,7 +60,8 @@ contract('yDai', async (accounts) =>  {
             { from: owner },
         );
         
-        // Deposit some weth to treasury so that redeem can pull some dai
+        // Deposit some weth to treasury the sneaky way so that redeem can pull some dai
+        await treasury.orchestrate(owner, { from: owner });
         await weth.deposit({ from: owner, value: wethTokens2.mul(2) });
         await weth.approve(treasury.address, wethTokens2.mul(2), { from: owner });
         await treasury.pushWeth(owner, wethTokens2.mul(2), { from: owner });
@@ -138,6 +125,7 @@ contract('yDai', async (accounts) =>  {
     });
 
     it("yDai flash mints", async() => {
+        const yDaiSupply = await yDai1.totalSupply();
         expectEvent(
             await flashMinter.flashMint(yDai1.address, daiTokens1, web3.utils.fromAscii("DATA"), { from: user1 }),
             "Parameters",
@@ -148,12 +136,6 @@ contract('yDai', async (accounts) =>  {
             },
         );
 
-        await helper.advanceTime(1000);
-        await helper.advanceBlock();
-        await yDai1.mature();
-
-        await yDai1.redeem(user1, user1, daiTokens1, { from: user1 });
-
         assert.equal(
             await flashMinter.flashBalance(),
             daiTokens1.toString(),
@@ -161,8 +143,8 @@ contract('yDai', async (accounts) =>  {
         );
         assert.equal(
             await yDai1.totalSupply(),
-            0,
-            "There should be no yDai supply",
+            yDaiSupply.toString(),
+            "There should be no change in yDai supply",
         );
     });
 
