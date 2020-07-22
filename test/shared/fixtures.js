@@ -53,6 +53,20 @@ const setupMaker = async() => {
     await vat.rely(pot.address);
     await vat.rely(jug.address);
 
+    return {
+        vat,
+        weth,
+        wethJoin,
+        dai,
+        daiJoin,
+        pot,
+        jug,
+        chai
+    }
+}
+
+// Helper for deploying Treasury
+async function newTreasury() {
     treasury = await Treasury.new(
         vat.address,
         weth.address,
@@ -62,31 +76,7 @@ const setupMaker = async() => {
         pot.address,
         chai.address,
     );
-
-    return {
-        vat,
-        weth,
-        wethJoin,
-        dai,
-        daiJoin,
-        pot,
-        jug,
-        chai,
-        treasury
-    }
-}
-
-// Helper for deploying Treasury
-async function newTreasury() {
-    return Treasury.new(
-        vat.address,
-        weth.address,
-        dai.address,
-        wethJoin.address,
-        daiJoin.address,
-        pot.address,
-        chai.address,
-    );
+    return treasury;
 }
 
 // Helper for deploying YDai
