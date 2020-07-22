@@ -1,6 +1,6 @@
 const helper = require('ganache-time-traveler');
 const { BN, expectRevert } = require('@openzeppelin/test-helpers');
-const { spot, rate1, chi1, daiTokens1, chaiTokens1, toRay, toRad, addBN, subBN, mulRay, divRay } = require('./shared/utils');
+const { WETH, CHAI, spot, rate1, chi1, daiTokens1, chaiTokens1, toRay, toRad, addBN, subBN, mulRay, divRay } = require('./shared/utils');
 const { setupMaker, newTreasury, newController, newYDai } = require("./shared/fixtures");
 
 contract('Controller - Chai', async (accounts) =>  {
@@ -16,9 +16,6 @@ contract('Controller - Chai', async (accounts) =>  {
     let yDai1;
     let yDai2;
     let controller;
-
-    let WETH = web3.utils.fromAscii("ETH-A");
-    let CHAI = web3.utils.fromAscii("CHAI");
 
     let snapshot;
     let snapshotId;

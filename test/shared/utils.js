@@ -67,6 +67,7 @@ const divRay = function(x, ray) {
 
 // Constants
 const WETH = toBytes32("ETH-A");
+const CHAI = toBytes32("CHAI");
 const Line = toBytes32("Line");
 const spotName = toBytes32("spot");
 const linel = toBytes32("line");
@@ -94,6 +95,7 @@ module.exports = {
 
     // constants
     WETH,
+    CHAI,
     Line,
     spotName,
     linel,
