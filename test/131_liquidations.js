@@ -67,6 +67,8 @@ contract('Liquidations', async (accounts) =>  {
     let maturity1;
     let maturity2;
 
+    const dust = '25000000000000000'; // 0.025 ETH
+
     async function getDai(user, _daiTokens, _rate){
         await vat.hope(daiJoin.address, { from: user });
         await vat.hope(wethJoin.address, { from: user });
@@ -332,6 +334,9 @@ contract('Liquidations', async (accounts) =>  {
             );
         });
 
+        let userDebt;
+        let userCollateral;
+
         describe("with uncollateralized vaults", () => {
             beforeEach(async() => {
                 // yDai matures
@@ -340,14 +345,12 @@ contract('Liquidations', async (accounts) =>  {
                 await yDai1.mature();
             
                 await vat.fold(WETH, vat.address, subBN(rate2, rate1), { from: owner });
+
+                userCollateral = new BN(await controller.posted(WETH, user2, { from: buyer }));
+                userDebt = (await controller.totalDebtDai.call(WETH, user2, { from: buyer }));
             });
 
             it("liquidations can be started", async() => {
-                const userCollateral = new BN(await controller.posted(WETH, user2, { from: buyer }));
-                const userDebt = (await controller.totalDebtDai.call(WETH, user2, { from: buyer }));
-                console.log(userDebt.toString());
-                const dust = '25000000000000000'; // 0.025 ETH
-                
                 const event = (await liquidations.liquidate(user2, buyer, { from: buyer })).logs[0];
                 const block = await web3.eth.getBlockNumber();
                 now = (await web3.eth.getBlock(block)).timestamp;
@@ -424,7 +427,7 @@ contract('Liquidations', async (accounts) =>  {
                     expect(
                         await weth.balanceOf(buyer, { from: buyer }),
                     ).to.be.bignumber.lt(
-                        mulRay(divRay(wethTokens, toRay(2)), toRay(1.01)).toString(),
+                        mulRay(divRay(wethTokens, toRay(2)), toRay(1.01)).toString(), // TODO: Hold on, is this 2/3?
                     );
                 });
 
