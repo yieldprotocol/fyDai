@@ -1,32 +1,10 @@
-// External
-const Vat = artifacts.require('Vat');
-const GemJoin = artifacts.require('GemJoin');
-const DaiJoin = artifacts.require('DaiJoin');
-const Weth = artifacts.require("WETH9");
-const ERC20 = artifacts.require("TestERC20");
-const Jug = artifacts.require('Jug');
-const Pot = artifacts.require('Pot');
-const End = artifacts.require('End');
-const Chai = artifacts.require('Chai');
-
-// Common
-const Treasury = artifacts.require('Treasury');
-
-// YDai
-const YDai = artifacts.require('YDai');
-const Controller = artifacts.require('Controller');
-
 // Peripheral
 const Liquidations = artifacts.require('Liquidations');
-const EthProxy = artifacts.require('EthProxy');
-const Unwind = artifacts.require('Unwind');
 
 const helper = require('ganache-time-traveler');
-const truffleAssert = require('truffle-assertions');
 const { BN, expectRevert, expectEvent } = require('@openzeppelin/test-helpers');
 const { WETH, CHAI, spot, rate1, chi1, daiTokens1, wethTokens1, chaiTokens1, toWad, toRay, toRad, addBN, subBN, mulRay, divRay } = require('./shared/utils');
 const { setupMaker, newTreasury, newController, newYDai } = require("./shared/fixtures");
-const { assert } = require('chai');
 
 contract('Liquidations', async (accounts) =>  {
     let [ owner, user1, user2, user3, buyer ] = accounts;
@@ -35,16 +13,12 @@ contract('Liquidations', async (accounts) =>  {
     let wethJoin;
     let dai;
     let daiJoin;
-    let jug;
-    let pot;
-    let end;
     let chai;
     let treasury;
     let yDai1;
     let yDai2;
     let controller;
     let liquidations;
-    let unwind;
 
     let snapshot;
     let snapshotId;
