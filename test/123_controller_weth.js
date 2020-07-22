@@ -28,7 +28,7 @@ contract('Controller - Weth', async (accounts) =>  {
         await vat.hope(wethJoin.address, { from: user });
 
         const _daiDebt = addBN(divRay(_daiTokens, _rate), 1); // TODO: This should round up instead of adding one
-        const _wethTokens = addBN(divRay(_daiTokens, spot), 1); // TODO: This should round up of adding one
+        const _wethTokens = divRay(_daiTokens, spot).mul(2); // Cover ourselves for future rate increases
 
         await weth.deposit({ from: user, value: _wethTokens });
         await weth.approve(wethJoin.address, _wethTokens, { from: user });

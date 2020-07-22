@@ -33,7 +33,7 @@ contract('Controller - Chai', async (accounts) =>  {
         await vat.hope(wethJoin.address, { from: user });
 
         const _daiDebt = addBN(divRay(_daiTokens, _rate), 1); // TODO: This should round up instead of adding one
-        const _wethTokens = addBN(divRay(_daiTokens, spot), 1); // TODO: This should round up of adding one
+        const _wethTokens = divRay(_daiTokens, spot).mul(2); // Cover ourselves for future rate increases
 
         await weth.deposit({ from: user, value: _wethTokens });
         await weth.approve(wethJoin.address, _wethTokens, { from: user });
@@ -324,17 +324,6 @@ contract('Controller - Chai', async (accounts) =>  {
 
             describe("after maturity, with a chi increase", () => {
                 beforeEach(async() => {
-                    // Set rate to 1.75
-                    rateIncrease = toRay(0.5);
-                    rate2 = rate1.add(rateIncrease);
-                    // Set chi to 1.5
-                    chiIncrease = toRay(0.25);
-                    chiDifferential = divRay(addBN(chi1, chiIncrease), chi1);
-                    chi2 = chi1.add(chiIncrease);
-                    
-                    increasedDebt = mulRay(daiTokens1, chiDifferential);
-                    debtIncrease = subBN(increasedDebt, daiTokens1);
-
                     assert.equal(
                         await yDai1.balanceOf(user1),
                         daiTokens1.toString(),
@@ -350,10 +339,19 @@ contract('Controller - Chai', async (accounts) =>  {
                     await helper.advanceBlock();
                     await yDai1.mature();
 
-                    // Increase rate
+                    // Set rate to 1.75
+                    rateIncrease = toRay(0.5);
+                    rate2 = rate1.add(rateIncrease);
                     await vat.fold(WETH, vat.address, rateIncrease, { from: owner });
-                    // Increase chi
+
+                    // Set chi to 1.5
+                    chiIncrease = toRay(0.25);
+                    chiDifferential = divRay(addBN(chi1, chiIncrease), chi1);
+                    chi2 = chi1.add(chiIncrease);
                     await pot.setChi(chi2, { from: owner });
+
+                    increasedDebt = mulRay(daiTokens1, chiDifferential);
+                    debtIncrease = subBN(subBN(increasedDebt, daiTokens1), 1); // TODO: Check rounding again
                 });
 
                 it("as chi increases after maturity, so does the debt in when measured in dai", async() => {
@@ -376,9 +374,9 @@ contract('Controller - Chai', async (accounts) =>  {
                 // TODO: Test that when yDai is provided in excess for repayment, only the necessary amount is taken
     
                 it("more Dai is required to repay after maturity as chi increases", async() => {
-                    await getDai(user1, daiTokens1, rate1); // daiTokens1 is not going to be enough anymore
+                    await getDai(user1, daiTokens1, rate2); // daiTokens1 is not going to be enough anymore
                     await dai.approve(treasury.address, daiTokens1, { from: user1 });
-                    await controller.repayDai(CHAI, maturity1, user1, daiTokens1, { from: user1 });
+                    await controller.repayDai(CHAI, maturity1, user1, user1, daiTokens1, { from: user1 });
         
                     assert.equal(
                         await controller.debtDai.call(CHAI, maturity1, user1),
