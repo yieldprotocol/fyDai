@@ -16,8 +16,8 @@ contract('Market', async (accounts) =>  {
     let market;
     let yieldMath;
 
+    // These values impact the market results
     const rate1 = toRay(1.4);
-
     const daiDebt1 = toWad(96);
     const daiTokens1 = mulRay(daiDebt1, rate1);
     const yDaiTokens1 = daiTokens1;
