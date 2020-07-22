@@ -61,29 +61,30 @@ contract('Controller - Chai', async (accounts) =>  {
     let maturity1;
     let maturity2;
 
-    // Convert eth to weth and use it to borrow `daiTokens` from MakerDAO
-    // This function shadows and uses global variables, careful.
-    async function getDai(user, daiTokens){
+
+    // Convert eth to weth and use it to borrow `_daiTokens` from MakerDAO
+    // This function uses global variables, careful.
+    async function getDai(user, _daiTokens, _rate){
         await vat.hope(daiJoin.address, { from: user });
         await vat.hope(wethJoin.address, { from: user });
 
-        const daiDebt = divRay(daiTokens, rate);
-        const wethTokens = divRay(daiTokens, spot);
+        const _daiDebt = addBN(divRay(_daiTokens, _rate), 1); // TODO: This should round up instead of adding one
+        const _wethTokens = addBN(divRay(_daiTokens, spot), 1); // TODO: This should round up of adding one
 
-        await weth.deposit({ from: user, value: wethTokens });
-        await weth.approve(wethJoin.address, wethTokens, { from: user });
-        await wethJoin.join(user, wethTokens, { from: user });
-        await vat.frob(WETH, user, user, user, wethTokens, daiDebt, { from: user });
-        await daiJoin.exit(user, daiTokens, { from: user });
+        await weth.deposit({ from: user, value: _wethTokens });
+        await weth.approve(wethJoin.address, _wethTokens, { from: user });
+        await wethJoin.join(user, _wethTokens, { from: user });
+        await vat.frob(WETH, user, user, user, _wethTokens, _daiDebt, { from: user });
+        await daiJoin.exit(user, _daiTokens, { from: user });
     }
 
     // From eth, borrow `daiTokens` from MakerDAO and convert them to chai
     // This function shadows and uses global variables, careful.
-    async function getChai(user, chaiTokens){
-        const daiTokens = mulRay(chaiTokens, chi);
-        await getDai(user, daiTokens);
-        await dai.approve(chai.address, daiTokens, { from: user });
-        await chai.join(user, daiTokens, { from: user });
+    async function getChai(user, _chaiTokens, _chi, _rate){
+        const _daiTokens = mulRay(_chaiTokens, _chi);
+        await getDai(user, _daiTokens, _rate);
+        await dai.approve(chai.address, _daiTokens, { from: user });
+        await chai.join(user, _daiTokens, { from: user });
     }
 
     beforeEach(async() => {
@@ -193,7 +194,7 @@ contract('Controller - Chai', async (accounts) =>  {
         await vat.fold(WETH, vat.address, subBN(rate, toRay(1)), { from: owner }); // Fold only the increase from 1.0
 
         // Borrow dai
-        await getChai(user1, chaiTokens);
+        await getChai(user1, chaiTokens, chi, rate);
     });
 
     afterEach(async() => {
@@ -390,7 +391,7 @@ contract('Controller - Chai', async (accounts) =>  {
 
             it("allows to repay yDai with dai", async() => {
                 // Borrow dai
-                await getDai(user1, daiTokens);
+                await getDai(user1, daiTokens, rate);
 
                 assert.equal(
                     await dai.balanceOf(user1),
@@ -509,9 +510,8 @@ contract('Controller - Chai', async (accounts) =>  {
 
                 // TODO: Test that when yDai is provided in excess for repayment, only the necessary amount is taken
     
-                // TODO: Fix whatever makes `getDai` to be Vat/not-safe
-                /* it("more Dai is required to repay after maturity as chi increases", async() => {
-                    await getDai(user1, daiTokens); // daiTokens is not going to be enough anymore
+                it("more Dai is required to repay after maturity as chi increases", async() => {
+                    await getDai(user1, daiTokens, rate); // daiTokens is not going to be enough anymore
                     await dai.approve(treasury.address, daiTokens, { from: user1 });
                     await controller.repayDai(CHAI, maturity1, user1, daiTokens, { from: user1 });
         
@@ -520,7 +520,7 @@ contract('Controller - Chai', async (accounts) =>  {
                         debtIncrease.toString(),
                         "User1 should have " + debtIncrease + " dai debt, instead has " + (await controller.debtDai.call(CHAI, maturity1, user1)),
                     );
-                }); */
+                });
             });
         });
     });

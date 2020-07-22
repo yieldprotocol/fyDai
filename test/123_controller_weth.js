@@ -1,7 +1,6 @@
 const helper = require('ganache-time-traveler');
 const { BN, expectRevert } = require('@openzeppelin/test-helpers');
 const { WETH, spot, rate1, daiTokens1, wethTokens1, toRay, mulRay, divRay, addBN, subBN } = require('./shared/utils');
-// const { toWad, toRay, toRad, subBN, mulRay, divRay } = require('./shared/utils');
 
 const { setupMaker, newTreasury, newController, newYDai } = require("./shared/fixtures");
 
@@ -62,8 +61,6 @@ contract('Controller - Weth', async (accounts) =>  {
         maturity2 = (await web3.eth.getBlock(block)).timestamp + 2000;
         yDai1 = await newYDai(maturity1, "Name", "Symbol");
         yDai2 = await newYDai(maturity2, "Name", "Symbol");
-
-        await vat.hope(daiJoin.address, { from: owner });
     });
 
     afterEach(async() => {
