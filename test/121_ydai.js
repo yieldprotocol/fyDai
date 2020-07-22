@@ -278,8 +278,6 @@ contract('yDai', async (accounts) =>  {
     
             it("redeem with increased chi returns more dai", async() => {
                 // Redeem `daiTokens1` yDai to obtain `daiTokens1` * `chiDifferential`
-                // await vat.fold(WETH, vat.address, subBN(rate2, rate1), { from: owner }); // Keeping above chi
-                // await pot.setChi(chi2, { from: owner });
 
                 assert.equal(
                     await yDai1.balanceOf(user1),
