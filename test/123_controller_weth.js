@@ -969,7 +969,7 @@ contract('Controller - Weth', async (accounts) =>  {
                         rateIncrease = toRay(0.25);
                         rateDifferential = divRay(rate1.add(rateIncrease), rate1);
                         rate2 = rate1.add(rateIncrease);
-                        increasedDebt = mulRay(daiTokens1, rateDifferential);
+                        increasedDebt = addBN(mulRay(daiTokens1, rateDifferential), 1); // YDai.rateGrowth() rounds up.
                         debtIncrease = subBN(increasedDebt, daiTokens1);
 
                         assert.equal(
@@ -999,11 +999,10 @@ contract('Controller - Weth', async (accounts) =>  {
                     });
         
                     it("as rate increases after maturity, the debt doesn't in when measured in yDai", async() => {
-                        let debt = await controller.debtDai.call(WETH, maturity1, user1);
                         assert.equal(
-                            await controller.inYDai.call(WETH, maturity1, debt),
+                            await controller.debtYDai(WETH, maturity1, user1),
                             daiTokens1.toString(),
-                            "User1 should have " + daiTokens1 + " debt after the rate change, instead has " + (await controller.inYDai.call(WETH, maturity1, debt)),
+                            "User1 should have " + daiTokens1 + " debt after the rate change, instead has " + (await controller.debtYDai(WETH, maturity1, user1)),
                         );
                     });
      

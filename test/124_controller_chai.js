@@ -348,7 +348,7 @@ contract('Controller - Chai', async (accounts) =>  {
                     await pot.setChi(chi2, { from: owner });
 
                     increasedDebt = mulRay(daiTokens1, chiDifferential);
-                    debtIncrease = subBN(subBN(increasedDebt, daiTokens1), 1); // TODO: Check rounding again
+                    debtIncrease = addBN(subBN(increasedDebt, daiTokens1), 1); // Rounding is different with JavaScript
                 });
 
                 it("as chi increases after maturity, so does the debt in when measured in dai", async() => {
@@ -360,11 +360,10 @@ contract('Controller - Chai', async (accounts) =>  {
                 });
     
                 it("as chi increases after maturity, the debt doesn't in when measured in yDai", async() => {
-                    let debt = await controller.debtDai.call(CHAI, maturity1, user1);
                     assert.equal(
-                        await controller.inYDai.call(CHAI, maturity1, debt),
+                        await controller.debtYDai(CHAI, maturity1, user1),
                         daiTokens1.toString(),
-                        "User1 should have " + daiTokens1 + " debt after the chi change, instead has " + (await controller.inYDai.call(CHAI, maturity1, debt)),
+                        "User1 should have " + daiTokens1 + " debt after the chi change, instead has " + (await controller.debtYDai(CHAI, maturity1, user1)),
                     );
                 });
 
