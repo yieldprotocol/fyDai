@@ -108,9 +108,6 @@ contract('Controller - Chai', async (accounts) =>  {
         yDai2 = await newYDai(maturity2, "Name", "Symbol");
 
         // Tests setup
-        await pot.setChi(chi1, { from: owner });
-
-        // Borrow dai
         await getChai(user1, chaiTokens1, chi1, rate1);
     });
 

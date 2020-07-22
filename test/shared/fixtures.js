@@ -31,6 +31,7 @@ const setupMaker = async() => {
 
     // Setup pot
     pot = await Pot.new(vat.address);
+    await pot.setChi(chi1);
 
     // Setup chai
     chai = await Chai.new(
