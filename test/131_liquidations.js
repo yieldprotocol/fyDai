@@ -397,6 +397,10 @@ contract('Liquidations', async (accounts) =>  {
                 beforeEach(async() => {
                     await liquidations.liquidate(user2, buyer, { from: buyer });
                     await liquidations.liquidate(user3, buyer, { from: buyer });
+
+                    userCollateral = new BN(await liquidations.collateral(user2, { from: buyer })).toString();
+                    userDebt = new BN(await liquidations.debt(user2, { from: buyer })).toString();
+                    await getDai(buyer, userDebt, rate2);
                 });
     
                 it("doesn't allow to liquidate vaults already in liquidation", async() => {
@@ -407,11 +411,10 @@ contract('Liquidations', async (accounts) =>  {
                 });
 
                 it("liquidations retrieve about 1/2 of collateral at the start", async() => {
-                    const liquidatorDai = (await liquidations.debt(user2, { from: buyer })).toString();
-                    await getDai(buyer, liquidatorDai, rate2);
+                    const liquidatorBuys = userDebt;
 
-                    await dai.approve(treasury.address, liquidatorDai, { from: buyer });
-                    await liquidations.buy(buyer, user2, liquidatorDai, { from: buyer });
+                    await dai.approve(treasury.address, liquidatorBuys, { from: buyer });
+                    await liquidations.buy(buyer, user2, liquidatorBuys, { from: buyer });
 
                     assert.equal(
                         await liquidations.debt(user2, { from: buyer }),
@@ -432,12 +435,10 @@ contract('Liquidations', async (accounts) =>  {
                 });
 
                 it("partial liquidations are possible", async() => {
-                    const userDebt = (await liquidations.debt(user2, { from: buyer })).toString();
-                    const liquidatorDai = divRay(userDebt, toRay(2));
-                    await getDai(buyer, liquidatorDai, rate2);
+                    const liquidatorBuys = divRay(userDebt, toRay(2));
 
-                    await dai.approve(treasury.address, liquidatorDai, { from: buyer });
-                    await liquidations.buy(buyer, user2, liquidatorDai, { from: buyer });
+                    await dai.approve(treasury.address, liquidatorBuys, { from: buyer });
+                    await liquidations.buy(buyer, user2, liquidatorBuys, { from: buyer });
 
                     assert.equal(
                         await liquidations.debt(user2, { from: buyer }),
