@@ -24,6 +24,7 @@ const helper = require('ganache-time-traveler');
 const truffleAssert = require('truffle-assertions');
 const { BN, expectRevert } = require('@openzeppelin/test-helpers');
 const { rate1, chi1, daiTokens1, chaiTokens1, toWad, toRay, toRad, addBN, subBN, mulRay, divRay } = require('./shared/utils');
+const { setupMaker, newTreasury, newController, newYDai } = require("./shared/fixtures");
 
 contract('Controller - Chai', async (accounts) =>  {
     let [ owner, user1, user2 ] = accounts;
@@ -85,100 +86,29 @@ contract('Controller - Chai', async (accounts) =>  {
         snapshot = await helper.takeSnapshot();
         snapshotId = snapshot['result'];
 
-        // Setup vat, join and weth
-        vat = await Vat.new();
-        await vat.init(WETH, { from: owner }); // Set WETH rate (stability fee accumulator) to 1.0
+        ({
+            vat,
+            weth,
+            wethJoin,
+            dai,
+            daiJoin,
+            pot,
+            jug,
+            chai
+        } = await setupMaker());
 
-        weth = await Weth.new({ from: owner });
-        wethJoin = await GemJoin.new(vat.address, WETH, weth.address, { from: owner });
-
-        dai = await ERC20.new(0, { from: owner });
-        daiJoin = await DaiJoin.new(vat.address, dai.address, { from: owner });
-
-        await vat.file(WETH, spotName, spot, { from: owner });
-        await vat.file(WETH, linel, limits, { from: owner });
-        await vat.file(Line, limits);
-
-        // Setup jug
-        jug = await Jug.new(vat.address);
-        await jug.init(WETH, { from: owner }); // Set WETH duty (stability fee) to 1.0
-
-        // Setup pot
-        pot = await Pot.new(vat.address);
-
-        // Permissions
-        await vat.rely(vat.address, { from: owner });
-        await vat.rely(wethJoin.address, { from: owner });
-        await vat.rely(daiJoin.address, { from: owner });
-        await vat.rely(jug.address, { from: owner });
-        await vat.rely(pot.address, { from: owner });
-        await vat.hope(daiJoin.address, { from: owner });
-
-        // Setup chai
-        chai = await Chai.new(
-            vat.address,
-            pot.address,
-            daiJoin.address,
-            dai.address,
-            { from: owner },
-        );
-
-        // Set treasury
-        treasury = await Treasury.new(
-            vat.address,
-            weth.address,
-            dai.address,
-            wethJoin.address,
-            daiJoin.address,
-            pot.address,
-            chai.address,
-            { from: owner },
-        );
-
-        // Setup Controller
-        controller = await Controller.new(
-            vat.address,
-            pot.address,
-            treasury.address,
-            { from: owner },
-        );
-        treasury.orchestrate(controller.address, { from: owner });
+        treasury = await newTreasury();
+        controller = await newController();
 
         // Setup yDai
         const block = await web3.eth.getBlockNumber();
         maturity1 = (await web3.eth.getBlock(block)).timestamp + 1000;
-        yDai1 = await YDai.new(
-            vat.address,
-            jug.address,
-            pot.address,
-            treasury.address,
-            maturity1,
-            "Name",
-            "Symbol",
-            { from: owner },
-        );
-        controller.addSeries(yDai1.address, { from: owner });
-        yDai1.orchestrate(controller.address, { from: owner });
-        treasury.orchestrate(yDai1.address, { from: owner });
-
         maturity2 = (await web3.eth.getBlock(block)).timestamp + 2000;
-        yDai2 = await YDai.new(
-            vat.address,
-            jug.address,
-            pot.address,
-            treasury.address,
-            maturity2,
-            "Name2",
-            "Symbol2",
-            { from: owner },
-        );
-        controller.addSeries(yDai2.address, { from: owner });
-        yDai2.orchestrate(controller.address, { from: owner });
-        treasury.orchestrate(yDai2.address, { from: owner });
+        yDai1 = await newYDai(maturity1, "Name", "Symbol");
+        yDai2 = await newYDai(maturity2, "Name", "Symbol");
 
         // Tests setup
         await pot.setChi(chi1, { from: owner });
-        await vat.fold(WETH, vat.address, subBN(rate1, toRay(1)), { from: owner }); // Fold only the increase from 1.0
 
         // Borrow dai
         await getChai(user1, chaiTokens1, chi1, rate1);
