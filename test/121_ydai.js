@@ -203,7 +203,7 @@ contract('yDai', async (accounts) =>  {
                 0,
                 "User1 has dai",
             );
-    
+
             await yDai1.approve(yDai1.address, daiTokens1, { from: user1 });
             await yDai1.redeem(user1, user1, daiTokens1, { from: user1 });
     
