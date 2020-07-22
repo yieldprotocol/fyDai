@@ -23,7 +23,7 @@ const Unwind = artifacts.require('Unwind');
 const helper = require('ganache-time-traveler');
 const truffleAssert = require('truffle-assertions');
 const { BN, expectRevert } = require('@openzeppelin/test-helpers');
-const { rate1, toWad, toRay, toRad, addBN, subBN, mulRay, divRay } = require('./shared/utils');
+const { rate1, chi1, toWad, toRay, toRad, addBN, subBN, mulRay, divRay } = require('./shared/utils');
 
 contract('Controller - Chai', async (accounts) =>  {
     let [ owner, user1, user2 ] = accounts;
@@ -51,7 +51,6 @@ contract('Controller - Chai', async (accounts) =>  {
 
     const limits = toRad(10000);
     const spot  = toRay(1.5);
-    let chi;
     let daiDebt;
     let daiTokens;
     let wethTokens;
@@ -90,11 +89,10 @@ contract('Controller - Chai', async (accounts) =>  {
         snapshot = await helper.takeSnapshot();
         snapshotId = snapshot['result'];
 
-        chi  = toRay(1.25);
         daiDebt = toWad(120);
         daiTokens = mulRay(daiDebt, rate1);
         wethTokens = divRay(daiTokens, spot);
-        chaiTokens = divRay(daiTokens, chi);
+        chaiTokens = divRay(daiTokens, chi1);
 
         // Setup vat, join and weth
         vat = await Vat.new();
@@ -188,11 +186,11 @@ contract('Controller - Chai', async (accounts) =>  {
         treasury.orchestrate(yDai2.address, { from: owner });
 
         // Tests setup
-        await pot.setChi(chi, { from: owner });
+        await pot.setChi(chi1, { from: owner });
         await vat.fold(WETH, vat.address, subBN(rate1, toRay(1)), { from: owner }); // Fold only the increase from 1.0
 
         // Borrow dai
-        await getChai(user1, chaiTokens, chi, rate1);
+        await getChai(user1, chaiTokens, chi1, rate1);
     });
 
     afterEach(async() => {
@@ -455,6 +453,7 @@ contract('Controller - Chai', async (accounts) =>  {
             let increasedDebt;
             let debtIncrease;
             let rate2;
+            let chi2
 
             describe("after maturity, with a chi increase", () => {
                 beforeEach(async() => {
@@ -463,8 +462,8 @@ contract('Controller - Chai', async (accounts) =>  {
                     rate2 = rate1.add(rateIncrease);
                     // Set chi to 1.5
                     chiIncrease = toRay(0.25);
-                    chiDifferential = divRay(addBN(chi, chiIncrease), chi);
-                    chi = chi.add(chiIncrease);
+                    chiDifferential = divRay(addBN(chi1, chiIncrease), chi1);
+                    chi2 = chi1.add(chiIncrease);
                     
                     increasedDebt = mulRay(daiTokens, chiDifferential);
                     debtIncrease = subBN(increasedDebt, daiTokens);
@@ -487,7 +486,7 @@ contract('Controller - Chai', async (accounts) =>  {
                     // Increase rate
                     await vat.fold(WETH, vat.address, rateIncrease, { from: owner });
                     // Increase chi
-                    await pot.setChi(chi, { from: owner });
+                    await pot.setChi(chi2, { from: owner });
                 });
 
                 it("as chi increases after maturity, so does the debt in when measured in dai", async() => {
