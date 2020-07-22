@@ -1,5 +1,5 @@
 const { expectRevert } = require('@openzeppelin/test-helpers');
-const { setupYield } = require("./shared/fixtures");
+const { setupMaker, newTreasury } = require("./shared/fixtures");
 const {
     WETH,
     daiDebt,
@@ -26,9 +26,12 @@ contract('Treasury - Lending', async (accounts) =>  {
             daiJoin,
             pot,
             jug,
-            chai,
-            treasury
-        } = await setupYield(owner, owner))
+            chai
+        } = await setupMaker());
+        treasury = await newTreasury();
+
+        // Setup tests - Allow owner to interact directly with Treasury, not for production
+        treasury.orchestrate(owner, { from: owner });
     });
 
     it("get the size of the contract", async() => {
