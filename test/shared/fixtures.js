@@ -13,8 +13,10 @@ const Chai = artifacts.require('Chai');
 const Treasury = artifacts.require('Treasury');
 const YDai = artifacts.require('YDai');
 const Controller = artifacts.require('Controller');
+const Liquidations = artifacts.require('Liquidations');
+const Unwind = artifacts.require('Unwind');
 
-const { WETH, Line, spotName, linel, limits, spot, rate1, chi1, toRay, addBN, subBN, divRay, mulRay } = require("./utils");
+const { WETH, CHAI, Line, spotName, linel, limits, spot, rate1, chi1, toRay, addBN, subBN, divRay, mulRay } = require("./utils");
 
 const setupMaker = async() => {
     // Set up vat, join and weth
@@ -45,8 +47,6 @@ const setupMaker = async() => {
         dai.address,
     );
 
-    await pot.setChi(chi1);
-
     // Setup jug
     jug = await Jug.new(vat.address);
     await jug.init(WETH); // Set WETH duty (stability fee) to 1.0
@@ -61,6 +61,7 @@ const setupMaker = async() => {
     await vat.rely(daiJoin.address);
     await vat.rely(pot.address);
     await vat.rely(jug.address);
+    await vat.rely(end.address);
 
     return {
         vat,
@@ -71,7 +72,8 @@ const setupMaker = async() => {
         pot,
         jug,
         end,
-        chai
+        chai,
+        end,
     }
 }
 
@@ -120,6 +122,41 @@ async function newController() {
     return controller;
 }
 
+async function newLiquidations() {
+    liquidations = await Liquidations.new(
+        dai.address,
+        treasury.address,
+        controller.address,
+    );
+    await controller.orchestrate(liquidations.address);
+    await treasury.orchestrate(liquidations.address);
+
+    return liquidations
+}
+
+async function newUnwind() {
+    // Setup Unwind
+    unwind = await Unwind.new(
+        vat.address,
+        daiJoin.address,
+        weth.address,
+        wethJoin.address,
+        jug.address,
+        pot.address,
+        end.address,
+        chai.address,
+        treasury.address,
+        controller.address,
+        liquidations.address,
+    );
+    await treasury.orchestrate(unwind.address);
+    await treasury.registerUnwind(unwind.address);
+    await controller.orchestrate(unwind.address);
+    await liquidations.orchestrate(unwind.address);
+
+    return unwind
+}
+
 async function getDai(user, _daiTokens, _rate){
     await vat.hope(daiJoin.address, { from: user });
     await vat.hope(wethJoin.address, { from: user });
@@ -141,12 +178,29 @@ async function getChai(user, _chaiTokens, _chi, _rate){
     await chai.join(user, _daiTokens, { from: user });
 }
 
+// Convert eth to weth and post it to yDai
+async function postWeth(user, _wethTokens){
+    await weth.deposit({ from: user, value: _wethTokens });
+    await weth.approve(treasury.address, _wethTokens, { from: user });
+    await controller.post(WETH, user, user, _wethTokens, { from: user });
+}
+
+// Convert eth to chai and post it to yDai
+async function postChai(user, _chaiTokens, _chi, _rate){
+    await getChai(user, _chaiTokens, _chi, _rate);
+    await chai.approve(treasury.address, _chaiTokens, { from: user });
+    await controller.post(CHAI, user, user, _chaiTokens, { from: user });
+}
 
 module.exports = {
     setupMaker,
     newTreasury,
     newYDai,
     newController,
+    newLiquidations,
+    newUnwind,
     getDai,
     getChai,
+    postWeth,
+    postChai,
 }

@@ -4,7 +4,7 @@ const Liquidations = artifacts.require('Liquidations');
 const helper = require('ganache-time-traveler');
 const { BN, expectRevert, expectEvent } = require('@openzeppelin/test-helpers');
 const { WETH, CHAI, spot, rate1, chi1, daiTokens1, wethTokens1, chaiTokens1, toWad, toRay, toRad, addBN, subBN, mulRay, divRay } = require('./shared/utils');
-const { setupMaker, newTreasury, newController, newYDai } = require("./shared/fixtures");
+const { setupMaker, newTreasury, newController, newYDai, getDai, postWeth, postChai } = require("./shared/fixtures");
 
 contract('Liquidations', async (accounts) =>  {
     let [ owner, user1, user2, user3, buyer ] = accounts;
@@ -30,41 +30,6 @@ contract('Liquidations', async (accounts) =>  {
     let maturity2;
 
     const dust = '25000000000000000'; // 0.025 ETH
-
-    async function getDai(user, _daiTokens, _rate){
-        await vat.hope(daiJoin.address, { from: user });
-        await vat.hope(wethJoin.address, { from: user });
-
-        const _daiDebt = addBN(divRay(_daiTokens, _rate), 1);
-        const _wethTokens = divRay(_daiTokens, spot).mul(2);
-
-        await weth.deposit({ from: user, value: _wethTokens });
-        await weth.approve(wethJoin.address, _wethTokens, { from: user });
-        await wethJoin.join(user, _wethTokens, { from: user });
-        await vat.frob(WETH, user, user, user, _wethTokens, _daiDebt, { from: user });
-        await daiJoin.exit(user, _daiTokens, { from: user });
-    }
-
-    async function getChai(user, _chaiTokens, _chi, _rate){
-        const _daiTokens = mulRay(_chaiTokens, _chi);
-        await getDai(user, _daiTokens, _rate);
-        await dai.approve(chai.address, _daiTokens, { from: user });
-        await chai.join(user, _daiTokens, { from: user });
-    }
-
-    // Convert eth to weth and post it to yDai
-    async function postWeth(user, _wethTokens){
-        await weth.deposit({ from: user, value: _wethTokens });
-        await weth.approve(treasury.address, _wethTokens, { from: user });
-        await controller.post(WETH, user, user, _wethTokens, { from: user });
-    }
-
-    // Convert eth to chai and post it to yDai
-    async function postChai(user, _chaiTokens, _chi, _rate){
-        await getChai(user, _chaiTokens, _chi, _rate);
-        await chai.approve(treasury.address, _chaiTokens, { from: user });
-        await controller.post(CHAI, user, user, _chaiTokens, { from: user });
-    }
 
     beforeEach(async() => {
         snapshot = await helper.takeSnapshot();
