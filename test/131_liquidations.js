@@ -24,7 +24,7 @@ const Unwind = artifacts.require('Unwind');
 const helper = require('ganache-time-traveler');
 const truffleAssert = require('truffle-assertions');
 const { BN, expectRevert, expectEvent } = require('@openzeppelin/test-helpers');
-const { toWad, toRay, toRad, addBN, subBN, mulRay, divRay } = require('./shared/utils');
+const { rate1, toWad, toRay, toRad, addBN, subBN, mulRay, divRay } = require('./shared/utils');
 const { assert } = require('chai');
 
 contract('Liquidations', async (accounts) =>  {
@@ -56,7 +56,7 @@ contract('Liquidations', async (accounts) =>  {
 
     const limits = toRad(10000);
     const spot  = toRay(1.5);
-    const rate1  = toRay(1.25);
+    // const rate1  = toRay(1.25);
     const rate2  = toRay(1.5);
     const chi = toRay(1.2);
     const daiDebt = toWad(120);
@@ -66,6 +66,41 @@ contract('Liquidations', async (accounts) =>  {
     const yDaiTokens = daiTokens;
     let maturity1;
     let maturity2;
+
+    async function getDai(user, _daiTokens, _rate){
+        await vat.hope(daiJoin.address, { from: user });
+        await vat.hope(wethJoin.address, { from: user });
+
+        const _daiDebt = addBN(divRay(_daiTokens, _rate), 1);
+        const _wethTokens = divRay(_daiTokens, spot).mul(2);
+
+        await weth.deposit({ from: user, value: _wethTokens });
+        await weth.approve(wethJoin.address, _wethTokens, { from: user });
+        await wethJoin.join(user, _wethTokens, { from: user });
+        await vat.frob(WETH, user, user, user, _wethTokens, _daiDebt, { from: user });
+        await daiJoin.exit(user, _daiTokens, { from: user });
+    }
+
+    async function getChai(user, _chaiTokens, _chi, _rate){
+        const _daiTokens = mulRay(_chaiTokens, _chi);
+        await getDai(user, _daiTokens, _rate);
+        await dai.approve(chai.address, _daiTokens, { from: user });
+        await chai.join(user, _daiTokens, { from: user });
+    }
+
+    // Convert eth to weth and post it to yDai
+    async function postWeth(user, _wethTokens){
+        await weth.deposit({ from: user, value: _wethTokens });
+        await weth.approve(treasury.address, _wethTokens, { from: user });
+        await controller.post(WETH, user, user, _wethTokens, { from: user });
+    }
+
+    // Convert eth to chai and post it to yDai
+    async function postChai(user, _chaiTokens, _chi, _rate){
+        await getChai(user, _chaiTokens, _chi, _rate);
+        await chai.approve(treasury.address, _chaiTokens, { from: user });
+        await controller.post(CHAI, user, user, _chaiTokens, { from: user });
+    }
 
     beforeEach(async() => {
         snapshot = await helper.takeSnapshot();
@@ -217,52 +252,19 @@ contract('Liquidations', async (accounts) =>  {
 
     describe("with posted collateral and borrowed yDai", () => {
         beforeEach(async() => {
-            // Weth setup
-            await weth.deposit({ from: user1, value: wethTokens });
-            await weth.approve(treasury.address, wethTokens, { from: user1 });
-            await controller.post(WETH, user1, user1, wethTokens, { from: user1 });
+            await postWeth(user1, wethTokens);
 
-            await weth.deposit({ from: user2, value: wethTokens.add(1) });
-            await weth.approve(treasury.address, wethTokens.add(1), { from: user2 });
-            await controller.post(WETH, user2, user2, wethTokens.add(1), { from: user2 });
+            await postWeth(user2, wethTokens.add(1));
             await controller.borrow(WETH, maturity1, user2, user2, daiTokens, { from: user2 });
 
-            await weth.deposit({ from: user3, value: wethTokens.mul(2) });
-            await weth.approve(treasury.address, wethTokens.mul(2), { from: user3 });
-            await controller.post(WETH, user3, user3, wethTokens.mul(2), { from: user3 });
+            await postWeth(user3, wethTokens.mul(2));
             await controller.borrow(WETH, maturity1, user3, user3, daiTokens, { from: user3 });
             await controller.borrow(WETH, maturity2, user3, user3, daiTokens, { from: user3 });
 
-            // Chai setup
-            await vat.hope(daiJoin.address, { from: user1 });
-            await vat.hope(wethJoin.address, { from: user1 });
+            await postChai(user1, chaiTokens, chi, rate1);
 
-            await weth.deposit({ from: user1, value: wethTokens });
-            await weth.approve(wethJoin.address, wethTokens, { from: user1 });
-            await wethJoin.join(user1, wethTokens, { from: user1 });
-            await vat.frob(WETH, user1, user1, user1, wethTokens, daiDebt, { from: user1 });
-            await daiJoin.exit(user1, daiTokens, { from: user1 });
-            await dai.approve(chai.address, daiTokens, { from: user1 });
-            await chai.join(user1, daiTokens, { from: user1 });
-            await chai.approve(treasury.address, chaiTokens, { from: user1 });
-            await controller.post(CHAI, user1, user1, chaiTokens, { from: user1 });
-
-            await vat.hope(daiJoin.address, { from: user2 });
-            await vat.hope(wethJoin.address, { from: user2 });
-
-            const moreDebt = mulRay(daiDebt, toRay(1.1));
-            const moreDai = mulRay(daiTokens, toRay(1.1));
-            const moreWeth = mulRay(wethTokens, toRay(1.1));
             const moreChai = mulRay(chaiTokens, toRay(1.1));
-            await weth.deposit({ from: user2, value: moreWeth });
-            await weth.approve(wethJoin.address, moreWeth, { from: user2 });
-            await wethJoin.join(user2, moreWeth, { from: user2 });
-            await vat.frob(WETH, user2, user2, user2, moreWeth, moreDebt, { from: user2 });
-            await daiJoin.exit(user2, moreDai, { from: user2 });
-            await dai.approve(chai.address, moreDai, { from: user2 });
-            await chai.join(user2, moreDai, { from: user2 });
-            await chai.approve(treasury.address, moreChai, { from: user2 });
-            await controller.post(CHAI, user2, user2, moreChai, { from: user2 });
+            await postChai(user2, moreChai, chi, rate1);
             await controller.borrow(CHAI, maturity1, user2, user2, daiTokens, { from: user2 });
 
             // user1 has chaiTokens in controller and no debt.
@@ -343,6 +345,7 @@ contract('Liquidations', async (accounts) =>  {
             it("liquidations can be started", async() => {
                 const userCollateral = new BN(await controller.posted(WETH, user2, { from: buyer }));
                 const userDebt = (await controller.totalDebtDai.call(WETH, user2, { from: buyer }));
+                console.log(userDebt.toString());
                 const dust = '25000000000000000'; // 0.025 ETH
                 
                 const event = (await liquidations.liquidate(user2, buyer, { from: buyer })).logs[0];
@@ -401,21 +404,11 @@ contract('Liquidations', async (accounts) =>  {
                 });
 
                 it("liquidations retrieve about 1/2 of collateral at the start", async() => {
-                    const daiTokens = (await liquidations.debt(user2, { from: buyer })).toString();
-                    // console.log(daiTokens); // 180
-                    const liquidatorDaiDebt = divRay(daiTokens, rate2);
-                    const liquidatorWethTokens = divRay(daiTokens, spot);
-                    // console.log(daiDebt.toString());
-                    // wethTokens = 100 ether + 1 wei
+                    const liquidatorDai = (await liquidations.debt(user2, { from: buyer })).toString();
+                    await getDai(buyer, liquidatorDai, rate2);
 
-                    await weth.deposit({ from: buyer, value: liquidatorWethTokens });
-                    await weth.approve(wethJoin.address, liquidatorWethTokens, { from: buyer });
-                    await wethJoin.join(buyer, liquidatorWethTokens, { from: buyer });
-                    await vat.frob(WETH, buyer, buyer, buyer, liquidatorWethTokens, liquidatorDaiDebt, { from: buyer });
-                    await daiJoin.exit(buyer, daiTokens, { from: buyer });
-
-                    await dai.approve(treasury.address, daiTokens, { from: buyer });
-                    await liquidations.buy(buyer, user2, daiTokens, { from: buyer });
+                    await dai.approve(treasury.address, liquidatorDai, { from: buyer });
+                    await liquidations.buy(buyer, user2, liquidatorDai, { from: buyer });
 
                     assert.equal(
                         await liquidations.debt(user2, { from: buyer }),
@@ -436,26 +429,17 @@ contract('Liquidations', async (accounts) =>  {
                 });
 
                 it("partial liquidations are possible", async() => {
-                    const daiTokens = (await liquidations.debt(user2, { from: buyer })).toString();
-                    // console.log(daiTokens); // 180
-                    const liquidatorDaiDebt = divRay(daiTokens, rate2);
-                    const liquidatorWethTokens = divRay(daiTokens, spot);
-                    // console.log(daiDebt.toString());
-                    // wethTokens = 100 ether + 1 wei
+                    const userDebt = (await liquidations.debt(user2, { from: buyer })).toString();
+                    const liquidatorDai = divRay(userDebt, toRay(2));
+                    await getDai(buyer, liquidatorDai, rate2);
 
-                    await weth.deposit({ from: buyer, value: liquidatorWethTokens });
-                    await weth.approve(wethJoin.address, liquidatorWethTokens, { from: buyer });
-                    await wethJoin.join(buyer, liquidatorWethTokens, { from: buyer });
-                    await vat.frob(WETH, buyer, buyer, buyer, liquidatorWethTokens, liquidatorDaiDebt, { from: buyer });
-                    await daiJoin.exit(buyer, daiTokens, { from: buyer });
-
-                    await dai.approve(treasury.address, divRay(daiTokens, toRay(2)), { from: buyer });
-                    await liquidations.buy(buyer, user2, divRay(daiTokens, toRay(2)), { from: buyer });
+                    await dai.approve(treasury.address, liquidatorDai, { from: buyer });
+                    await liquidations.buy(buyer, user2, liquidatorDai, { from: buyer });
 
                     assert.equal(
                         await liquidations.debt(user2, { from: buyer }),
-                        divRay(daiTokens, toRay(2)).toString(),
-                        "User debt should have been halved",
+                        divRay(userDebt, toRay(2)).toString(),
+                        "User debt should be " + divRay(userDebt, toRay(2)) + ", instead is " + await liquidations.debt(user2, { from: buyer }),
                     );
                     // The buy will happen a few seconds after the start of the liquidation, so the collateral received will be slightly above the 1/4 of the total posted.
                     expect(
