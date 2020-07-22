@@ -90,9 +90,9 @@ async function newYDai(maturity, name, symbol) {
         name,
         symbol,
     );
-    controller.addSeries(yDai.address);
-    yDai.orchestrate(controller.address);
-    treasury.orchestrate(yDai.address);
+    await controller.addSeries(yDai.address);
+    await yDai.orchestrate(controller.address);
+    await treasury.orchestrate(yDai.address);
     return yDai;
 }
 
@@ -105,21 +105,7 @@ async function newController() {
         pot.address,
         treasury.address,
     );
-    treasury.orchestrate(controller.address);
-
-    // Setup yDai
-    /* const block = await web3.eth.getBlockNumber();
-    maturity1 = (await web3.eth.getBlock(block)).timestamp + 1000;
-    yDai1 = await newYdai(maturity1, "Name1", "Symbol1")
-    controller.addSeries(yDai1.address);
-    yDai1.orchestrate(controller.address);
-    treasury.orchestrate(yDai1.address);
-
-    maturity2 = (await web3.eth.getBlock(block)).timestamp + 2000;
-    yDai2 = await newYdai(maturity2, "Name2", "Symbol2")
-    controller.addSeries(yDai2.address);
-    yDai2.orchestrate(controller.address);
-    treasury.orchestrate(yDai2.address);*/
+    await treasury.orchestrate(controller.address);
 
     return controller;
 }

@@ -52,7 +52,7 @@ contract('yDai', async (accounts) =>  {
         // Setup yDai1
         const block = await web3.eth.getBlockNumber();
         maturity = (await web3.eth.getBlock(block)).timestamp + 1000;
-        yDai1 = await newYDai(maturity, "Name", "Symbol")
+        yDai1 = await newYDai(maturity, "Name", "Symbol");
 
         // Test setup
         // Setup Flash Minter

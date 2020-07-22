@@ -1,31 +1,9 @@
-// External
-const Vat = artifacts.require('Vat');
-const GemJoin = artifacts.require('GemJoin');
-const DaiJoin = artifacts.require('DaiJoin');
-const Weth = artifacts.require("WETH9");
-const ERC20 = artifacts.require("TestERC20");
-const Jug = artifacts.require('Jug');
-const Pot = artifacts.require('Pot');
-const End = artifacts.require('End');
-const Chai = artifacts.require('Chai');
-
-// Common
-const Treasury = artifacts.require('Treasury');
-
-// YDai
-const YDai = artifacts.require('YDai');
-const Controller = artifacts.require('Controller');
-
-// Peripheral
-const EthProxy = artifacts.require('EthProxy');
-const Unwind = artifacts.require('Unwind');
-
 const helper = require('ganache-time-traveler');
 const { BN, expectRevert } = require('@openzeppelin/test-helpers');
-const { WETH, spot, chi1, rate1, daiTokens1, wethTokens1, toWad, toRay, toRad, mulRay, divRay, addBN, subBN } = require('./shared/utils');
+const { WETH, spot, rate1, daiTokens1, wethTokens1, toRay, mulRay, divRay, addBN, subBN } = require('./shared/utils');
 // const { toWad, toRay, toRad, subBN, mulRay, divRay } = require('./shared/utils');
 
-const { setupMaker, newTreasury, newController } = require("./shared/fixtures");
+const { setupMaker, newTreasury, newController, newYDai } = require("./shared/fixtures");
 
 contract('Controller - Weth', async (accounts) =>  {
     let [ owner, user1, user2, user3 ] = accounts;
@@ -34,34 +12,19 @@ contract('Controller - Weth', async (accounts) =>  {
     let wethJoin;
     let dai;
     let daiJoin;
-    let jug;
-    let pot;
-    let chai;
     let treasury;
     let yDai1;
     let yDai2;
     let controller;
 
-    // let WETH = web3.utils.fromAscii("ETH-A");
-    // let CHAI = web3.utils.fromAscii("CHAI");
-    let Line = web3.utils.fromAscii("Line");
-    let spotName = web3.utils.fromAscii("spot");
-    let linel = web3.utils.fromAscii("line");
-
     let snapshot;
     let snapshotId;
 
-    const limits = toRad(10000);
-    // const spot  = toRay(150);
-    // let rate1;
-    // let daiDebt;
-    // let daiTokens1;
-    // let wethTokens1;
     let maturity1;
     let maturity2;
 
-    // Convert eth to weth and use it to borrow `daiTokens1` from MakerDAO
-    // This function shadows and uses global variables, careful.
+    // Convert eth to weth and use it to borrow `_daiTokens` from MakerDAO
+    // This function uses global variables, careful.
     async function getDai(user, _daiTokens, _rate){
         await vat.hope(daiJoin.address, { from: user });
         await vat.hope(wethJoin.address, { from: user });
@@ -90,61 +53,17 @@ contract('Controller - Weth', async (accounts) =>  {
             jug,
             chai
         } = await setupMaker());
-
-        // Set treasury
-        treasury = await Treasury.new(
-            vat.address,
-            weth.address,
-            dai.address,
-            wethJoin.address,
-            daiJoin.address,
-            pot.address,
-            chai.address,
-            { from: owner },
-        );
-
-        // Setup Controller
-        controller = await Controller.new(
-            vat.address,
-            pot.address,
-            treasury.address,
-            { from: owner },
-        );
-        treasury.orchestrate(controller.address, { from: owner });
-
-        await vat.hope(daiJoin.address, { from: owner });
+        treasury = await newTreasury();
+        controller = await newController();
 
         // Setup yDai
         const block = await web3.eth.getBlockNumber();
         maturity1 = (await web3.eth.getBlock(block)).timestamp + 1000;
-        yDai1 = await YDai.new(
-            vat.address,
-            jug.address,
-            pot.address,
-            treasury.address,
-            maturity1,
-            "Name",
-            "Symbol",
-            { from: owner },
-        );
-        controller.addSeries(yDai1.address, { from: owner });
-        yDai1.orchestrate(controller.address, { from: owner });
-        treasury.orchestrate(yDai1.address, { from: owner });
-
         maturity2 = (await web3.eth.getBlock(block)).timestamp + 2000;
-        yDai2 = await YDai.new(
-            vat.address,
-            jug.address,
-            pot.address,
-            treasury.address,
-            maturity2,
-            "Name2",
-            "Symbol2",
-            { from: owner },
-        );
-        controller.addSeries(yDai2.address, { from: owner });
-        yDai2.orchestrate(controller.address, { from: owner });
-        treasury.orchestrate(yDai2.address, { from: owner });
+        yDai1 = await newYDai(maturity1, "Name", "Symbol");
+        yDai2 = await newYDai(maturity2, "Name", "Symbol");
+
+        await vat.hope(daiJoin.address, { from: owner });
     });
 
     afterEach(async() => {
