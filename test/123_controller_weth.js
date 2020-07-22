@@ -54,9 +54,9 @@ contract('Controller - Weth', async (accounts) =>  {
     const limits = toRad(10000);
     // const spot  = toRay(150);
     // let rate1;
-    let daiDebt;
-    let daiTokens1;
-    let wethTokens1;
+    // let daiDebt;
+    // let daiTokens1;
+    // let wethTokens1;
     let maturity1;
     let maturity2;
 
@@ -80,48 +80,16 @@ contract('Controller - Weth', async (accounts) =>  {
         snapshot = await helper.takeSnapshot();
         snapshotId = snapshot['result'];
 
-        // rate1  = toRay(1.25);
-        daiDebt = toWad(120);
-        daiTokens1 = mulRay(daiDebt, rate1);
-        wethTokens1 = divRay(daiTokens1, spot);    
-
-        // Setup vat, join and weth
-        vat = await Vat.new();
-        await vat.init(WETH, { from: owner }); // Set WETH rate (stability fee accumulator) to 1.0
-
-        weth = await Weth.new({ from: owner });
-        wethJoin = await GemJoin.new(vat.address, WETH, weth.address, { from: owner });
-
-        dai = await ERC20.new(0, { from: owner });
-        daiJoin = await DaiJoin.new(vat.address, dai.address, { from: owner });
-
-        await vat.file(WETH, spotName, spot, { from: owner });
-        await vat.file(WETH, linel, limits, { from: owner });
-        await vat.file(Line, limits);
-
-        // Setup jug
-        jug = await Jug.new(vat.address);
-        await jug.init(WETH, { from: owner }); // Set WETH duty (stability fee) to 1.0
-
-        // Setup pot
-        pot = await Pot.new(vat.address);
-
-        // Permissions
-        await vat.rely(vat.address, { from: owner });
-        await vat.rely(wethJoin.address, { from: owner });
-        await vat.rely(daiJoin.address, { from: owner });
-        await vat.rely(jug.address, { from: owner });
-        await vat.rely(pot.address, { from: owner });
-        await vat.hope(daiJoin.address, { from: owner });
-
-        // Setup chai
-        chai = await Chai.new(
-            vat.address,
-            pot.address,
-            daiJoin.address,
-            dai.address,
-            { from: owner },
-        );
+        ({
+            vat,
+            weth,
+            wethJoin,
+            dai,
+            daiJoin,
+            pot,
+            jug,
+            chai
+        } = await setupMaker());
 
         // Set treasury
         treasury = await Treasury.new(
@@ -143,6 +111,8 @@ contract('Controller - Weth', async (accounts) =>  {
             { from: owner },
         );
         treasury.orchestrate(controller.address, { from: owner });
+
+        await vat.hope(daiJoin.address, { from: owner });
 
         // Setup yDai
         const block = await web3.eth.getBlockNumber();
@@ -175,9 +145,6 @@ contract('Controller - Weth', async (accounts) =>  {
         controller.addSeries(yDai2.address, { from: owner });
         yDai2.orchestrate(controller.address, { from: owner });
         treasury.orchestrate(yDai2.address, { from: owner });
-
-        // Tests setup
-        await vat.fold(WETH, vat.address, subBN(rate1, toRay(1)), { from: owner }); // Fold only the increase from 1.0
     });
 
     afterEach(async() => {
