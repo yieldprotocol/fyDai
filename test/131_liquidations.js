@@ -425,12 +425,12 @@ contract('Liquidations', async (accounts) =>  {
                     expect(
                         await weth.balanceOf(buyer, { from: buyer })
                     ).to.be.bignumber.gt(
-                        divRay(wethTokens, toRay(2)).toString()
+                        divRay(userCollateral, toRay(2)).toString()
                     );
                     expect(
                         await weth.balanceOf(buyer, { from: buyer }),
                     ).to.be.bignumber.lt(
-                        mulRay(divRay(wethTokens, toRay(2)), toRay(1.01)).toString(), // TODO: Hold on, is this 2/3?
+                        mulRay(divRay(userCollateral, toRay(2)), toRay(1.01)).toString(),
                     );
                 });
 
@@ -449,12 +449,12 @@ contract('Liquidations', async (accounts) =>  {
                     expect(
                         await weth.balanceOf(buyer, { from: buyer })
                     ).to.be.bignumber.gt(
-                        divRay(wethTokens, toRay(4)).toString()
+                        divRay(userCollateral, toRay(4)).toString()
                     );
                     expect(
                         await weth.balanceOf(buyer, { from: buyer }),
                     ).to.be.bignumber.lt(
-                        mulRay(divRay(wethTokens, toRay(4)), toRay(1.01)).toString(),
+                        mulRay(divRay(userCollateral, toRay(4)), toRay(1.01)).toString(),
                     );
                 });
 
@@ -465,19 +465,10 @@ contract('Liquidations', async (accounts) =>  {
                     });
 
                     it("liquidations retrieve all collateral", async() => {
-                        const daiTokens = (await liquidations.debt(user2, { from: buyer })).toString();
-                        const liquidatorDaiDebt = divRay(daiTokens, rate2);
-                        const liquidatorWethTokens = divRay(daiTokens, spot);
-                        const wethTokens = await liquidations.collateral(user2, { from: owner });
+                        const liquidatorBuys = userDebt;
     
-                        await weth.deposit({ from: buyer, value: liquidatorWethTokens });
-                        await weth.approve(wethJoin.address, liquidatorWethTokens, { from: buyer });
-                        await wethJoin.join(buyer, liquidatorWethTokens, { from: buyer });
-                        await vat.frob(WETH, buyer, buyer, buyer, liquidatorWethTokens, liquidatorDaiDebt, { from: buyer });
-                        await daiJoin.exit(buyer, daiTokens, { from: buyer });
-    
-                        await dai.approve(treasury.address, daiTokens, { from: buyer });
-                        await liquidations.buy(buyer, user2, daiTokens, { from: buyer });
+                        await dai.approve(treasury.address, liquidatorBuys, { from: buyer });
+                        await liquidations.buy(buyer, user2, liquidatorBuys, { from: buyer });
     
                         assert.equal(
                             await liquidations.debt(user2, { from: buyer }),
@@ -486,56 +477,36 @@ contract('Liquidations', async (accounts) =>  {
                         );
                         assert.equal(
                             await weth.balanceOf(buyer, { from: buyer }),
-                            wethTokens.toString(),
-                            "Liquidator should have " + wethTokens + " weth, instead has " + await weth.balanceOf(buyer, { from: buyer }),
+                            userCollateral.toString(),
+                            "Liquidator should have " + userCollateral + " weth, instead has " + await weth.balanceOf(buyer, { from: buyer }),
                         );
                     });
     
                     it("partial liquidations are possible", async() => {
-                        const daiTokens = (await liquidations.debt(user2, { from: buyer })).toString();
-                        const liquidatorDaiDebt = divRay(daiTokens, rate2);
-                        const liquidatorWethTokens = divRay(daiTokens, spot);
-                        const wethTokens = (await liquidations.collateral(user2, { from: owner })).toString();
+                        const liquidatorBuys = divRay(userDebt, toRay(2));
     
-                        await weth.deposit({ from: buyer, value: liquidatorWethTokens });
-                        await weth.approve(wethJoin.address, liquidatorWethTokens, { from: buyer });
-                        await wethJoin.join(buyer, liquidatorWethTokens, { from: buyer });
-                        await vat.frob(WETH, buyer, buyer, buyer, liquidatorWethTokens, liquidatorDaiDebt, { from: buyer });
-                        await daiJoin.exit(buyer, daiTokens, { from: buyer });
-    
-                        await dai.approve(treasury.address, divRay(daiTokens, toRay(2)), { from: buyer });
-                        await liquidations.buy(buyer, user2, divRay(daiTokens, toRay(2)), { from: buyer });
+                        await dai.approve(treasury.address, liquidatorBuys, { from: buyer });
+                        await liquidations.buy(buyer, user2, liquidatorBuys, { from: buyer });
     
                         assert.equal(
                             await liquidations.debt(user2, { from: buyer }),
-                            divRay(daiTokens, toRay(2)).toString(),
+                            divRay(userDebt, toRay(2)).toString(),
                             "User debt should have been halved",
                         );
                         assert.equal(
                             await weth.balanceOf(buyer, { from: buyer }),
-                            addBN(divRay(wethTokens, toRay(2)), 1).toString(), // divRay should round up
-                            "Liquidator should have " + addBN(divRay(wethTokens, toRay(2)), 1) + " weth, instead has " + await weth.balanceOf(buyer, { from: buyer }),
+                            addBN(divRay(userCollateral, toRay(2)), 1).toString(), // divRay should round up
+                            "Liquidator should have " + addBN(divRay(userCollateral, toRay(2)), 1) + " weth, instead has " + await weth.balanceOf(buyer, { from: buyer }),
                         );
                     });
 
                     it("liquidations leaving dust revert", async() => {
-                        const daiTokens = (await liquidations.debt(user2, { from: buyer })).toString();
-                        // console.log(daiTokens); // 180
-                        const liquidatorDaiDebt = divRay(daiTokens, rate2);
-                        const liquidatorWethTokens = divRay(daiTokens, spot);
-                        // console.log(daiDebt.toString());
-                        // wethTokens = 100 ether + 1 wei
+                        const liquidatorBuys = subBN(userDebt, 100);
 
-                        await weth.deposit({ from: buyer, value: liquidatorWethTokens });
-                        await weth.approve(wethJoin.address, liquidatorWethTokens, { from: buyer });
-                        await wethJoin.join(buyer, liquidatorWethTokens, { from: buyer });
-                        await vat.frob(WETH, buyer, buyer, buyer, liquidatorWethTokens, liquidatorDaiDebt, { from: buyer });
-                        await daiJoin.exit(buyer, daiTokens, { from: buyer });
-
-                        await dai.approve(treasury.address, daiTokens, { from: buyer });
+                        await dai.approve(treasury.address, liquidatorBuys, { from: buyer });
 
                         await expectRevert(
-                            liquidations.buy(buyer, user2, subBN(daiTokens, 1000), { from: buyer }),
+                            liquidations.buy(buyer, user2, liquidatorBuys, { from: buyer }),
                             "Liquidations: Below dust",
                         );
                     });
@@ -543,26 +514,17 @@ contract('Liquidations', async (accounts) =>  {
 
                 describe("with completed liquidations", () => {
                     beforeEach(async() => {
-                        const daiTokens = (await liquidations.debt(user2, { from: buyer })).toString();
-                        // console.log(daiTokens); // 180
-                        const liquidatorDaiDebt = divRay(daiTokens, rate2);
-                        const liquidatorWethTokens = divRay(daiTokens, spot);
-                        // console.log(daiDebt.toString());
-                        // wethTokens = 100 ether + 1 wei
+                        userCollateral = new BN(await liquidations.collateral(user2, { from: buyer })).toString();
+                        userDebt = new BN(await liquidations.debt(user2, { from: buyer })).toString();
+                        await getDai(buyer, userDebt, rate2);
     
-                        await weth.deposit({ from: buyer, value: liquidatorWethTokens });
-                        await weth.approve(wethJoin.address, liquidatorWethTokens, { from: buyer });
-                        await wethJoin.join(buyer, liquidatorWethTokens, { from: buyer });
-                        await vat.frob(WETH, buyer, buyer, buyer, liquidatorWethTokens, liquidatorDaiDebt, { from: buyer });
-                        await daiJoin.exit(buyer, daiTokens, { from: buyer });
-    
-                        await dai.approve(treasury.address, daiTokens, { from: buyer });
-                        await liquidations.buy(buyer, user2, daiTokens, { from: buyer });
+                        await dai.approve(treasury.address, userDebt, { from: buyer });
+                        await liquidations.buy(buyer, user2, userDebt, { from: buyer });
                     });
     
                     it("liquidated users can retrieve any remaining collateral", async() => {
-                        const wethTokens = (await liquidations.collateral(user2, { from: buyer })).toString();
-                        await liquidations.withdraw(user2, user2, wethTokens, { from: user2 });
+                        const remainingWeth = (await liquidations.collateral(user2, { from: buyer })).toString();
+                        await liquidations.withdraw(user2, user2, remainingWeth, { from: user2 });
 
                         assert.equal(
                             await liquidations.collateral(user2, { from: buyer }),
@@ -571,7 +533,7 @@ contract('Liquidations', async (accounts) =>  {
                         );
                         assert.equal(
                             await weth.balanceOf(user2, { from: buyer }),
-                            wethTokens,
+                            remainingWeth,
                             "User should have the remaining weth",
                         );
                     });
@@ -580,7 +542,3 @@ contract('Liquidations', async (accounts) =>  {
         });
     });
 });
-
-function bytes32ToString(text) {
-    return web3.utils.toAscii(text).replace(/\0/g, '');
-}
