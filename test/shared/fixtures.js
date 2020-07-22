@@ -1,3 +1,6 @@
+const ethers = require("ethers");
+const toBytes32 = ethers.utils.formatBytes32String;
+
 const Vat = artifacts.require('Vat');
 const Jug = artifacts.require('Jug');
 const GemJoin = artifacts.require('GemJoin');
@@ -5,12 +8,17 @@ const DaiJoin = artifacts.require('DaiJoin');
 const Weth = artifacts.require("WETH9");
 const ERC20 = artifacts.require("TestERC20");
 const Pot = artifacts.require('Pot');
+const End = artifacts.require('End');
 const Chai = artifacts.require('Chai');
 const Treasury = artifacts.require('Treasury');
 const YDai = artifacts.require('YDai');
 const Controller = artifacts.require('Controller');
 
-const { WETH, Line, spotName, linel, limits, spot, rate1, chi1, toRay, subBN } = require("./utils");
+const { WETH, limits, spot, rate1, chi1, toRay, subBN } = require("./utils");
+
+const Line = toBytes32("Line");
+const spotName = toBytes32("spot");
+const linel = toBytes32("line");
 
 const setupMaker = async() => {
     // Set up vat, join and weth
@@ -47,6 +55,10 @@ const setupMaker = async() => {
     jug = await Jug.new(vat.address);
     await jug.init(WETH); // Set WETH duty (stability fee) to 1.0
 
+    // Setup end
+    end = await End.new();
+    await end.file(toBytes32("vat"), vat.address);
+
     // Permissions
     await vat.rely(vat.address);
     await vat.rely(wethJoin.address);
@@ -62,6 +74,7 @@ const setupMaker = async() => {
         daiJoin,
         pot,
         jug,
+        end,
         chai
     }
 }
