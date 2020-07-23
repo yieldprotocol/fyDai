@@ -208,7 +208,7 @@ contract('ControllerView', async (accounts) =>  {
                         );
                     });
         
-                    it.only("as rate increases after maturity, the debt doesn't in when measured in yDai", async() => {
+                    it("as rate increases after maturity, the debt doesn't in when measured in yDai", async() => {
                         let debt = await controllerView.debtDai(WETH, maturity1, user1);
                         assert.equal(
                             await controller.inYDai.call(WETH, maturity1, debt),
