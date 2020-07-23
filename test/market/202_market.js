@@ -1,6 +1,7 @@
 const Market = artifacts.require('Market');
 const YieldMathMock = artifacts.require('YieldMathMock');
 
+const helper = require('ganache-time-traveler');
 const { toWad, toRay, mulRay } = require('../shared/utils');
 const { setupMaker, newTreasury, newController, newYDai, getDai } = require("../shared/fixtures");
 const { BN, expectRevert } = require('@openzeppelin/test-helpers');
@@ -26,7 +27,13 @@ contract('Market', async (accounts) =>  {
 
     let maturity1;
 
+    let snapshot;
+    let snapshotId;
+
     beforeEach(async() => {
+        snapshot = await helper.takeSnapshot();
+        snapshotId = snapshot['result'];
+
         ({
             vat,
             weth,
@@ -63,6 +70,11 @@ contract('Market', async (accounts) =>  {
         await yDai1.orchestrate(owner, { from: owner });
 
     });
+
+    afterEach(async() => {
+        await helper.revertToSnapshot(snapshotId);
+    });
+
 
     it("get the size of the contract", async() => {
         console.log();
