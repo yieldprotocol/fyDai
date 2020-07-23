@@ -6,23 +6,12 @@ const { setupMaker, newTreasury, newController, newYDai, getDai } = require("./.
 
 contract('Market', async (accounts) =>  {
     let [ owner, user1, operator, from, to ] = accounts;
-    let vat;
-    let weth;
-    let wethJoin;
     let dai;
-    let daiJoin;
-    let jug;
-    let pot;
-    let end;
-    let chai;
     let treasury;
     let yDai1;
-    let yDai2;
     let controller;
-    let splitter;
     let market;
-    let flashMinter;
-
+    
     const daiReserves = daiTokens1;
     const yDaiTokens1 = daiTokens1;
     const yDaiReserves = yDaiTokens1;

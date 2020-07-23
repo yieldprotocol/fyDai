@@ -1,31 +1,20 @@
 const helper = require('ganache-time-traveler');
-const { BN, expectRevert } = require('@openzeppelin/test-helpers');
-const { WETH, CHAI, spot, rate1: rate, chi1: chi, daiTokens1: daiTokens, chaiTokens1: chaiTokens, wethTokens1: wethTokens, toRay, toRad, addBN, subBN, mulRay, divRay } = require('./../shared/utils');
-const { shutdown, setupMaker, newTreasury, newController, newYDai, getDai, getChai, postWeth, postChai, newUnwind, newLiquidations } = require("./../shared/fixtures");
+const { WETH, rate1: rate, daiTokens1, wethTokens1: wethTokens1 } = require('./../shared/utils');
+const { shutdown, setupMaker, newTreasury, newController, newYDai, getDai, postWeth, newUnwind, newLiquidations } = require("./../shared/fixtures");
 
 contract('Gas Usage', async (accounts) =>  {
-    let [ owner, user1, user2, user3, user4 ] = accounts;
-    let vat;
-    let weth;
-    let wethJoin;
+    let [ owner, user1, user2, user3 ] = accounts;
     let dai;
-    let daiJoin;
-    let jug;
-    let pot;
-    let end;
-    let chai;
     let treasury;
     let yDai1;
     let yDai2;
     let controller;
-    let ethProxy;
     let liquidations;
     let unwind;
 
     let snapshot;
     let snapshotId;
 
-    const yDaiTokens = daiTokens;
     let maturities;
     let series;
 
@@ -80,29 +69,29 @@ contract('Gas Usage', async (accounts) =>  {
                 // Set the scenario
                 
                 for (let i = 0; i < maturities.length; i++) {
-                    await postWeth(user3, wethTokens);
-                    await controller.borrow(WETH, maturities[i], user3, user3, daiTokens, { from: user3 });
+                    await postWeth(user3, wethTokens1);
+                    await controller.borrow(WETH, maturities[i], user3, user3, daiTokens1, { from: user3 });
                 }
             });
 
-            it("borrow a second time (no gas bond)", async() => {
+            it("borrow a second time", async() => {
                 for (let i = 0; i < maturities.length; i++) {
-                    await postWeth(user3, wethTokens);
-                    await controller.borrow(WETH, maturities[i], user3, user3, daiTokens, { from: user3 });
+                    await postWeth(user3, wethTokens1);
+                    await controller.borrow(WETH, maturities[i], user3, user3, daiTokens1, { from: user3 });
                 }
             });
 
             it("repayYDai", async() => {
                 for (let i = 0; i < maturities.length; i++) {
-                    await series[i].approve(treasury.address, daiTokens, { from: user3 });
-                    await controller.repayYDai(WETH, maturities[i], user3, user3, daiTokens, { from: user3 });
+                    await series[i].approve(treasury.address, daiTokens1, { from: user3 });
+                    await controller.repayYDai(WETH, maturities[i], user3, user3, daiTokens1, { from: user3 });
                 }
             });
 
-            it("repayYDai and retrieve gas bond", async() => {
+            it("repay all debt with repayYDai", async() => {
                 for (let i = 0; i < maturities.length; i++) {
-                    await series[i].approve(controller.address, daiTokens.mul(2), { from: user3 });
-                    await controller.repayYDai(WETH, maturities[i], user3, user3, daiTokens.mul(2), { from: user3 });
+                    await series[i].approve(controller.address, daiTokens1.mul(2), { from: user3 });
+                    await controller.repayYDai(WETH, maturities[i], user3, user3, daiTokens1.mul(2), { from: user3 });
                 }
             });
 
@@ -111,13 +100,13 @@ contract('Gas Usage', async (accounts) =>  {
                 await helper.advanceBlock();
                 
                 for (let i = 0; i < maturities.length; i++) {
-                    await getDai(user3, daiTokens, rate);
-                    await dai.approve(treasury.address, daiTokens, { from: user3 });
-                    await controller.repayDai(WETH, maturities[i], user3, user3, daiTokens, { from: user3 });
+                    await getDai(user3, daiTokens1, rate);
+                    await dai.approve(treasury.address, daiTokens1, { from: user3 });
+                    await controller.repayDai(WETH, maturities[i], user3, user3, daiTokens1, { from: user3 });
                 }
                 
                 for (let i = 0; i < maturities.length; i++) {
-                    await controller.withdraw(WETH, user3, user3, wethTokens, { from: user3 });
+                    await controller.withdraw(WETH, user3, user3, wethTokens1, { from: user3 });
                 }
             });
 
