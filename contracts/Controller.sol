@@ -136,9 +136,9 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
     function inYDai(bytes32 collateral, uint256 maturity, uint256 daiAmount) public returns (uint256) {
         if (series[maturity].isMature()){
             if (collateral == WETH){
-                return divd(daiAmount, series[maturity].rateGrowth());
+                return divdrup(daiAmount, series[maturity].rateGrowth());
             } else if (collateral == CHAI) {
-                return divd(daiAmount, series[maturity].chiGrowth());
+                return divdrup(daiAmount, series[maturity].chiGrowth());
             } else {
                 revert("Controller: Unsupported collateral");
             }
