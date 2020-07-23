@@ -171,14 +171,14 @@ contract Splitter is IFlashMinter, DecimalMath {
             user,
             user,
             user,
-            -toInt(wethAmount),            // Weth collateral to add
-            -toInt(divd(daiAmount, rate))  // Dai debt to add
+            -toInt(wethAmount),            // Removing Weth collateral
+            -toInt(divd(daiAmount, rate))  // Removing Dai debt
         );
 
         vat.flux("ETH-A", user, address(this), wethAmount);             // Remove the collateral from Maker
         wethJoin.exit(address(this), wethAmount);                       // Hold the weth in Splitter
         controller.post(WETH, address(this), user, wethAmount);         // Add the collateral to Yield
-        controller.borrow(WETH, yDai.maturity(), user, address(this), yDaiSold); // Borrow the Dai
+        controller.borrow(WETH, yDai.maturity(), user, address(this), yDaiSold); // Borrow the yDai
     }
 
 
@@ -192,7 +192,7 @@ contract Splitter is IFlashMinter, DecimalMath {
     function _yieldToMaker(address user, uint256 yDaiAmount, uint256 wethAmount) internal {
         // Pay the Yield debt - Splitter pays YDai to remove the debt of `user`
         // Controller should take exactly all yDai flash minted.
-        controller.repayYDai(WETH, yDai.maturity(), address(this), user, yDaiAmount); // repayYDai wil only take what is needed
+        controller.repayYDai(WETH, yDai.maturity(), address(this), user, yDaiAmount);
 
         // Withdraw the collateral from Yield, Splitter will hold it
         controller.withdraw(WETH, user, address(this), wethAmount);
@@ -201,7 +201,6 @@ contract Splitter is IFlashMinter, DecimalMath {
         wethJoin.join(user, wethAmount);
 
         // We are going to need to buy the YDai back with Dai borrowed from Maker
-        // TODO: What if `repayYDai` didn't take all the YDai
         uint256 daiAmount = market.buyYDaiPreview(uint128(yDaiAmount)); // TODO: Consider SafeCast
 
         // Borrow the Dai from Maker
@@ -211,11 +210,11 @@ contract Splitter is IFlashMinter, DecimalMath {
             user,
             user,
             user,
-            toInt(wethAmount),                   // Weth collateral to add
-            toInt(divd(daiAmount, rate))         // Dai debt to remove
+            toInt(wethAmount),                   // Adding Weth collateral
+            toInt(divd(daiAmount, rate))         // Adding Dai debt
         );
-        vat.move(user, address(this), daiAmount.mul(UNIT)); // Transfer the Dai to Splitter within MakerDAO, and `move` operates in RAD
-        daiJoin.exit(address(this), daiAmount);   // Splitter will hold the dai temporarily
+        vat.move(user, address(this), daiAmount.mul(UNIT)); // Transfer the Dai to Splitter within MakerDAO, in RAD
+        daiJoin.exit(address(this), daiAmount);             // Splitter will hold the dai temporarily
 
         // Sell the Dai for YDai at Market - It should make up for what was taken with repayYdai
         market.sellDai(address(this), address(this), uint128(dai.balanceOf(address(this)))); // TODO: Consider SafeCast
