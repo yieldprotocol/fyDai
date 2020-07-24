@@ -165,10 +165,10 @@ contract('yDai', async (accounts) =>  {
             );
         });
 
-        it("yDai1 chi gets fixed at maturity time", async() => {
+        it.only("yDai1 chi gets fixed at maturity time", async() => {
             await pot.setChi(chi2, { from: owner });
             
-            assert(
+            assert.equal(
                 await yDai1.chiGrowth.call(),
                 subBN(chi2, chi1).toString(),
                 "Chi differential should be " + subBN(chi2, chi1),
