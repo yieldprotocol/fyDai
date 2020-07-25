@@ -3,33 +3,19 @@ import { BigNumber } from 'ethers'
 
 type Contract = any
 
-// @ts-ignore
 const Vat = artifacts.require('Vat')
-// @ts-ignore
 const Jug = artifacts.require('Jug')
-// @ts-ignore
 const GemJoin = artifacts.require('GemJoin')
-// @ts-ignore
 const DaiJoin = artifacts.require('DaiJoin')
-// @ts-ignore
 const Weth = artifacts.require('WETH9')
-// @ts-ignore
 const ERC20 = artifacts.require('TestERC20')
-// @ts-ignore
 const Pot = artifacts.require('Pot')
-// @ts-ignore
 const End = artifacts.require('End')
-// @ts-ignore
 const Chai = artifacts.require('Chai')
-// @ts-ignore
 const Treasury = artifacts.require('Treasury')
-// @ts-ignore
 const YDai = artifacts.require('YDai')
-// @ts-ignore
 const Controller = artifacts.require('Controller')
-// @ts-ignore
 const Liquidations = artifacts.require('Liquidations')
-// @ts-ignore
 const Unwind = artifacts.require('Unwind')
 
 import {
@@ -45,7 +31,6 @@ import {
   tag,
   fix,
   toRay,
-  addBN,
   subBN,
   divRay,
   divrupRay,
