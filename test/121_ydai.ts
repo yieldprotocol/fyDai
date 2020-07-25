@@ -29,7 +29,6 @@ contract('yDai', async (accounts) =>  {
     let dai: Contract;
     let yDai1: Contract;
     let flashMinter: Contract;
-    let controller: Contract;
 
     beforeEach(async() => {
         snapshot = await helper.takeSnapshot();
@@ -37,7 +36,6 @@ contract('yDai', async (accounts) =>  {
 
         const env = await YieldEnvironmentLite.setup();
         treasury = env.treasury;
-        controller = env.controller;
         weth = env.maker.weth;
         pot = env.maker.pot;
         vat = env.maker.vat;
