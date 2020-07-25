@@ -1,7 +1,7 @@
 import { formatBytes32String as toBytes32 } from 'ethers/lib/utils'
 import { BigNumber } from 'ethers'
 
-type Contract = any
+export type Contract = any
 
 const Vat = artifacts.require('Vat')
 const Jug = artifacts.require('Jug')
