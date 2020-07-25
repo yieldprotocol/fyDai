@@ -1,5 +1,5 @@
 import { formatBytes32String as toBytes32 } from 'ethers/lib/utils'
-import { BigNumber } from 'ethers'
+import { BigNumber, BigNumberish } from 'ethers'
 
 export type Contract = any
 
@@ -131,7 +131,7 @@ export class MakerEnvironment {
       return controller;
   }
 
-  public async getDai(user: string, _daiTokens: BigNumber, _rate: number | BigNumber) {
+  public async getDai(user: string, _daiTokens: BigNumberish, _rate: BigNumberish) {
     await this.vat.hope(this.daiJoin.address, { from: user })
     await this.vat.hope(this.wethJoin.address, { from: user })
 
@@ -145,7 +145,7 @@ export class MakerEnvironment {
     await this.daiJoin.exit(user, _daiTokens, { from: user })
   }
 
-  public async getChai(user: string, _chaiTokens: number, _chi: number, _rate: number) {
+  public async getChai(user: string, _chaiTokens: BigNumberish, _chi: BigNumberish, _rate: BigNumberish) {
     const _daiTokens = mulRay(_chaiTokens, _chi)
     await this.getDai(user, _daiTokens, _rate)
     await this.dai.approve(this.chai.address, _daiTokens, { from: user })
