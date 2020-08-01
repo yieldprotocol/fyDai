@@ -33,7 +33,7 @@ library YieldMath {
 
     // a = (1 - gt)
     int128 a = ABDKMath64x64.sub (0x10000000000000000, ABDKMath64x64.mul (g, t));
-    require (a > 0, "YieldMath: yodi-1");
+    require (a > 0, "YieldMath: 1 - gt < 0");
 
     // zdz = daiReserves + daiAmount
     uint256 zdz = uint256 (daiReserves) + uint256 (daiAmount);
@@ -43,10 +43,10 @@ library YieldMath {
       pow (daiReserves, uint128 (a), 0x10000000000000000) +
       uint256 (pow (yDAIReserves, uint128 (a), 0x10000000000000000)) -
       pow (uint128 (zdz), uint128 (a), 0x10000000000000000);
-    require (sum < 0x100000000000000000000000000000000, "YieldMath: yodi-3");
+    require (sum < 0x100000000000000000000000000000000, "YieldMath: Insufficient yDAI reserves");
 
     uint256 result = yDAIReserves - pow (uint128 (sum), 0x10000000000000000, uint128 (a));
-    require (result < 0x100000000000000000000000000000000, "YieldMath: Too much yDai out");
+    require (result < 0x100000000000000000000000000000000, "YieldMath: Rounding induced error");
 
     return uint128 (result);
   }
@@ -71,7 +71,7 @@ library YieldMath {
 
     // a = (1 - gt)
     int128 a = ABDKMath64x64.sub (0x10000000000000000, ABDKMath64x64.mul (g, t));
-    require (a > 0, "YieldMath: doyi-1");
+    require (a > 0, "YieldMath: 1 - gt < 0");
 
     // ydy = yDAIReserves + yDAIAmount;
     uint256 ydy = uint256 (yDAIReserves) + uint256 (yDAIAmount);
@@ -81,12 +81,12 @@ library YieldMath {
       uint256 (pow (daiReserves, uint128 (a), 0x10000000000000000)) -
       (uint256 (pow (uint128 (ydy), uint128 (a), 0x10000000000000000)) -
       uint256 (pow (yDAIReserves, uint128 (a), 0x10000000000000000)));
-    require (sum < 0x100000000000000000000000000000000, "YieldMath: doyi-3");
+    require (sum < 0x100000000000000000000000000000000, "YieldMath: Insufficient Dai reserves");
 
     uint256 result =
       daiReserves -
       pow (uint128 (sum), 0x10000000000000000, uint128 (a));
-    require (result < 0x100000000000000000000000000000000, "YieldMath: Too much dai out");
+    require (result < 0x100000000000000000000000000000000, "YieldMath: Rounding induced error");
 
     return uint128 (result);
   }
@@ -106,27 +106,26 @@ library YieldMath {
     uint128 daiReserves, uint128 yDAIReserves, uint128 daiAmount,
     uint128 timeTillMaturity, int128 k, int128 g)
   internal pure returns (uint128) {
-    require (daiAmount <= daiReserves); // TODO: Redundant with 120?
+    require (daiAmount <= daiReserves, "YieldMath: Too much Dai out");
 
     // t = k * timeTillMaturity
     int128 t = ABDKMath64x64.mul (k, ABDKMath64x64.fromUInt (timeTillMaturity));
 
     // a = (1 - gt)
     int128 a = ABDKMath64x64.sub (0x10000000000000000, ABDKMath64x64.mul (g, t));
-    require (a > 0, "YieldMath: yido-1");
+    require (a > 0, "YieldMath: 1 - gt < 0");
 
     // zdz = daiReserves - daiAmount
-    uint256 zdz = uint256 (daiReserves) - uint256 (daiAmount);
-    require (zdz < 0x100000000000000000000000000000000, "YieldMath: Too much Dai out");
+    uint256 zdz = uint256 (daiReserves) - uint256 (daiAmount); // Underflow checked above
 
     uint256 sum =
       pow (daiReserves, uint128 (a), 0x10000000000000000) +
       uint256 (pow (yDAIReserves, uint128 (a), 0x10000000000000000)) -
       pow (uint128 (zdz), uint128 (a), 0x10000000000000000);
-    require (sum < 0x100000000000000000000000000000000, "YieldMath: yido-3");
+    require (sum < 0x100000000000000000000000000000000, "YieldMath: Resulting yDai reserves too high");
 
     uint256 result = pow (uint128 (sum), 0x10000000000000000, uint128 (a)) - yDAIReserves;
-    require (result < 0x100000000000000000000000000000000, "YieldMath: Too much yDai in");
+    require (result < 0x100000000000000000000000000000000, "YieldMath: Rounding induced error");
 
     return uint128 (result);
   }
@@ -148,26 +147,25 @@ library YieldMath {
     uint128 daiReserves, uint128 yDAIReserves, uint128 yDAIAmount,
     uint128 timeTillMaturity, int128 k, int128 g)
   internal pure returns (uint128) {
-    require (yDAIAmount <= yDAIReserves); // TODO: Redundant with 159?
+    require (yDAIAmount <= yDAIReserves, "YieldMath: Too much yDai out");
 
     // a = (1 - g * k * timeTillMaturity)
     int128 a = ABDKMath64x64.sub (0x10000000000000000, ABDKMath64x64.mul (g, ABDKMath64x64.mul (k, ABDKMath64x64.fromUInt (timeTillMaturity))));
-    require (a > 0, "YieldMath: diyo-1");
+    require (a > 0, "YieldMath: 1 - gt < 0");
 
     // ydy = yDAIReserves - yDAIAmount;
-    uint256 ydy = uint256 (yDAIReserves) - uint256 (yDAIAmount);
-    require (ydy < 0x100000000000000000000000000000000, "YieldMath: Too much yDai out");
+    uint256 ydy = uint256 (yDAIReserves) - uint256 (yDAIAmount); // Underflow checked above
 
     uint256 sum =
       uint256 (pow (daiReserves, uint128 (a), 0x10000000000000000)) +
       uint256 (pow (yDAIReserves, uint128 (a), 0x10000000000000000)) -
       uint256 (pow (uint128 (ydy), uint128 (a), 0x10000000000000000));
-    require (sum < 0x100000000000000000000000000000000, "YieldMath: diyo-3");
+    require (sum < 0x100000000000000000000000000000000, "YieldMath: Resulting Dai reserves too high");
 
     uint256 result =
       pow (uint128 (sum), 0x10000000000000000, uint128 (a)) -
       daiReserves;
-    require (result < 0x100000000000000000000000000000000, "YieldMath: Too much Dai in");
+    require (result < 0x100000000000000000000000000000000, "YieldMath: Rounding induced error");
 
     return uint128 (result);
   }
