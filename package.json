@@ -9,7 +9,6 @@
     "build": "buidler compile",
     "test": "buidler test test/*.ts test/pool/*.ts test/peripheral/*.ts",
     "test:non-functional": "buidler test test/non-functional/*.ts",
-    "test:network": "npx truffle test test/network/*.js",
     "ganache": "./scripts/ganache.sh",
     "coverage": "buidler coverage --network coverage --temp build --testfiles 'test/*.ts test/pool/*.ts test/peripheral/*.ts'",
 
