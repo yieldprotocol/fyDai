@@ -2,8 +2,8 @@
 import helper from 'ganache-time-traveler';
 // @ts-ignore
 import { BN, expectRevert } from '@openzeppelin/test-helpers';
-import { BigNumber } from 'ethers';
-import { WETH, CHAI, rate1, chi1, daiTokens1, wethTokens1, chaiTokens1, toRay, addBN, subBN, mulRay, divRay } from './shared/utils';
+import { BigNumber, utils } from 'ethers';
+import { spot, WETH, CHAI, rate1, chi1, daiTokens1, wethTokens1, chaiTokens1, toRay, addBN, subBN, mulRay, divRay } from './shared/utils';
 import { YieldEnvironment, Contract } from "./shared/fixtures";
 
 contract('Liquidations', async (accounts) =>  {
@@ -54,6 +54,32 @@ contract('Liquidations', async (accounts) =>  {
     afterEach(async() => {
         await helper.revertToSnapshot(snapshotId);
     });
+
+    it.only("fees can make vaults undercollateralized if deposit was small", async () => {
+        const amount = utils.parseEther('0.051');
+        // Get 1 WETH in the system ($225 * 2/3 = 150 spot)
+        await env.postWeth(owner, amount);
+
+        // Borrow MAX yDAI (why is 7.5990 the max here? Shouldn't it be 150 * 0.051 = 7.65)
+        const ydaiAmount = utils.parseEther('7.5990');
+        await controller.borrow(WETH, maturity1, owner, owner, ydaiAmount)
+
+        // dump the price a bit so we're liquidatable
+        // note: rounding error -> 149 is not enough to trigger it even though
+        // we already had borrowed the max?
+        await vat.file(WETH, utils.formatBytes32String("spot"), toRay(148));
+
+        await liquidations.liquidate(owner, buyer, { from: buyer });
+        const vault = await liquidations.vaults(owner);
+
+        // spot * 3/2 = $ price
+        const collateral = BigNumber.from(vault.collateral.toString()).mul(148 * 3/2);
+        const debt = BigNumber.from(vault.debt.toString());
+        console.log(collateral.toString(), debt.toString());
+
+        // This fails for small posted values, which is a problem!
+        assert(collateral.gt(debt));
+    })
 
     describe("with posted collateral and borrowed yDai", () => {
         beforeEach(async() => {
@@ -204,6 +230,7 @@ contract('Liquidations', async (accounts) =>  {
 
                     userCollateral = new BN((await liquidations.vaults(user2, { from: buyer })).collateral).toString();
                     userDebt = new BN((await liquidations.vaults(user2, { from: buyer })).debt).toString();
+                    console.log(userDebt)
                     await env.maker.getDai(buyer, userDebt, rate2);
                 });
 
