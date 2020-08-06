@@ -104,7 +104,6 @@ contract Liquidations is ILiquidations, Orchestrated(), Delegable(), DecimalMath
     }
 
     /// @dev Starts a liquidation process for an undercollateralized vault.
-    /// A liquidation fee is transferred from the liquidated user to a designated account as payment.
     /// @param user Address of the user vault to liquidate.
     function liquidate(address user)
         public onlyLive
@@ -175,7 +174,7 @@ contract Liquidations is ILiquidations, Orchestrated(), Delegable(), DecimalMath
         return tokenAmount;
     }
 
-    /// @dev Retrieve weth from a liquidations account. This weth could come from liquidator fees or as remainders of liquidations.
+    /// @dev Retrieve weth from a liquidations account. This weth could be a remainder from liquidations.
     /// `from` can delegate to other addresses to withdraw from him.
     /// @param from Address of the liquidations user vault to withdraw weth from.
     /// @param to Address of the wallet receiving the withdrawn weth.
