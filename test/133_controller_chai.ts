@@ -6,6 +6,8 @@ import { WETH, CHAI, rate1, chi1, daiTokens1, chaiTokens1, toRay, addBN, subBN, 
 import { YieldEnvironmentLite, MakerEnvironment, Contract } from "./shared/fixtures";
 import { BigNumber } from 'ethers'
 
+const OrchestratedYDaiMock = artifacts.require('OrchestratedYDaiMock')
+
 contract('Controller - Chai', async (accounts) =>  {
     let [ owner, user1, user2 ] = accounts;
 
@@ -252,8 +254,10 @@ contract('Controller - Chai', async (accounts) =>  {
 
             it("when dai is provided in excess for repayment, only the necessary amount is taken", async() => {
                 // Mint some yDai the sneaky way
-                await yDai1.orchestrate(owner, { from: owner });
-                await yDai1.mint(user1, 1, { from: owner }); // 1 extra yDai wei
+                let yDai1Mock: Contract;
+                yDai1Mock = await OrchestratedYDaiMock.new(yDai1.address);
+                await yDai1.orchestrate(yDai1Mock.address, { from: owner });
+                await yDai1Mock.mint(user1, 1, { from: owner }); // 1 extra yDai wei
                 const yDaiTokens = addBN(daiTokens1, 1); // daiTokens1 + 1 wei
 
                 assert.equal(
