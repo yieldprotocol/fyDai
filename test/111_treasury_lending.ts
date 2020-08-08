@@ -1,3 +1,5 @@
+const OrchestratedTreasuryMock = artifacts.require('OrchestratedTreasuryMock')
+
 // @ts-ignore
 import { expectRevert } from '@openzeppelin/test-helpers';
 import { MakerEnvironment, Contract } from "./shared/fixtures";
@@ -8,8 +10,6 @@ import {
     wethTokens1,
     chaiTokens1,
 } from "./shared/utils";
-
-const OrchestratedTreasuryMock = artifacts.require('OrchestratedTreasuryMock')
 
 contract('Treasury - Lending', async (accounts: string[]) =>  {
     let [ owner, user ] = accounts;

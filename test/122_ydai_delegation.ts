@@ -1,12 +1,12 @@
+const OrchestratedTreasuryMock = artifacts.require('OrchestratedTreasuryMock')
+const OrchestratedYDaiMock = artifacts.require('OrchestratedYDaiMock')
+
 // @ts-ignore
 import helper from 'ganache-time-traveler';
 // @ts-ignore
 import { expectRevert, expectEvent } from '@openzeppelin/test-helpers';
 import { WETH, daiTokens1, wethTokens1 } from "./shared/utils";
 import { YieldEnvironmentLite, Contract } from "./shared/fixtures";
-
-const OrchestratedTreasuryMock = artifacts.require('OrchestratedTreasuryMock')
-const OrchestratedYDaiMock = artifacts.require('OrchestratedYDaiMock')
 
 contract('yDai - Delegation', async (accounts) =>  {
     let [ owner, holder, other ] = accounts;

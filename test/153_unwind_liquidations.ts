@@ -1,3 +1,5 @@
+const OrchestratedLiquidationsMock = artifacts.require('OrchestratedLiquidationsMock')
+
 // @ts-ignore
 import helper from 'ganache-time-traveler';
 import { BigNumber } from 'ethers'
@@ -5,8 +7,6 @@ import { BigNumber } from 'ethers'
 import { BN } from '@openzeppelin/test-helpers';
 import { WETH, spot, rate1, daiTokens1, wethTokens1, toRay, subBN, mulRay, divRay } from './shared/utils';
 import { YieldEnvironment, Contract } from "./shared/fixtures";
-
-const OrchestratedLiquidationsMock = artifacts.require('OrchestratedLiquidationsMock')
 
 contract('Unwind - Controller', async (accounts) =>  {
     let [ owner, user1, user2, user3 ] = accounts;

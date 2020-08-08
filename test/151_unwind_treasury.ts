@@ -1,3 +1,5 @@
+const OrchestratedTreasuryMock = artifacts.require('OrchestratedTreasuryMock')
+
 // @ts-ignore
 import helper from 'ganache-time-traveler';
 import { BigNumber } from 'ethers' 
@@ -5,8 +7,6 @@ import { BigNumber } from 'ethers'
 import { expectRevert } from '@openzeppelin/test-helpers' ;
 import { rate1, daiDebt1, WETH, daiTokens1, wethTokens1, chaiTokens1, spot, toRay, mulRay, divRay } from './shared/utils';
 import { YieldEnvironment, Contract } from "./shared/fixtures";
-
-const OrchestratedTreasuryMock = artifacts.require('OrchestratedTreasuryMock')
 
 contract('Unwind - Treasury', async (accounts) =>  {
     let [ owner, user ] = accounts;

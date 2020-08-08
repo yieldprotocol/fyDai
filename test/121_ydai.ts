@@ -1,6 +1,8 @@
 import { YieldEnvironmentLite, Contract } from "./shared/fixtures";
 const FlashMinterMock = artifacts.require('FlashMinterMock');
 const FlashMintRedeemerMock = artifacts.require('FlashMintRedeemerMock');
+const OrchestratedTreasuryMock = artifacts.require('OrchestratedTreasuryMock')
+const OrchestratedYDaiMock = artifacts.require('OrchestratedYDaiMock')
 
 import { WETH, chi1, rate1, daiTokens1, wethTokens1, toRay, mulRay, divRay, subBN } from './shared/utils';
 
@@ -10,8 +12,6 @@ import helper from 'ganache-time-traveler';
 // @ts-ignore
 import { BN, expectEvent, expectRevert } from '@openzeppelin/test-helpers';
 
-const OrchestratedTreasuryMock = artifacts.require('OrchestratedTreasuryMock')
-const OrchestratedYDaiMock = artifacts.require('OrchestratedYDaiMock')
 
 contract('yDai', async (accounts) =>  {
     let [ owner, user1, other ] = accounts;

@@ -1,11 +1,11 @@
+const OrchestratedTreasuryMock = artifacts.require('OrchestratedTreasuryMock')
+
 import { MakerEnvironment, Contract } from "./shared/fixtures";
 import {
     rate1,
     daiTokens1,
     chaiTokens1,
 } from "./shared/utils";
-
-const OrchestratedTreasuryMock = artifacts.require('OrchestratedTreasuryMock')
 
 contract('Treasury - Saving', async (accounts) =>  {
     let [ owner, user ] = accounts;

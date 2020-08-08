@@ -1,3 +1,5 @@
+const OrchestratedYDaiMock = artifacts.require('OrchestratedYDaiMock')
+
 // @ts-ignore
 import helper from 'ganache-time-traveler';
 // @ts-ignore
@@ -5,8 +7,6 @@ import { BN, expectRevert } from '@openzeppelin/test-helpers';
 import { WETH, rate1, daiTokens1, wethTokens1, toRay, mulRay, divrupRay, addBN, subBN } from './shared/utils';
 import { MakerEnvironment, YieldEnvironmentLite, Contract } from "./shared/fixtures";
 import { BigNumber } from 'ethers'
-
-const OrchestratedYDaiMock = artifacts.require('OrchestratedYDaiMock')
 
 contract('Controller - Weth', async (accounts) =>  {
     let [ owner, user1, user2, user3 ] = accounts;
