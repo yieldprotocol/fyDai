@@ -29,6 +29,8 @@ contract OrchestratedYDaiMock {
     constructor (address yDai_) public {
         _yDai = IYDai(yDai_);
     }
+
+    function mint(address user, uint256 amount) public { _yDai.mint(user, amount); }
 }
 
 contract OrchestratedControllerMock {

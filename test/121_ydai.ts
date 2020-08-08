@@ -10,6 +10,9 @@ import helper from 'ganache-time-traveler';
 // @ts-ignore
 import { BN, expectEvent, expectRevert } from '@openzeppelin/test-helpers';
 
+const OrchestratedTreasuryMock = artifacts.require('OrchestratedTreasuryMock')
+const OrchestratedYDaiMock = artifacts.require('OrchestratedYDaiMock')
+
 contract('yDai', async (accounts) =>  {
     let [ owner, user1, other ] = accounts;
 
@@ -24,11 +27,13 @@ contract('yDai', async (accounts) =>  {
     let snapshotId: string;
 
     let treasury: Contract;
+    let treasuryMock: Contract;
     let vat: Contract;
     let weth: Contract;
     let pot: Contract;
     let dai: Contract;
     let yDai1: Contract;
+    let yDai1Mock: Contract;
     let flashMinter: Contract;
     let flashMintRedeemer: Contract;
 
@@ -59,14 +64,16 @@ contract('yDai', async (accounts) =>  {
         );
         
         // Deposit some weth to treasury the sneaky way so that redeem can pull some dai
-        await treasury.orchestrate(owner, { from: owner });
+        treasuryMock = await OrchestratedTreasuryMock.new(treasury.address);
+        await treasury.orchestrate(treasuryMock.address, { from: owner });
         await weth.deposit({ from: owner, value: wethTokens2.mul(2).toString() });
         await weth.approve(treasury.address, wethTokens2.mul(2), { from: owner });
-        await treasury.pushWeth(owner, wethTokens2.mul(2), { from: owner });
+        await treasuryMock.pushWeth(owner, wethTokens2.mul(2), { from: owner });
 
         // Mint some yDai1 the sneaky way, only difference is that the Controller doesn't record the user debt.
-        await yDai1.orchestrate(owner, { from: owner });
-        await yDai1.mint(user1, daiTokens1, { from: owner });
+        yDai1Mock = await OrchestratedYDaiMock.new(yDai1.address);
+        await yDai1.orchestrate(yDai1Mock.address, { from: owner });
+        await yDai1Mock.mint(user1, daiTokens1, { from: owner });
     });
 
     afterEach(async() => {
@@ -148,7 +155,7 @@ contract('yDai', async (accounts) =>  {
 
     it("yDai1 can't reach more than 2**112 supply on flash mint", async() => {
         const halfLimit = (new BN('2')).pow(new BN('111'));
-        await yDai1.mint(user1, halfLimit, { from: owner });
+        await yDai1Mock.mint(user1, halfLimit, { from: owner });
         await expectRevert(
             flashMinter.flashMint(yDai1.address, halfLimit, web3.utils.fromAscii("DATA"), { from: user1 }),
             "YDai: Total supply limit exceeded",

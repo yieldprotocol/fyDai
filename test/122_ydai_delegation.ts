@@ -5,6 +5,9 @@ import { expectRevert, expectEvent } from '@openzeppelin/test-helpers';
 import { WETH, daiTokens1, wethTokens1 } from "./shared/utils";
 import { YieldEnvironmentLite, Contract } from "./shared/fixtures";
 
+const OrchestratedTreasuryMock = artifacts.require('OrchestratedTreasuryMock')
+const OrchestratedYDaiMock = artifacts.require('OrchestratedYDaiMock')
+
 contract('yDai - Delegation', async (accounts) =>  {
     let [ owner, holder, other ] = accounts;
     
@@ -15,10 +18,12 @@ contract('yDai - Delegation', async (accounts) =>  {
     let snapshotId: string;
 
     let treasury: Contract;
+    let treasuryMock: Contract;
     let vat: Contract;
     let weth: Contract;
     let dai: Contract;
     let yDai1: Contract;
+    let yDai1Mock: Contract;
 
     beforeEach(async() => {
         snapshot = await helper.takeSnapshot();
@@ -38,18 +43,20 @@ contract('yDai - Delegation', async (accounts) =>  {
         await env.newYDai(maturity2, "Name", "Symbol");
 
         // Post collateral to MakerDAO through Treasury
-        await treasury.orchestrate(owner, { from: owner });
+        treasuryMock = await OrchestratedTreasuryMock.new(treasury.address);
+        await treasury.orchestrate(treasuryMock.address, { from: owner });
         await weth.deposit({ from: owner, value: wethTokens1 });
         await weth.approve(treasury.address, wethTokens1, { from: owner });
-        await treasury.pushWeth(owner, wethTokens1, { from: owner });
+        await treasuryMock.pushWeth(owner, wethTokens1, { from: owner });
         assert.equal(
             (await vat.urns(WETH, treasury.address)).ink,
             wethTokens1.toString(),
         );
 
         // Mint some yDai the sneaky way
-        await yDai1.orchestrate(owner, { from: owner });
-        await yDai1.mint(holder, daiTokens1, { from: owner });
+        yDai1Mock = await OrchestratedYDaiMock.new(yDai1.address);
+        await yDai1.orchestrate(yDai1Mock.address, { from: owner });
+        await yDai1Mock.mint(holder, daiTokens1, { from: owner });
 
         // yDai matures
         await helper.advanceTime(1000);
