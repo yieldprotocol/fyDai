@@ -49,7 +49,8 @@ contract('Unwind - Controller', async (accounts) =>  {
         yDai2 = await env.newYDai(maturity2, "Name", "Symbol");
         await yDai1.orchestrate(unwind.address)
         await yDai2.orchestrate(unwind.address)
-        await treasury.orchestrate(owner)
+        
+        // Setup test environment
         await end.rely(owner, { from: owner });       // `owner` replaces MKR governance
     });
 

@@ -6,6 +6,7 @@ import "../interfaces/IYDai.sol";
 import "../interfaces/IController.sol";
 import "../interfaces/ILiquidations.sol";
 
+/// @dev This contract allows to call privileged functions on Treasury
 contract OrchestratedTreasuryMock {
 
     ITreasury public _treasury;
@@ -22,6 +23,7 @@ contract OrchestratedTreasuryMock {
     function pullWeth(address user, uint256 weth) public { _treasury.pullWeth(user, weth); }
 }
 
+/// @dev This contract allows to call privileged functions on YDai
 contract OrchestratedYDaiMock {
 
     IYDai public _yDai;
@@ -33,6 +35,7 @@ contract OrchestratedYDaiMock {
     function mint(address user, uint256 amount) public { _yDai.mint(user, amount); }
 }
 
+/// @dev This contract allows to call privileged functions on Controller
 contract OrchestratedControllerMock {
 
     IController public _controller;
@@ -42,6 +45,7 @@ contract OrchestratedControllerMock {
     }
 }
 
+/// @dev This contract allows to call privileged functions on Liquidations
 contract OrchestratedLiquidationsMock {
 
     ILiquidations public _liquidations;
@@ -49,4 +53,6 @@ contract OrchestratedLiquidationsMock {
     constructor (address liquidations_) public {
         _liquidations = ILiquidations(liquidations_);
     }
+
+    function erase(address vault) public returns(uint128, uint128) { _liquidations.erase(vault); }
 }

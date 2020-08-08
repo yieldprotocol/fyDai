@@ -6,6 +6,8 @@ import { BN } from '@openzeppelin/test-helpers';
 import { WETH, spot, rate1, daiTokens1, wethTokens1, toRay, subBN, mulRay, divRay } from './shared/utils';
 import { YieldEnvironment, Contract } from "./shared/fixtures";
 
+const OrchestratedLiquidationsMock = artifacts.require('OrchestratedLiquidationsMock')
+
 contract('Unwind - Controller', async (accounts) =>  {
     let [ owner, user1, user2, user3 ] = accounts;
 
@@ -21,6 +23,7 @@ contract('Unwind - Controller', async (accounts) =>  {
     let treasury: Contract;
     let weth: Contract;
     let liquidations: Contract;
+    let liquidationsMock: Contract;
     let unwind: Contract;
     let end: Contract;
 
@@ -53,11 +56,14 @@ contract('Unwind - Controller', async (accounts) =>  {
         yDai2 = await env.newYDai(maturity2, "Name", "Symbol");
         await yDai1.orchestrate(unwind.address)
         await yDai2.orchestrate(unwind.address)
-        await treasury.orchestrate(owner)
+        
+        // Setup test environment
+        liquidationsMock = await OrchestratedLiquidationsMock.new(liquidations.address);
+        await liquidations.orchestrate(liquidationsMock.address, { from: owner });
         await end.rely(owner, { from: owner });       // `owner` replaces MKR governance
 
         // Allow `owner` to bypass orchestration restrictions
-        await liquidations.orchestrate(owner, { from: owner });
+        
     });
 
     afterEach(async() => {
@@ -94,7 +100,7 @@ contract('Unwind - Controller', async (accounts) =>  {
             const totalRemainingDebt = subBN(totals.debt.toString(), userVault.debt.toString());
             const totalRemainingCollateral = subBN(totals.collateral.toString(), userVault.collateral.toString());
 
-            await liquidations.erase(user2, { from: owner });
+            await liquidationsMock.erase(user2, { from: owner });
             expect(new BN(userVault.debt)).to.be.bignumber.gt(new BN(0));
             expect(new BN(userVault.collateral)).to.be.bignumber.gt(new BN(0));
             expect(new BN(totals.debt)).to.be.bignumber.gt(new BN(0));

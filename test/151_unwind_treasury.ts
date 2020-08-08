@@ -6,6 +6,8 @@ import { expectRevert } from '@openzeppelin/test-helpers' ;
 import { rate1, daiDebt1, WETH, daiTokens1, wethTokens1, chaiTokens1, spot, toRay, mulRay, divRay } from './shared/utils';
 import { YieldEnvironment, Contract } from "./shared/fixtures";
 
+const OrchestratedTreasuryMock = artifacts.require('OrchestratedTreasuryMock')
+
 contract('Unwind - Treasury', async (accounts) =>  {
     let [ owner, user ] = accounts;
 
@@ -18,6 +20,7 @@ contract('Unwind - Treasury', async (accounts) =>  {
     let vat: Contract;
     let controller: Contract;
     let treasury: Contract;
+    let treasuryMock: Contract;
     let weth: Contract;
     let liquidations: Contract;
     let unwind: Contract;
@@ -56,7 +59,10 @@ contract('Unwind - Treasury', async (accounts) =>  {
         const yDai2 = await env.newYDai(maturity2, "Name", "Symbol");
         await yDai1.orchestrate(unwind.address)
         await yDai2.orchestrate(unwind.address)
-        await treasury.orchestrate(owner)
+
+        // Setup test environment
+        treasuryMock = await OrchestratedTreasuryMock.new(treasury.address);
+        await treasury.orchestrate(treasuryMock.address, { from: owner });
         await end.rely(owner, { from: owner });       // `owner` replaces MKR governance
     });
 
@@ -68,7 +74,7 @@ contract('Unwind - Treasury', async (accounts) =>  {
         beforeEach(async() => {
             await weth.deposit({ from: owner, value: wethTokens1 });
             await weth.approve(treasury.address, wethTokens1, { from: owner });
-            await treasury.pushWeth(owner, wethTokens1, { from: owner });
+            await treasuryMock.pushWeth(owner, wethTokens1, { from: owner });
 
             assert.equal(
                 (await vat.urns(WETH, treasury.address)).ink,
@@ -132,27 +138,27 @@ contract('Unwind - Treasury', async (accounts) =>  {
 
                 it("does not allow to push or pull assets", async() => {
                     await expectRevert(
-                        treasury.pushWeth(user, wethTokens1, { from: owner }),
+                        treasuryMock.pushWeth(user, wethTokens1, { from: owner }),
                         "Treasury: Not available during unwind",
                     );
                     await expectRevert(
-                        treasury.pushChai(user, chaiTokens1, { from: owner }),
+                        treasuryMock.pushChai(user, chaiTokens1, { from: owner }),
                         "Treasury: Not available during unwind",
                     );
                     await expectRevert(
-                        treasury.pushDai(user, daiTokens1, { from: owner }),
+                        treasuryMock.pushDai(user, daiTokens1, { from: owner }),
                         "Treasury: Not available during unwind",
                     );
                     await expectRevert(
-                        treasury.pullWeth(owner, 1, { from: owner }),
+                        treasuryMock.pullWeth(owner, 1, { from: owner }),
                         "Treasury: Not available during unwind",
                     );
                     await expectRevert(
-                        treasury.pullChai(owner, 1, { from: owner }),
+                        treasuryMock.pullChai(owner, 1, { from: owner }),
                         "Treasury: Not available during unwind",
                     );
                     await expectRevert(
-                        treasury.pullDai(owner, 1, { from: owner }),
+                        treasuryMock.pullDai(owner, 1, { from: owner }),
                         "Treasury: Not available during unwind",
                     );
                 });
@@ -161,7 +167,7 @@ contract('Unwind - Treasury', async (accounts) =>  {
 
         describe("with debt", () => {
             beforeEach(async() => {
-                await treasury.pullDai(owner, daiTokens1, { from: owner });
+                await treasuryMock.pullDai(owner, daiTokens1, { from: owner });
                 assert.equal(
                     (await vat.urns(WETH, treasury.address)).art,
                     daiDebt1.toString(),
@@ -176,7 +182,7 @@ contract('Unwind - Treasury', async (accounts) =>  {
                 // Adding some extra unlocked collateral
                 await weth.deposit({ from: owner, value: 1 });
                 await weth.approve(treasury.address, 1, { from: owner });
-                await treasury.pushWeth(owner, 1, { from: owner });
+                await treasuryMock.pushWeth(owner, 1, { from: owner });
             });
 
             describe("with unwind initiated", () => {
@@ -204,7 +210,7 @@ contract('Unwind - Treasury', async (accounts) =>  {
                 await env.maker.getDai(owner, daiTokens1, rate1);
 
                 await dai.approve(treasury.address, daiTokens1, { from: owner });
-                await treasury.pushDai(owner, daiTokens1, { from: owner });
+                await treasuryMock.pushDai(owner, daiTokens1, { from: owner });
 
                 assert.equal(
                     await chai.balanceOf(treasury.address),
