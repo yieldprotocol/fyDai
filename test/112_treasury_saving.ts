@@ -5,10 +5,13 @@ import {
     chaiTokens1,
 } from "./shared/utils";
 
+const OrchestratedTreasuryMock = artifacts.require('OrchestratedTreasuryMock')
+
 contract('Treasury - Saving', async (accounts) =>  {
     let [ owner, user ] = accounts;
 
     let treasury: Contract;
+    let treasuryMock: Contract;
     let chai: Contract;
     let dai: Contract;
 
@@ -18,8 +21,9 @@ contract('Treasury - Saving', async (accounts) =>  {
         chai = maker.chai;
         dai = maker.dai;
 
-        // Setup tests - Allow owner to interact directly with Treasury, not for production
-        await treasury.orchestrate(owner, { from: owner });
+        // Setup tests - Setup a mock contract to call privileged treasury functions
+        treasuryMock = await OrchestratedTreasuryMock.new(treasury.address);
+        await treasury.orchestrate(treasuryMock.address, { from: owner });
 
         // Borrow some dai
         await maker.getDai(user, daiTokens1, rate1);
@@ -43,7 +47,7 @@ contract('Treasury - Saving', async (accounts) =>  {
         );
         
         await dai.approve(treasury.address, daiTokens1, { from: user }); 
-        await treasury.pushDai(user, daiTokens1, { from: owner });
+        await treasuryMock.pushDai(user, daiTokens1, { from: owner });
 
         // Test transfer of collateral
         assert.equal(
@@ -83,7 +87,7 @@ contract('Treasury - Saving', async (accounts) =>  {
         await dai.approve(chai.address, daiTokens1, { from: user });
         await chai.join(user, daiTokens1, { from: user });
         await chai.approve(treasury.address, chaiTokens1, { from: user }); 
-        await treasury.pushChai(user, chaiTokens1, { from: owner });
+        await treasuryMock.pushChai(user, chaiTokens1, { from: owner });
 
         // Test transfer of collateral
         assert.equal(
@@ -106,7 +110,7 @@ contract('Treasury - Saving', async (accounts) =>  {
     describe("with savings", () => {
         beforeEach(async() => {
             await dai.approve(treasury.address, daiTokens1, { from: user }); 
-            await treasury.pushDai(user, daiTokens1, { from: owner });
+            await treasuryMock.pushDai(user, daiTokens1, { from: owner });
         });
 
         it("pulls dai from savings", async() => {
@@ -126,7 +130,7 @@ contract('Treasury - Saving', async (accounts) =>  {
                 "User has dai",
             );
             
-            await treasury.pullDai(user, daiTokens1, { from: owner });
+            await treasuryMock.pullDai(user, daiTokens1, { from: owner });
 
             assert.equal(
                 await chai.balanceOf(treasury.address),
@@ -163,7 +167,7 @@ contract('Treasury - Saving', async (accounts) =>  {
                 "User has dai",
             );
             
-            await treasury.pullChai(user, chaiTokens1, { from: owner });
+            await treasuryMock.pullChai(user, chaiTokens1, { from: owner });
 
             assert.equal(
                 await chai.balanceOf(treasury.address),
