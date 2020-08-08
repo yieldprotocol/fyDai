@@ -1,5 +1,6 @@
 const Pool = artifacts.require('Pool');
 const LimitPool = artifacts.require('LimitPool');
+const OrchestratedYDaiMock = artifacts.require('OrchestratedYDaiMock');
 
 import { toWad, toRay, mulRay } from '../shared/utils';
 import { YieldEnvironmentLite, Contract } from "../shared/fixtures";
@@ -18,6 +19,7 @@ contract('LimitPool', async (accounts) =>  {
 
     let maturity1: number;
     let yDai1: Contract;
+    let yDai1Mock: Contract;
     let limitPool: Contract;
     let pool: Contract;
     let dai: Contract;
@@ -51,10 +53,8 @@ contract('LimitPool', async (accounts) =>  {
         );
 
         // Test setup
-
-        // Allow owner to mint yDai the sneaky way, without recording a debt in controller
-        await yDai1.orchestrate(owner, { from: owner });
-
+        yDai1Mock = await OrchestratedYDaiMock.new(yDai1.address);
+        await yDai1.orchestrate(yDai1Mock.address, { from: owner });
     });
 
     describe("with liquidity", () => {
@@ -68,7 +68,7 @@ contract('LimitPool', async (accounts) =>  {
 
         it("buys dai", async() => {
             const oneToken = toWad(1);
-            await yDai1.mint(from, yDaiTokens1, { from: owner });
+            await yDai1Mock.mint(from, yDaiTokens1, { from: owner });
 
             await pool.addDelegate(limitPool.address, { from: from });
             await yDai1.approve(pool.address, yDaiTokens1, { from: from });
@@ -82,7 +82,7 @@ contract('LimitPool', async (accounts) =>  {
 
         it("doesn't buy dai if limit exceeded", async() => {
             const oneToken = toWad(1);
-            await yDai1.mint(from, yDaiTokens1, { from: owner });
+            await yDai1Mock.mint(from, yDaiTokens1, { from: owner });
 
             await pool.addDelegate(limitPool.address, { from: from });
             await yDai1.approve(pool.address, yDaiTokens1, { from: from });
@@ -95,7 +95,7 @@ contract('LimitPool', async (accounts) =>  {
 
         it("sells yDai", async() => {
             const oneToken = toWad(1);
-            await yDai1.mint(from, oneToken, { from: owner });
+            await yDai1Mock.mint(from, oneToken, { from: owner });
 
             await pool.addDelegate(limitPool.address, { from: from });
             await yDai1.approve(pool.address, oneToken, { from: from });
@@ -115,7 +115,7 @@ contract('LimitPool', async (accounts) =>  {
 
         it("doesn't sell yDai if limit not reached", async() => {
             const oneToken = toWad(1);
-            await yDai1.mint(from, oneToken, { from: owner });
+            await yDai1Mock.mint(from, oneToken, { from: owner });
 
             await pool.addDelegate(limitPool.address, { from: from });
             await yDai1.approve(pool.address, oneToken, { from: from });
@@ -129,7 +129,7 @@ contract('LimitPool', async (accounts) =>  {
         describe("with extra yDai reserves", () => {
             beforeEach(async() => {
                 const additionalYDaiReserves = toWad(34.4);
-                await yDai1.mint(operator, additionalYDaiReserves, { from: owner });
+                await yDai1Mock.mint(operator, additionalYDaiReserves, { from: owner });
                 await yDai1.approve(pool.address, additionalYDaiReserves, { from: operator });
                 await pool.sellYDai(operator, operator, additionalYDaiReserves, { from: operator });
             });

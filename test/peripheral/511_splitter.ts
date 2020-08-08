@@ -1,5 +1,6 @@
 const Pool = artifacts.require('Pool');
 const Splitter = artifacts.require('Splitter');
+const OrchestratedYDaiMock = artifacts.require('OrchestratedYDaiMock')
 
 import { BigNumber } from "ethers";
 // @ts-ignore
@@ -22,6 +23,7 @@ contract('Splitter', async (accounts) =>  {
     let weth: Contract;
     let wethJoin: Contract;
     let yDai1: Contract;
+    let yDai1Mock: Contract;
     let splitter1: Contract;
     let pool1: Contract;
 
@@ -65,9 +67,6 @@ contract('Splitter', async (accounts) =>  {
 
         // Test setup
 
-        // Allow owner to mint yDai the sneaky way, without recording a debt in controller
-        await yDai1.orchestrate(owner, { from: owner });
-
         // Initialize Pool1
         const daiReserves = daiTokens1.mul(5);
         await env.maker.getDai(owner, daiReserves, rate1);
@@ -75,8 +74,10 @@ contract('Splitter', async (accounts) =>  {
         await pool1.init(daiReserves, { from: owner });
 
         // Add yDai
+        yDai1Mock = await OrchestratedYDaiMock.new(yDai1.address);
+        await yDai1.orchestrate(yDai1Mock.address, { from: owner });
         const additionalYDaiReserves = yDaiTokens1.mul(2);
-        await yDai1.mint(owner, additionalYDaiReserves, { from: owner });
+        await yDai1Mock.mint(owner, additionalYDaiReserves, { from: owner });
         await yDai1.approve(pool1.address, additionalYDaiReserves, { from: owner });
         await pool1.sellYDai(owner, owner, additionalYDaiReserves, { from: owner });
     });

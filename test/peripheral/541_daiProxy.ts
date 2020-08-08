@@ -1,5 +1,6 @@
 const Pool = artifacts.require('Pool');
 const DaiProxy = artifacts.require('DaiProxy');
+const OrchestratedYDaiMock = artifacts.require('OrchestratedYDaiMock');
 
 import { WETH, wethTokens1, toWad, toRay, subBN, mulRay } from '../shared/utils';
 import { YieldEnvironmentLite, Contract } from "../shared/fixtures";
@@ -24,6 +25,7 @@ contract('DaiProxy', async (accounts) =>  {
     let treasury: Contract;
     let controller: Contract;
     let yDai1: Contract;
+    let yDai1Mock: Contract;
     let pool: Contract;
     let daiProxy: Contract;
     let env: YieldEnvironmentLite;
@@ -64,9 +66,8 @@ contract('DaiProxy', async (accounts) =>  {
         
 
         // Test setup
-
-        // Allow owner to mint yDai the sneaky way, without recording a debt in controller
-        await yDai1.orchestrate(owner, { from: owner });
+        yDai1Mock = await OrchestratedYDaiMock.new(yDai1.address);
+        await yDai1.orchestrate(yDai1Mock.address, { from: owner });
 
     });
 
@@ -88,7 +89,7 @@ contract('DaiProxy', async (accounts) =>  {
             await controller.post(WETH, user1, user1, wethTokens1, { from: user1 });
 
             // Give some yDai to user1
-            await yDai1.mint(user1, yDaiTokens1, { from: owner });
+            await yDai1Mock.mint(user1, yDaiTokens1, { from: owner });
         });
 
         it("borrows dai for maximum yDai", async() => {
@@ -134,7 +135,7 @@ contract('DaiProxy', async (accounts) =>  {
             beforeEach(async() => {
                 // Set up the pool to allow buying yDai
                 const additionalYDaiReserves = toWad(34.4);
-                await yDai1.mint(operator, additionalYDaiReserves, { from: owner });
+                await yDai1Mock.mint(operator, additionalYDaiReserves, { from: owner });
                 await yDai1.approve(pool.address, additionalYDaiReserves, { from: operator });
                 await pool.sellYDai(operator, operator, additionalYDaiReserves, { from: operator });
 
