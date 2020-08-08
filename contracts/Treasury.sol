@@ -302,7 +302,7 @@ contract Treasury is ITreasury, Orchestrated(), DecimalMath {
     /// @param unwind_ The address of the Unwild.sol contract.
     function registerUnwind(address unwind_)
         public
-        onlyOwner
+        onlyDeployer("Treasury: Restricted to deployer")
     {
         require(
             _unwind == address(0),

@@ -131,7 +131,7 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
     /// @dev Adds an yDai series to this Controller
     /// After deployment, ownership should be renounced, so that no more series can be added.
     /// @param yDaiContract Address of the yDai series to add.
-    function addSeries(address yDaiContract) public onlyOwner {
+    function addSeries(address yDaiContract) public onlyDeployer("Controller: Restricted to deployer") {
         uint256 maturity = IYDai(yDaiContract).maturity();
         require(
             !containsSeries(maturity),
