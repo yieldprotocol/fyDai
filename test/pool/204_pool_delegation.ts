@@ -1,4 +1,5 @@
 const Pool = artifacts.require('Pool');
+const OrchestratedYDaiMock = artifacts.require('OrchestratedYDaiMock');
 
 import { toWad, toRay, mulRay } from '../shared/utils';
 import { YieldEnvironmentLite, Contract } from "../shared/fixtures";
@@ -17,6 +18,7 @@ contract('Pool - Delegation', async (accounts) =>  {
 
     let maturity1: number;
     let yDai1: Contract;
+    let yDai1Mock: Contract;
     let dai: Contract;
     let pool: Contract;
     let env: Contract;
@@ -41,10 +43,8 @@ contract('Pool - Delegation', async (accounts) =>  {
         );
 
         // Test setup
-
-        // Allow owner to mint yDai the sneaky way, without recording a debt in controller
-        await yDai1.orchestrate(owner, { from: owner });
-
+        yDai1Mock = await OrchestratedYDaiMock.new(yDai1.address);
+        await yDai1.orchestrate(yDai1Mock.address, { from: owner });
     });
 
     describe("with liquidity", () => {
@@ -58,7 +58,7 @@ contract('Pool - Delegation', async (accounts) =>  {
 
         it("buys dai without delegation", async() => {
             const oneToken = toWad(1);
-            await yDai1.mint(from, yDaiTokens1, { from: owner });
+            await yDai1Mock.mint(from, yDaiTokens1, { from: owner });
 
             // yDaiInForChaiOut formula: https://www.desmos.com/calculator/16c4dgxhst
 
@@ -86,7 +86,7 @@ contract('Pool - Delegation', async (accounts) =>  {
 
         it("sells yDai without delegation", async() => {
             const oneToken = toWad(1);
-            await yDai1.mint(from, oneToken, { from: owner });
+            await yDai1Mock.mint(from, oneToken, { from: owner });
 
             // chaiOutForYDaiIn formula: https://www.desmos.com/calculator/6ylefi7fv7
 
@@ -116,7 +116,7 @@ contract('Pool - Delegation', async (accounts) =>  {
         describe("with extra yDai reserves", () => {
             beforeEach(async() => {
                 const additionalYDaiReserves = toWad(34.4);
-                await yDai1.mint(operator, additionalYDaiReserves, { from: owner });
+                await yDai1Mock.mint(operator, additionalYDaiReserves, { from: owner });
                 await yDai1.approve(pool.address, additionalYDaiReserves, { from: operator });
                 await pool.sellYDai(operator, operator, additionalYDaiReserves, { from: operator });
             });

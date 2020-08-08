@@ -1,4 +1,5 @@
 const Pool = artifacts.require('Pool');
+const OrchestratedYDaiMock = artifacts.require('OrchestratedYDaiMock');
 
 // @ts-ignore
 import helper from 'ganache-time-traveler';
@@ -28,6 +29,7 @@ contract('Pool', async (accounts) =>  {
     let dai: Contract;
     let pool: Contract;
     let yDai1: Contract;
+    let yDai1Mock: Contract;
 
     let maturity1: number;
 
@@ -52,9 +54,9 @@ contract('Pool', async (accounts) =>  {
             { from: owner }
         );
 
-        // Allow owner to mint yDai the sneaky way, without recording a debt in controller
-        await yDai1.orchestrate(owner, { from: owner });
-
+        // Test setup
+        yDai1Mock = await OrchestratedYDaiMock.new(yDai1.address);
+        await yDai1.orchestrate(yDai1Mock.address, { from: owner });
     });
 
     afterEach(async() => {
@@ -126,7 +128,7 @@ contract('Pool', async (accounts) =>  {
 
         it("sells yDai", async() => {
             const oneToken = toWad(1);
-            await yDai1.mint(from, oneToken, { from: owner });
+            await yDai1Mock.mint(from, oneToken, { from: owner });
 
             // daiOutForYDaiIn formula: https://www.desmos.com/calculator/gjnmqofivy
 
@@ -175,7 +177,7 @@ contract('Pool', async (accounts) =>  {
 
         it("buys dai", async() => {
             const oneToken = toWad(1);
-            await yDai1.mint(from, yDaiTokens1, { from: owner });
+            await yDai1Mock.mint(from, yDaiTokens1, { from: owner });
 
             // yDaiInForDaiOut formula: https://www.desmos.com/calculator/umvstb6xwx
 
@@ -225,7 +227,7 @@ contract('Pool', async (accounts) =>  {
         describe("with extra yDai reserves", () => {
             beforeEach(async() => {
                 const additionalYDaiReserves = toWad(34.4);
-                await yDai1.mint(operator, additionalYDaiReserves, { from: owner });
+                await yDai1Mock.mint(operator, additionalYDaiReserves, { from: owner });
                 await yDai1.approve(pool.address, additionalYDaiReserves, { from: operator });
                 await pool.sellYDai(operator, operator, additionalYDaiReserves, { from: operator });
             });
@@ -241,7 +243,7 @@ contract('Pool', async (accounts) =>  {
                 console.log("          daiIn: %d", oneToken.toString());
 
                 await dai.mint(user1, oneToken, { from: owner }); // Not feeling like fighting with Vat
-                await yDai1.mint(user1, yDaiTokens1, { from: owner });
+                await yDai1Mock.mint(user1, yDaiTokens1, { from: owner });
     
                 const yDaiBefore = new BN(await yDai1.balanceOf(user1));
                 const poolTokensBefore = new BN(await pool.balanceOf(user1));
