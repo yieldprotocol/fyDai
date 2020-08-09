@@ -1,12 +1,28 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.6.10;
 
+
+import "../helpers/Orchestrated.sol";
 import "../interfaces/ITreasury.sol";
 import "../interfaces/IYDai.sol";
 import "../interfaces/IController.sol";
 import "../interfaces/ILiquidations.sol";
 
-/// @dev This contract allows to call privileged functions on Treasury
+/// @dev This contract allows to test Orchestrated
+contract OrchestratedReceiverMock is Orchestrated() {
+    function testOnlyDeployer() public onlyDeployer("Orchestrated: Only deployer") { }
+    function testOnlyOrchestrated() public onlyOrchestrated("Orchestrated: Only orchestrated") { }
+}
+
+contract OrchestratedCallerMock {
+    OrchestratedReceiverMock public _receiver;
+
+    constructor (address receiver_) public { _receiver = OrchestratedReceiverMock(receiver_); } 
+
+    function testOnlyOrchestrated() public { _receiver.testOnlyOrchestrated(); }
+}
+
+/// @dev This contract allows to test calling privileged functions on Treasury
 contract OrchestratedTreasuryMock {
 
     ITreasury public _treasury;
@@ -23,7 +39,7 @@ contract OrchestratedTreasuryMock {
     function pullWeth(address user, uint256 weth) public { _treasury.pullWeth(user, weth); }
 }
 
-/// @dev This contract allows to call privileged functions on YDai
+/// @dev This contract allows to test calling privileged functions on YDai
 contract OrchestratedYDaiMock {
 
     IYDai public _yDai;
@@ -35,7 +51,7 @@ contract OrchestratedYDaiMock {
     function mint(address user, uint256 amount) public { _yDai.mint(user, amount); }
 }
 
-/// @dev This contract allows to call privileged functions on Controller
+/// @dev This contract allows to test calling privileged functions on Controller
 contract OrchestratedControllerMock {
 
     IController public _controller;
@@ -45,7 +61,7 @@ contract OrchestratedControllerMock {
     }
 }
 
-/// @dev This contract allows to call privileged functions on Liquidations
+/// @dev This contract allows to test calling privileged functions on Liquidations
 contract OrchestratedLiquidationsMock {
 
     ILiquidations public _liquidations;
