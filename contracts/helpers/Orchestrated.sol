@@ -17,10 +17,8 @@ contract Orchestrated is AccessControl {
 
     bytes32 public constant YIELD_CONTRACT = "YIELD_CONTRACT";
 
-    /// @dev The constructor sets YIELD_CONTRACT as a subordinate role to DEFAULT_ADMIN_ROLE
-    /// and gives the deployer address the DEFAULT_ADMIN_ROLE role that allows calling `orchestrate`
+    /// @dev The constructor gives the deployer address the DEFAULT_ADMIN_ROLE role that allows calling `orchestrate`
     constructor () public {
-        _setRoleAdmin(YIELD_CONTRACT, DEFAULT_ADMIN_ROLE);
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }
 
@@ -47,6 +45,8 @@ contract Orchestrated is AccessControl {
             toOrchestrate.isContract(),
             "Orchestrated: Only contracts can be orchestrated"
         );
-        grantRole(YIELD_CONTRACT, toOrchestrate); // Only bearers of YIELD_CONTRACT's admin role will succeed at this.
+        // Only bearers of YIELD_CONTRACT's admin role will succeed at this.
+        // By default, the admin role for any other role is DEFAULT_ADMIN_ROLE
+        grantRole(YIELD_CONTRACT, toOrchestrate); 
     }
 }
