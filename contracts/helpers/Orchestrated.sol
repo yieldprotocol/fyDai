@@ -17,8 +17,10 @@ contract Orchestrated is AccessControl {
 
     bytes32 public constant YIELD_CONTRACT = "YIELD_CONTRACT";
 
-    /// @dev The constructor gives the deployer address the root role that can call `orchestrate`
+    /// @dev The constructor sets YIELD_CONTRACT as a subordinate role to DEFAULT_ADMIN_ROLE
+    /// and gives the deployer address the DEFAULT_ADMIN_ROLE role that allows calling `orchestrate`
     constructor () public {
+        _setRoleAdmin(YIELD_CONTRACT, DEFAULT_ADMIN_ROLE);
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }
 
@@ -38,9 +40,13 @@ contract Orchestrated is AccessControl {
 
     /// @dev Register a contract for privileged access
     /// @param toOrchestrate The address of the contract receiving privileged access
-    function orchestrate(address toOrchestrate) public onlyDeployer("Orchestrated: Restricted to deployer") {
-        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "Orchestrated: Restricted to deployer");
-        require(toOrchestrate.isContract(), "Orchestrated: Only contracts can be orchestrated");
-        grantRole(YIELD_CONTRACT, toOrchestrate);
+    function orchestrate(address toOrchestrate)
+        public
+    {
+        require(
+            toOrchestrate.isContract(),
+            "Orchestrated: Only contracts can be orchestrated"
+        );
+        grantRole(YIELD_CONTRACT, toOrchestrate); // Only bearers of YIELD_CONTRACT's admin role will succeed at this.
     }
 }
