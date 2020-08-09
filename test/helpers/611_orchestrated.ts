@@ -4,6 +4,7 @@ const OrchestratedCallerMock = artifacts.require('OrchestratedCallerMock')
 // @ts-ignore
 import { expectRevert } from '@openzeppelin/test-helpers';
 import { Contract } from "../shared/fixtures"
+import { formatBytes32String as toBytes32 } from 'ethers/lib/utils'
 
 contract('Orchestrated', async (accounts: string[]) =>  {
   let [ deployer, user, malicious ] = accounts;
@@ -21,11 +22,11 @@ contract('Orchestrated', async (accounts: string[]) =>  {
 
   // Setting up orchestration
   it('initializes DEFAULT_ADMIN_ROLE as the admin for YIELD_CONTRACT', async () => {
-      assert.equal(await receiver.getRoleAdmin(YIELD_CONTRACT), DEFAULT_ADMIN_ROLE)
+      assert.equal(await receiver.getRoleAdmin(toBytes32(YIELD_CONTRACT)), toBytes32(DEFAULT_ADMIN_ROLE))
   })
 
   it('gives DEFAULT_ADMIN_ROLE to the deployer', async () => {
-    assert.equal(await receiver.hasRole(DEFAULT_ADMIN_ROLE, deployer), true)
+    assert.equal(await receiver.hasRole(toBytes32(DEFAULT_ADMIN_ROLE), deployer), true)
   })
 
   it('only deployer can orchestrate contracts', async () => {
@@ -34,7 +35,7 @@ contract('Orchestrated', async (accounts: string[]) =>  {
       "AccessControl: sender must be an admin to grant",
     )
     await receiver.orchestrate(caller.address, { from: deployer })
-    assert.equal(await receiver.hasRole(YIELD_CONTRACT, caller.address), true)
+    assert.equal(await receiver.hasRole(toBytes32(YIELD_CONTRACT), caller.address), true)
   })
 
   it('only contracts can be orchestrated', async () => {
