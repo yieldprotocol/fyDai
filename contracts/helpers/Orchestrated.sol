@@ -47,6 +47,11 @@ contract Orchestrated is AccessControl {
         );
         // Only bearers of YIELD_CONTRACT's admin role will succeed at this.
         // By default, the admin role for any other role is DEFAULT_ADMIN_ROLE
-        grantRole(YIELD_CONTRACT, toOrchestrate); 
+        super.grantRole(YIELD_CONTRACT, toOrchestrate); 
+    }
+
+    /// @dev This function is overriden to disallow role granting beyond contract orchestration
+    function grantRole(bytes32 role, address account) public override {
+        revert("Orchestrated: Not allowed");
     }
 }
