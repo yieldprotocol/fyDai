@@ -1,4 +1,4 @@
-const { BN } = require('@openzeppelin/test-helpers');
+const { BigNumber } = require('ethers')
 
 // External
 const Migrations = artifacts.require('Migrations');
@@ -7,7 +7,6 @@ const GemJoin = artifacts.require('GemJoin');
 const DaiJoin = artifacts.require('DaiJoin');
 const Weth = artifacts.require("WETH9");
 const ERC20 = artifacts.require("TestERC20");
-const Chai = artifacts.require('Chai');
 
 // YDai
 const YDai = artifacts.require('YDai');
@@ -15,12 +14,29 @@ const YDai = artifacts.require('YDai');
 // Peripheral
 const Pool = artifacts.require('Pool');
 
+const UNIT = BigNumber.from(10).pow(BigNumber.from(27))
+
+function toRay(value) {
+  let exponent = BigNumber.from(10).pow(BigNumber.from(17))
+  return BigNumber.from((value) * 10 ** 10).mul(exponent)
+}
+
+function toWad(value) {
+  let exponent = BigNumber.from(10).pow(BigNumber.from(8))
+  return BigNumber.from((value) * 10 ** 10).mul(exponent)
+}
+
+function mulRay(x, ray) {
+  return BigNumber.from(x).mul(BigNumber.from(ray)).div(UNIT)
+}
+
+function divRay(x, ray) {
+  return UNIT.mul(BigNumber.from(x)).div(BigNumber.from(ray))
+}
+
 module.exports = async (callback) => {
 
-    const { toWad, toRay, toRad, addBN, subBN, mulRay, divRay } = require('../test/shared/utils');
-
-    // const { assert, expect } = require('chai');
-    let [ owner, user1, operator, from, to ] = await web3.eth.getAccounts()
+    let [ owner, user1 ] = await web3.eth.getAccounts()
     const migrations = await Migrations.deployed();
 
     let vat = await Vat.deployed()
@@ -31,18 +47,11 @@ module.exports = async (callback) => {
 
     let WETH = web3.utils.fromAscii("ETH-A");
 
-    // let ilks = await vat.ilks(web3.utils.fromAscii(WETH))
-    // let spot = ilks.spot;
-    // let rate1 = ilks.rate;
-    // console.log(ilks.spot.toString())
-    // console.log(ilks.rate.toString())
-
     let spot = toRay(150);
     let rate1 = toRay(1.25);
 
     const daiDebt1 = toWad(90);
     const daiTokens1 = mulRay(daiDebt1, rate1);
-    const yDaiTokens1 = daiTokens1;
 
     // Convert eth to weth and use it to borrow `daiTokens` from MakerDAO
     // This function shadows and uses global variables, careful.
@@ -90,13 +99,12 @@ module.exports = async (callback) => {
         console.log("        initial liquidity...");
         console.log("        daiReserves: %d", (await pool.getDaiReserves()).toString());
         console.log("        yDaiReserves: %d", (await pool.getYDaiReserves()).toString());
-        const t = new BN((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp);
-        console.log("        timeTillMaturity: %d", (new BN(maturity).sub(t).toString()));
+        const t = (await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp;
+        console.log("        timeTillMaturity: %d", BigNumber.from(maturity).sub(BigNumber.from(t)).toString());
         console.log();
         console.log('pool initiated')
         callback()
     } catch (e) {console.log(e)}
-
 }
 
 
