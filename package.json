@@ -10,6 +10,7 @@
     "test": "buidler test test/*.ts test/pool/*.ts test/peripheral/*.ts",
     "test:non-functional": "buidler test test/non-functional/*.ts",
     "ganache": "./scripts/ganache.sh",
+    "deploy:ganache": "yarn ganache && truffle migrate",
     "coverage": "buidler coverage --network coverage --temp build --testfiles 'test/*.ts test/pool/*.ts test/peripheral/*.ts'",
 
     "fmt": "prettier ./test/**/*.ts --check",
