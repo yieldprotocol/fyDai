@@ -5,15 +5,14 @@
   "main": "index.js",
   "author": "",
   "scripts": {
-    "lint": "solium -d contracts",
     "build": "buidler compile",
     "test": "buidler test test/*.ts test/pool/*.ts test/peripheral/*.ts",
     "test:non-functional": "buidler test test/non-functional/*.ts",
     "ganache": "./scripts/ganache.sh",
     "deploy:ganache": "yarn ganache && truffle migrate",
     "coverage": "buidler coverage --network coverage --temp build --testfiles 'test/*.ts test/pool/*.ts test/peripheral/*.ts'",
-    "fmt": "prettier ./test/**/*.ts --check",
-    "fmt:fix": "prettier ./test/**/*.ts --write"
+    "lint": "prettier ./test/**/*.ts --check",
+    "lint:fix": "prettier ./test/**/*.ts --write"
   },
   "devDependencies": {
     "@nomiclabs/buidler": "^1.3.8",
