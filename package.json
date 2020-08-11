@@ -12,7 +12,6 @@
     "ganache": "./scripts/ganache.sh",
     "deploy:ganache": "yarn ganache && truffle migrate",
     "coverage": "buidler coverage --network coverage --temp build --testfiles 'test/*.ts test/pool/*.ts test/peripheral/*.ts'",
-
     "fmt": "prettier ./test/**/*.ts --check",
     "fmt:fix": "prettier ./test/**/*.ts --write"
   },
@@ -32,6 +31,7 @@
     "mocha": "^7.1.0",
     "prettier": "^2.0.5",
     "solidity-coverage": "^0.7.9",
+    "truffle": "^5.1.39",
     "truffle-typings": "^1.0.8",
     "ts-node": "^8.10.2",
     "typescript": "^3.9.7"
