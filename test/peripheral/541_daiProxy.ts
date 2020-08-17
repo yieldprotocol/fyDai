@@ -50,7 +50,6 @@ contract('DaiProxy', async (accounts) => {
       vat.address,
       dai.address,
       pot.address,
-      yDai1.address,
       controller.address,
       pool.address,
       { from: owner }
