@@ -116,17 +116,48 @@ contract YDai is Orchestrated(), Delegable(), DecimalMath, ERC20Permit, IYDai  {
     }
 
     /// @dev Burn yTokens and return their dai equivalent value, pulled from the Treasury
-    /// During unwind, `_treasury.pullDai()` will revert which is right.
     /// `from` needs to tell yDai to approve the burning of the yDai tokens.
     /// `from` can delegate to other addresses to redeem his yDai and put the Dai proceeds in the `to` wallet.
     /// The collateral needed changes according to series maturity and MakerDAO rate and chi, depending on collateral type.
     /// @param from Wallet to burn yDai from.
     /// @param to Wallet to put the Dai in.
     /// @param yDaiAmount Amount of yDai to burn.
+    function redeem(address from, address to, uint256 yDaiAmount)
+        public override
+        onlyHolderOrDelegate(from, "YDai: Only Holder Or Delegate")
+    {
+        _redeem(from, to, yDaiAmount);
+    }
+
+    /// @dev Burn yTokens and return their dai equivalent value, pulled from the Treasury
+    /// `from` needs to tell yDai to approve the burning of the yDai tokens.
+    /// This function requires an encoded signature, passed on in the parameters
+    /// The collateral needed changes according to series maturity and MakerDAO rate and chi, depending on collateral type.
+    /// @param from Wallet to burn yDai from.
+    /// @param to Wallet to put the Dai in.
+    /// @param yDaiAmount Amount of yDai to burn.
+    /// @param deadline Latest block timestamp that the signature is valid for.
+    /// @param v Signature parameter
+    /// @param r Signature parameter
+    /// @param s Signature parameter
+    function redeemWithSignature(address from, address to, uint256 yDaiAmount, uint deadline, uint8 v, bytes32 r, bytes32 s)
+        external
+    {
+        // Will revert if msg.sender already a delegate, the signature has expired, or the signature has been used.
+        addDelegateBySignature(from, msg.sender, deadline, v, r, s);
+        _redeem(from, to, yDaiAmount);
+    }
+
+    /// @dev Burn yTokens and return their dai equivalent value, pulled from the Treasury
+    /// During unwind, `_treasury.pullDai()` will revert which is right.
+    /// `from` needs to tell yDai to approve the burning of the yDai tokens.
+    /// The collateral needed changes according to series maturity and MakerDAO rate and chi, depending on collateral type.
+    /// @param from Wallet to burn yDai from.
+    /// @param to Wallet to put the Dai in.
+    /// @param yDaiAmount Amount of yDai to burn.
     // from --- yDai ---> us
     // us   --- Dai  ---> to
-    function redeem(address from, address to, uint256 yDaiAmount)
-        public onlyHolderOrDelegate(from, "YDai: Only Holder Or Delegate") lock override {
+    function _redeem(address from, address to, uint256 yDaiAmount) internal lock {
         require(
             isMature == true,
             "YDai: yDai is not mature"
