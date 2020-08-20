@@ -4,7 +4,7 @@ const LimitPool = artifacts.require('LimitPool')
 import { toWad, toRay, mulRay } from '../shared/utils'
 import { YieldEnvironmentLite, Contract } from '../shared/fixtures'
 import { getSignatureDigest } from '../shared/signatures'
-import { keccak256, toUtf8Bytes } from 'ethers/lib/utils'
+import { defaultAbiCoder, keccak256, toUtf8Bytes } from 'ethers/lib/utils'
 import { ecsign } from 'ethereumjs-util'
 // @ts-ignore
 import { BN, expectRevert } from '@openzeppelin/test-helpers'
@@ -196,13 +196,14 @@ contract('LimitPool', async (accounts) => {
         expect(yDaiOut).to.be.bignumber.lt(expectedYDaiOut.mul(new BN('1001')).div(new BN('1000')))
       })
 
-      it('sells dai by signature', async () => {
+      it.only('sells dai by signature', async () => {
         const oneToken = toWad(1)
         await env.maker.getDai(from, daiTokens1, rate1)
 
         const { v, r, s } = ecsign(Buffer.from(digest.slice(2), 'hex'), userPrivateKey)
+        const abiSignature = defaultAbiCoder.encode(['uint8', 'bytes32', 'bytes32'], [v, r, s])
         await dai.approve(pool.address, oneToken, { from: from })
-        await limitPool.sellDaiBySignature(pool.address, to, oneToken, oneToken.div(2), deadline, v, r, s, {
+        await limitPool.sellDaiBySignature(pool.address, to, oneToken, oneToken.div(2), deadline, abiSignature, {
           from: from,
         })
 
