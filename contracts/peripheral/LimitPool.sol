@@ -138,7 +138,7 @@ contract LimitPool {
     /// @param deadline Latest block timestamp for which the signature is valid
     /// @param delegateSig ABI-encoded (uint8 v, bytes32 r, bytes32 s) `addDelegateBySignature` signature
     /// @param permitSig ABI-encoded (uint8 v, bytes32 r, bytes32 s) `permit` signature
-    /// The permit must be for (owner, limitProxy.address, maxDaiIn)
+    /// The permit must be for (owner, pool.address, maxDaiIn)
     /// If an empty bytes variable is passed as a signature its related call won't be attempted
     /// If both signatures are provided, the deadline for both must be the same
     function buyYDaiBySignature(
@@ -148,15 +148,14 @@ contract LimitPool {
         public
         returns(uint256)
     {
-        IPool _pool = IPool(pool);
+        // IPool _pool = IPool(pool); // Stack too deep :(
         if (delegateSig.length != 0) {
             (uint8 v, bytes32 r, bytes32 s) = abi.decode(delegateSig, (uint8, bytes32, bytes32));
-            _pool.addDelegateBySignature(msg.sender, address(this), deadline, v, r, s);
+            IPool(pool).addDelegateBySignature(msg.sender, address(this), deadline, v, r, s);
         }
         if (permitSig.length != 0) {
-            IERC2612 dai = IERC2612(_pool.dai());
             (uint8 v, bytes32 r, bytes32 s) = abi.decode(permitSig, (uint8, bytes32, bytes32));
-            dai.permit(msg.sender, address(this), maxDaiIn, deadline, v, r, s);
+            IERC2612(IPool(pool).dai()).permit(msg.sender, pool, maxDaiIn, deadline, v, r, s);
         }
         return buyYDai(pool, to, yDaiOut, maxDaiIn);
     }
