@@ -67,7 +67,15 @@ contract('LimitPool', async (accounts) => {
     const signatureCount = await pool.signatureCount(from)
 
     // Get the EIP712 digest
-    signatureDigest = getSignatureDigest(SIGNATURE_TYPEHASH, name, pool.address, chainId, signatureStruct, signatureCount, deadline)
+    signatureDigest = getSignatureDigest(
+      SIGNATURE_TYPEHASH,
+      name,
+      pool.address,
+      chainId,
+      signatureStruct,
+      signatureCount,
+      deadline
+    )
 
     // Allow owner to mint yDai the sneaky way, without recording a debt in controller
     await yDai1.orchestrate(owner, { from: owner })
@@ -100,12 +108,54 @@ contract('LimitPool', async (accounts) => {
       const oneToken = toWad(1)
       await yDai1.mint(from, yDaiTokens1, { from: owner })
 
-      const { v, r, s } = ecsign(Buffer.from(signatureDigest.slice(2), 'hex'), userPrivateKey)
-      const abiSignature = defaultAbiCoder.encode(['uint8', 'bytes32', 'bytes32'], [v, r, s])
+      // Delegate signature
+      let delegateSignature: string
+      {
+        const { v, r, s } = ecsign(Buffer.from(signatureDigest.slice(2), 'hex'), userPrivateKey)
+        delegateSignature = defaultAbiCoder.encode(['uint8', 'bytes32', 'bytes32'], [v, r, s])
+      }
+
+      // Permit signature
+      const maxYDaiIn = oneToken.mul(2).toString()
+      let permitSignature: string
+      {
+        const permitStruct = {
+          owner: from,
+          spender: pool.address,
+          value: maxYDaiIn,
+        }
+        // Get the user's nonce
+        const permitCount = await dai.nonces(from)
+
+        // Get the EIP712 digest
+        const yDaiName = await yDai1.name()
+        permitDigest = getPermitDigest(
+          PERMIT_TYPEHASH,
+          yDaiName,
+          yDai1.address,
+          chainId,
+          permitStruct,
+          permitCount,
+          deadline
+        )
+        const { v, r, s } = ecsign(Buffer.from(permitDigest.slice(2), 'hex'), userPrivateKey)
+        permitSignature = defaultAbiCoder.encode(['uint8', 'bytes32', 'bytes32'], [v, r, s])
+      }
+
       await yDai1.approve(pool.address, yDaiTokens1, { from: from })
-      await limitPool.buyDaiBySignature(pool.address, to, oneToken, oneToken.mul(2), deadline, abiSignature, emptySignature, { // TODO: Fix
-        from: from,
-      })
+      await limitPool.buyDaiBySignature(
+        pool.address,
+        to,
+        oneToken,
+        maxYDaiIn,
+        deadline,
+        delegateSignature,
+        permitSignature,
+        {
+          // TODO: Fix
+          from: from,
+        }
+      )
 
       const expectedYDaiIn = new BN(oneToken.toString()).mul(new BN('10019')).div(new BN('10000')) // I just hate javascript
       const yDaiIn = new BN(yDaiTokens1.toString()).sub(new BN(await yDai1.balanceOf(from)))
@@ -119,9 +169,18 @@ contract('LimitPool', async (accounts) => {
 
       await pool.addDelegate(limitPool.address, { from: from })
       await yDai1.approve(pool.address, yDaiTokens1, { from: from })
-      await limitPool.buyDaiBySignature(pool.address, to, oneToken, oneToken.mul(2), deadline, emptySignature, emptySignature, {
-        from: from,
-      })
+      await limitPool.buyDaiBySignature(
+        pool.address,
+        to,
+        oneToken,
+        oneToken.mul(2),
+        deadline,
+        emptySignature,
+        emptySignature,
+        {
+          from: from,
+        }
+      )
 
       const expectedYDaiIn = new BN(oneToken.toString()).mul(new BN('10019')).div(new BN('10000')) // I just hate javascript
       const yDaiIn = new BN(yDaiTokens1.toString()).sub(new BN(await yDai1.balanceOf(from)))
@@ -183,14 +242,31 @@ contract('LimitPool', async (accounts) => {
 
         // Get the EIP712 digest
         const yDaiName = await yDai1.name()
-        permitDigest = getPermitDigest(PERMIT_TYPEHASH, yDaiName, yDai1.address, chainId, permitStruct, permitCount, deadline)
+        permitDigest = getPermitDigest(
+          PERMIT_TYPEHASH,
+          yDaiName,
+          yDai1.address,
+          chainId,
+          permitStruct,
+          permitCount,
+          deadline
+        )
         const { v, r, s } = ecsign(Buffer.from(permitDigest.slice(2), 'hex'), userPrivateKey)
         permitSignature = defaultAbiCoder.encode(['uint8', 'bytes32', 'bytes32'], [v, r, s])
       }
-      
-      await limitPool.sellYDaiBySignature(pool.address, to, yDaiIn, oneToken.div(2), deadline, delegateSignature, permitSignature, {
-        from: from,
-      })
+
+      await limitPool.sellYDaiBySignature(
+        pool.address,
+        to,
+        yDaiIn,
+        oneToken.div(2),
+        deadline,
+        delegateSignature,
+        permitSignature,
+        {
+          from: from,
+        }
+      )
 
       assert.equal(await yDai1.balanceOf(from), 0, "'From' wallet should have no yDai tokens")
 
@@ -206,9 +282,18 @@ contract('LimitPool', async (accounts) => {
 
       await pool.addDelegate(limitPool.address, { from: from })
       await yDai1.approve(pool.address, oneToken, { from: from })
-      await limitPool.sellYDaiBySignature(pool.address, to, oneToken, oneToken.div(2), deadline, emptySignature, emptySignature, {
-        from: from,
-      })
+      await limitPool.sellYDaiBySignature(
+        pool.address,
+        to,
+        oneToken,
+        oneToken.div(2),
+        deadline,
+        emptySignature,
+        emptySignature,
+        {
+          from: from,
+        }
+      )
 
       assert.equal(await yDai1.balanceOf(from), 0, "'From' wallet should have no yDai tokens")
 
@@ -264,12 +349,53 @@ contract('LimitPool', async (accounts) => {
         const oneToken = toWad(1)
         await env.maker.getDai(from, daiTokens1, rate1)
 
-        const { v, r, s } = ecsign(Buffer.from(signatureDigest.slice(2), 'hex'), userPrivateKey)
-        const abiSignature = defaultAbiCoder.encode(['uint8', 'bytes32', 'bytes32'], [v, r, s])
+        // Delegate signature
+        let delegateSignature: string
+        {
+          const { v, r, s } = ecsign(Buffer.from(signatureDigest.slice(2), 'hex'), userPrivateKey)
+          delegateSignature = defaultAbiCoder.encode(['uint8', 'bytes32', 'bytes32'], [v, r, s])
+        }
+
+        // Permit signature
+        const daiIn = oneToken.toString()
+        let permitSignature: string
+        {
+          const permitStruct = {
+            owner: from,
+            spender: pool.address,
+            value: daiIn,
+          }
+          // Get the user's nonce
+          const permitCount = await dai.nonces(from)
+
+          // Get the EIP712 digest
+          const daiName = await dai.name()
+          permitDigest = getPermitDigest(
+            PERMIT_TYPEHASH,
+            daiName,
+            dai.address,
+            chainId,
+            permitStruct,
+            permitCount,
+            deadline
+          )
+          const { v, r, s } = ecsign(Buffer.from(permitDigest.slice(2), 'hex'), userPrivateKey)
+          permitSignature = defaultAbiCoder.encode(['uint8', 'bytes32', 'bytes32'], [v, r, s])
+        }
+
         await dai.approve(pool.address, oneToken, { from: from })
-        await limitPool.sellDaiBySignature(pool.address, to, oneToken, oneToken.div(2), deadline, abiSignature, emptySignature, { // TODO: Fix
-          from: from,
-        })
+        await limitPool.sellDaiBySignature(
+          pool.address,
+          to,
+          oneToken,
+          oneToken.div(2),
+          deadline,
+          delegateSignature,
+          permitSignature,
+          {
+            from: from,
+          }
+        )
 
         assert.equal(
           await dai.balanceOf(from),
@@ -290,9 +416,18 @@ contract('LimitPool', async (accounts) => {
 
         await pool.addDelegate(limitPool.address, { from: from })
         await dai.approve(pool.address, oneToken, { from: from })
-        await limitPool.sellDaiBySignature(pool.address, to, oneToken, oneToken.div(2), deadline, emptySignature, emptySignature, {
-          from: from,
-        })
+        await limitPool.sellDaiBySignature(
+          pool.address,
+          to,
+          oneToken,
+          oneToken.div(2),
+          deadline,
+          emptySignature,
+          emptySignature,
+          {
+            from: from,
+          }
+        )
 
         assert.equal(
           await dai.balanceOf(from),
@@ -348,7 +483,7 @@ contract('LimitPool', async (accounts) => {
         }
 
         // Permit signature
-        const maxDaiIn = (oneToken.mul(2)).toString()
+        const maxDaiIn = oneToken.mul(2).toString()
         let permitSignature: string
         {
           const permitStruct = {
@@ -361,14 +496,31 @@ contract('LimitPool', async (accounts) => {
 
           // Get the EIP712 digest
           const daiName = await dai.name()
-          permitDigest = getPermitDigest(PERMIT_TYPEHASH, daiName, dai.address, chainId, permitStruct, permitCount, deadline)
+          permitDigest = getPermitDigest(
+            PERMIT_TYPEHASH,
+            daiName,
+            dai.address,
+            chainId,
+            permitStruct,
+            permitCount,
+            deadline
+          )
           const { v, r, s } = ecsign(Buffer.from(permitDigest.slice(2), 'hex'), userPrivateKey)
           permitSignature = defaultAbiCoder.encode(['uint8', 'bytes32', 'bytes32'], [v, r, s])
         }
-        
-        await limitPool.buyYDaiBySignature(pool.address, to, oneToken, maxDaiIn, deadline, delegateSignature, permitSignature, {
-          from: from,
-        })
+
+        await limitPool.buyYDaiBySignature(
+          pool.address,
+          to,
+          oneToken,
+          maxDaiIn,
+          deadline,
+          delegateSignature,
+          permitSignature,
+          {
+            from: from,
+          }
+        )
 
         assert.equal(await yDai1.balanceOf(to), oneToken.toString(), "'To' wallet should have 1 yDai token")
 
@@ -384,9 +536,18 @@ contract('LimitPool', async (accounts) => {
 
         await pool.addDelegate(limitPool.address, { from: from })
         await dai.approve(pool.address, daiTokens1, { from: from })
-        await limitPool.buyYDaiBySignature(pool.address, to, oneToken, oneToken.mul(2), deadline, emptySignature, emptySignature, {
-          from: from,
-        })
+        await limitPool.buyYDaiBySignature(
+          pool.address,
+          to,
+          oneToken,
+          oneToken.mul(2),
+          deadline,
+          emptySignature,
+          emptySignature,
+          {
+            from: from,
+          }
+        )
 
         assert.equal(await yDai1.balanceOf(to), oneToken.toString(), "'To' wallet should have 1 yDai token")
 
