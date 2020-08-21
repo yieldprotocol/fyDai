@@ -38,6 +38,7 @@ contract('Controller - EthProxy', async (accounts) => {
   let snapshotId: string
 
   let vat: Contract
+  let dai: Contract
   let chai: Contract
   let treasury: Contract
   let controller: Contract
@@ -56,6 +57,7 @@ contract('Controller - EthProxy', async (accounts) => {
     controller = env.controller
     vat = env.maker.vat
     weth = env.maker.weth
+    dai = env.maker.dai
     chai = env.maker.chai
 
     // Setup yDai
@@ -66,7 +68,7 @@ contract('Controller - EthProxy', async (accounts) => {
     await env.newYDai(maturity2, 'Name', 'Symbol')
 
     // Setup EthProxy
-    ethProxy = await EthProxy.new(weth.address, chai.address, controller.address, { from: owner })
+    ethProxy = await EthProxy.new(weth.address, dai.address, chai.address, controller.address, { from: owner })
     
     // Create the signature digest
     const signatureStruct = {

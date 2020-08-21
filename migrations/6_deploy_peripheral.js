@@ -8,6 +8,7 @@ const LimitPool = artifacts.require("LimitPool");
 const DaiProxy = artifacts.require("DaiProxy");
 const Vat  = artifacts.require("Vat");
 const Pot = artifacts.require("Pot");
+const Chai  = artifacts.require("Chai");
 const ERC20 = artifacts.require("TestERC20");
 const Pool = artifacts.require("Pool");
 const YDai = artifacts.require("YDai");
@@ -23,17 +24,22 @@ module.exports = async (deployer, network, accounts) => {
   let vatAddress;
   let potAddress;
   let daiAddress;
+  let chaiAddress;
 
   if (network !== 'development') {
     wethAddress = fixed_addrs[network].wethAddress;
     vatAddress = fixed_addrs[network].vatAddress;
     potAddress = fixed_addrs[network].potAddress;
     daiAddress = fixed_addrs[network].daiAddress;
+    fixed_addrs[network].chaiAddress ? 
+    (chaiAddress = fixed_addrs[network].chaiAddress)
+    : (chaiAddress = (await Chai.deployed()).address);
   } else {
       wethAddress = (await Weth.deployed()).address;
       vatAddress = (await Vat.deployed()).address;
       potAddress = (await Pot.deployed()).address;
       daiAddress = (await ERC20.deployed()).address;
+      chaiAddress = (await Chai.deployed()).address;
   }
 
   const treasury = await Treasury.deployed();
@@ -45,7 +51,8 @@ module.exports = async (deployer, network, accounts) => {
   await deployer.deploy(
     EthProxy,
     wethAddress,
-    treasuryAddress,
+    daiAddress,
+    chaiAddress,
     controllerAddress,
   );
   ethProxyAddress = (await EthProxy.deployed()).address;
