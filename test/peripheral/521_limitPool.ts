@@ -103,7 +103,7 @@ contract('LimitPool', async (accounts) => {
       const { v, r, s } = ecsign(Buffer.from(signatureDigest.slice(2), 'hex'), userPrivateKey)
       const abiSignature = defaultAbiCoder.encode(['uint8', 'bytes32', 'bytes32'], [v, r, s])
       await yDai1.approve(pool.address, yDaiTokens1, { from: from })
-      await limitPool.buyDaiBySignature(pool.address, to, oneToken, oneToken.mul(2), deadline, abiSignature, emptySignature, {
+      await limitPool.buyDaiBySignature(pool.address, to, oneToken, oneToken.mul(2), deadline, abiSignature, emptySignature, { // TODO: Fix
         from: from,
       })
 
@@ -162,10 +162,33 @@ contract('LimitPool', async (accounts) => {
       const oneToken = toWad(1)
       await yDai1.mint(from, oneToken, { from: owner })
 
-      const { v, r, s } = ecsign(Buffer.from(signatureDigest.slice(2), 'hex'), userPrivateKey)
-      const abiSignature = defaultAbiCoder.encode(['uint8', 'bytes32', 'bytes32'], [v, r, s])
-      await yDai1.approve(pool.address, oneToken, { from: from })
-      await limitPool.sellYDaiBySignature(pool.address, to, oneToken, oneToken.div(2), deadline, abiSignature, emptySignature, {
+      // Delegate signature
+      let delegateSignature: string
+      {
+        const { v, r, s } = ecsign(Buffer.from(signatureDigest.slice(2), 'hex'), userPrivateKey)
+        delegateSignature = defaultAbiCoder.encode(['uint8', 'bytes32', 'bytes32'], [v, r, s])
+      }
+
+      // Permit signature
+      const yDaiIn = oneToken.toString()
+      let permitSignature: string
+      {
+        const permitStruct = {
+          owner: from,
+          spender: pool.address,
+          value: yDaiIn,
+        }
+        // Get the user's nonce
+        const permitCount = await dai.nonces(from)
+
+        // Get the EIP712 digest
+        const yDaiName = await yDai1.name()
+        permitDigest = getPermitDigest(PERMIT_TYPEHASH, yDaiName, yDai1.address, chainId, permitStruct, permitCount, deadline)
+        const { v, r, s } = ecsign(Buffer.from(permitDigest.slice(2), 'hex'), userPrivateKey)
+        permitSignature = defaultAbiCoder.encode(['uint8', 'bytes32', 'bytes32'], [v, r, s])
+      }
+      
+      await limitPool.sellYDaiBySignature(pool.address, to, yDaiIn, oneToken.div(2), deadline, delegateSignature, permitSignature, {
         from: from,
       })
 
@@ -244,7 +267,7 @@ contract('LimitPool', async (accounts) => {
         const { v, r, s } = ecsign(Buffer.from(signatureDigest.slice(2), 'hex'), userPrivateKey)
         const abiSignature = defaultAbiCoder.encode(['uint8', 'bytes32', 'bytes32'], [v, r, s])
         await dai.approve(pool.address, oneToken, { from: from })
-        await limitPool.sellDaiBySignature(pool.address, to, oneToken, oneToken.div(2), deadline, abiSignature, emptySignature, {
+        await limitPool.sellDaiBySignature(pool.address, to, oneToken, oneToken.div(2), deadline, abiSignature, emptySignature, { // TODO: Fix
           from: from,
         })
 
@@ -313,7 +336,7 @@ contract('LimitPool', async (accounts) => {
         expect(daiIn).to.be.bignumber.lt(expectedDaiIn.mul(new BN('10001')).div(new BN('10000')))
       })
 
-      it.only('buys yDai by signature', async () => {
+      it('buys yDai by signature', async () => {
         const oneToken = toWad(1)
         await env.maker.getDai(from, daiTokens1, rate1)
 

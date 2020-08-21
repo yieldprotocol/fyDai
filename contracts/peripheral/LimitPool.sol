@@ -31,15 +31,25 @@ contract LimitPool {
     /// @param daiIn Amount of dai being sold
     /// @param minYDaiOut Minimum amount of yDai being bought
     /// @param deadline Latest block timestamp for which the signature is valid
-    /// @param signature ABI-encoded (uint8 v, bytes32 r, bytes32 s) signature
-    /// If an empty bytes variable is passed as a signature this function will be identical to `sellDai`
-    function sellDaiBySignature(address pool, address to, uint128 daiIn, uint128 minYDaiOut, uint deadline, bytes calldata signature)
+    /// @param delegateSig ABI-encoded (uint8 v, bytes32 r, bytes32 s) `addDelegateBySignature` signature
+    /// @param permitSig ABI-encoded (uint8 v, bytes32 r, bytes32 s) `permit` signature
+    /// The permit must be for (owner, pool.address, daiIn)
+    /// If an empty bytes variable is passed as a signature its related call won't be attempted
+    /// If both signatures are provided, the deadline for both must be the same
+    function sellDaiBySignature(
+        address pool, address to, uint128 daiIn, uint128 minYDaiOut,
+        uint deadline, bytes calldata delegateSig, bytes calldata permitSig
+    )
         public
         returns(uint256)
     {
-        if (signature.length != 0) {
-            (uint8 v, bytes32 r, bytes32 s) = abi.decode(signature, (uint8, bytes32, bytes32));
+        if (delegateSig.length != 0) {
+            (uint8 v, bytes32 r, bytes32 s) = abi.decode(delegateSig, (uint8, bytes32, bytes32));
             IPool(pool).addDelegateBySignature(msg.sender, address(this), deadline, v, r, s);
+        }
+        if (permitSig.length != 0) {
+            (uint8 v, bytes32 r, bytes32 s) = abi.decode(permitSig, (uint8, bytes32, bytes32));
+            IERC2612(IPool(pool).dai()).permit(msg.sender, pool, daiIn, deadline, v, r, s);
         }
         return sellDai(pool, to, daiIn, minYDaiOut);
     }
@@ -66,15 +76,25 @@ contract LimitPool {
     /// @param daiOut Amount of dai being bought
     /// @param maxYDaiIn Maximum amount of yDai being sold
     /// @param deadline Latest block timestamp for which the signature is valid
-    /// @param signature ABI-encoded (uint8 v, bytes32 r, bytes32 s) signature
-    /// If an empty bytes variable is passed as a signature this function will be identical to `buyDai`
-    function buyDaiBySignature(address pool, address to, uint128 daiOut, uint128 maxYDaiIn, uint deadline, bytes calldata signature)
+    /// @param delegateSig ABI-encoded (uint8 v, bytes32 r, bytes32 s) `addDelegateBySignature` signature
+    /// @param permitSig ABI-encoded (uint8 v, bytes32 r, bytes32 s) `permit` signature
+    /// The permit must be for (owner, pool.address, maxYDaiIn)
+    /// If an empty bytes variable is passed as a signature its related call won't be attempted
+    /// If both signatures are provided, the deadline for both must be the same
+    function buyDaiBySignature(
+        address pool, address to, uint128 daiOut, uint128 maxYDaiIn,
+        uint deadline, bytes calldata delegateSig, bytes calldata permitSig
+    )
         public
         returns(uint256)
     {
-        if (signature.length != 0) {
-            (uint8 v, bytes32 r, bytes32 s) = abi.decode(signature, (uint8, bytes32, bytes32));
+        if (delegateSig.length != 0) {
+            (uint8 v, bytes32 r, bytes32 s) = abi.decode(delegateSig, (uint8, bytes32, bytes32));
             IPool(pool).addDelegateBySignature(msg.sender, address(this), deadline, v, r, s);
+        }
+        if (permitSig.length != 0) {
+            (uint8 v, bytes32 r, bytes32 s) = abi.decode(permitSig, (uint8, bytes32, bytes32));
+            IERC2612(IPool(pool).yDai()).permit(msg.sender, pool, maxYDaiIn, deadline, v, r, s);
         }
         return buyDai(pool, to, daiOut, maxYDaiIn);
     }
@@ -101,15 +121,25 @@ contract LimitPool {
     /// @param yDaiIn Amount of yDai being sold
     /// @param minDaiOut Minimum amount of dai being bought
     /// @param deadline Latest block timestamp for which the signature is valid
-    /// @param signature ABI-encoded (uint8 v, bytes32 r, bytes32 s) signature
-    /// If an empty bytes variable is passed as a signature this function will be identical to `sellYDai`
-    function sellYDaiBySignature(address pool, address to, uint128 yDaiIn, uint128 minDaiOut, uint deadline, bytes calldata signature)
+    /// @param delegateSig ABI-encoded (uint8 v, bytes32 r, bytes32 s) `addDelegateBySignature` signature
+    /// @param permitSig ABI-encoded (uint8 v, bytes32 r, bytes32 s) `permit` signature
+    /// The permit must be for (owner, pool.address, yDaiIn)
+    /// If an empty bytes variable is passed as a signature its related call won't be attempted
+    /// If both signatures are provided, the deadline for both must be the same
+    function sellYDaiBySignature(
+        address pool, address to, uint128 yDaiIn, uint128 minDaiOut,
+        uint deadline, bytes calldata delegateSig, bytes calldata permitSig
+    )
         public
         returns(uint256)
     {
-        if (signature.length != 0) {
-            (uint8 v, bytes32 r, bytes32 s) = abi.decode(signature, (uint8, bytes32, bytes32));
+        if (delegateSig.length != 0) {
+            (uint8 v, bytes32 r, bytes32 s) = abi.decode(delegateSig, (uint8, bytes32, bytes32));
             IPool(pool).addDelegateBySignature(msg.sender, address(this), deadline, v, r, s);
+        }
+        if (permitSig.length != 0) {
+            (uint8 v, bytes32 r, bytes32 s) = abi.decode(permitSig, (uint8, bytes32, bytes32));
+            IERC2612(IPool(pool).yDai()).permit(msg.sender, pool, yDaiIn, deadline, v, r, s);
         }
         return sellYDai(pool, to, yDaiIn, minDaiOut);
     }
