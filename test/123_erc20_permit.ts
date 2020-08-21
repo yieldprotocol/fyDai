@@ -38,7 +38,7 @@ contract('ERC20Permit', async (accounts: string[]) => {
     const approve = {
       owner: owner,
       spender: user,
-      value: 100,
+      value: '100',
     }
 
     // deadline as much as you want in the future

@@ -43,7 +43,7 @@ export function getPermitDigest(
   approve: {
     owner: string
     spender: string
-    value: number
+    value: string
   },
   nonce: number,
   deadline: number
