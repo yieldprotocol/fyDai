@@ -19,6 +19,7 @@ contract('LimitPool', async (accounts) => {
   const chainId = 31337 // buidlerevm chain id
   const name = 'Yield'
   const deadline = 100000000000000
+  const emptySignature = Buffer.from('', 'hex')
   const SIGNATURE_TYPEHASH = keccak256(
     toUtf8Bytes('Signature(address user,address delegate,uint256 nonce,uint256 deadline)')
   )
@@ -29,8 +30,6 @@ contract('LimitPool', async (accounts) => {
   const daiDebt1 = toWad(96)
   const daiTokens1 = mulRay(daiDebt1, rate1)
   const yDaiTokens1 = daiTokens1
-
-
 
   let maturity1: number
   let yDai1: Contract
@@ -100,7 +99,25 @@ contract('LimitPool', async (accounts) => {
       const { v, r, s } = ecsign(Buffer.from(digest.slice(2), 'hex'), userPrivateKey)
       const abiSignature = defaultAbiCoder.encode(['uint8', 'bytes32', 'bytes32'], [v, r, s])
       await yDai1.approve(pool.address, yDaiTokens1, { from: from })
-      await limitPool.buyDaiBySignature(pool.address, to, oneToken, oneToken.mul(2), deadline, abiSignature, { from: from })
+      await limitPool.buyDaiBySignature(pool.address, to, oneToken, oneToken.mul(2), deadline, abiSignature, {
+        from: from,
+      })
+
+      const expectedYDaiIn = new BN(oneToken.toString()).mul(new BN('10019')).div(new BN('10000')) // I just hate javascript
+      const yDaiIn = new BN(yDaiTokens1.toString()).sub(new BN(await yDai1.balanceOf(from)))
+      expect(yDaiIn).to.be.bignumber.gt(expectedYDaiIn.mul(new BN('9999')).div(new BN('10000')))
+      expect(yDaiIn).to.be.bignumber.lt(expectedYDaiIn.mul(new BN('10001')).div(new BN('10000')))
+    })
+
+    it('buys dai ignoring empty signatures', async () => {
+      const oneToken = toWad(1)
+      await yDai1.mint(from, yDaiTokens1, { from: owner })
+
+      await pool.addDelegate(limitPool.address, { from: from })
+      await yDai1.approve(pool.address, yDaiTokens1, { from: from })
+      await limitPool.buyDaiBySignature(pool.address, to, oneToken, oneToken.mul(2), deadline, emptySignature, {
+        from: from,
+      })
 
       const expectedYDaiIn = new BN(oneToken.toString()).mul(new BN('10019')).div(new BN('10000')) // I just hate javascript
       const yDaiIn = new BN(yDaiTokens1.toString()).sub(new BN(await yDai1.balanceOf(from)))
@@ -156,6 +173,24 @@ contract('LimitPool', async (accounts) => {
       expect(daiOut).to.be.bignumber.lt(expectedDaiOut.mul(new BN('10001')).div(new BN('10000')))
     })
 
+    it('sells yDai ignoring empty signatures', async () => {
+      const oneToken = toWad(1)
+      await yDai1.mint(from, oneToken, { from: owner })
+
+      await pool.addDelegate(limitPool.address, { from: from })
+      await yDai1.approve(pool.address, oneToken, { from: from })
+      await limitPool.sellYDaiBySignature(pool.address, to, oneToken, oneToken.div(2), deadline, emptySignature, {
+        from: from,
+      })
+
+      assert.equal(await yDai1.balanceOf(from), 0, "'From' wallet should have no yDai tokens")
+
+      const expectedDaiOut = new BN(oneToken.toString()).mul(new BN('99814')).div(new BN('100000')) // I just hate javascript
+      const daiOut = new BN(await dai.balanceOf(to))
+      expect(daiOut).to.be.bignumber.gt(expectedDaiOut.mul(new BN('9999')).div(new BN('10000')))
+      expect(daiOut).to.be.bignumber.lt(expectedDaiOut.mul(new BN('10001')).div(new BN('10000')))
+    })
+
     it("doesn't sell yDai if limit not reached", async () => {
       const oneToken = toWad(1)
       await yDai1.mint(from, oneToken, { from: owner })
@@ -198,7 +233,7 @@ contract('LimitPool', async (accounts) => {
         expect(yDaiOut).to.be.bignumber.lt(expectedYDaiOut.mul(new BN('1001')).div(new BN('1000')))
       })
 
-      it.only('sells dai by signature', async () => {
+      it('sells dai by signature', async () => {
         const oneToken = toWad(1)
         await env.maker.getDai(from, daiTokens1, rate1)
 
@@ -206,6 +241,29 @@ contract('LimitPool', async (accounts) => {
         const abiSignature = defaultAbiCoder.encode(['uint8', 'bytes32', 'bytes32'], [v, r, s])
         await dai.approve(pool.address, oneToken, { from: from })
         await limitPool.sellDaiBySignature(pool.address, to, oneToken, oneToken.div(2), deadline, abiSignature, {
+          from: from,
+        })
+
+        assert.equal(
+          await dai.balanceOf(from),
+          daiTokens1.sub(oneToken).toString(),
+          "'From' wallet should have " + daiTokens1.sub(oneToken) + ' dai tokens'
+        )
+
+        const expectedYDaiOut = new BN(oneToken.toString()).mul(new BN('1132')).div(new BN('1000')) // I just hate javascript
+        const yDaiOut = new BN(await yDai1.balanceOf(to))
+        // This is the lowest precision achieved.
+        expect(yDaiOut).to.be.bignumber.gt(expectedYDaiOut.mul(new BN('999')).div(new BN('1000')))
+        expect(yDaiOut).to.be.bignumber.lt(expectedYDaiOut.mul(new BN('1001')).div(new BN('1000')))
+      })
+
+      it('sells dai ignoring empty signatures', async () => {
+        const oneToken = toWad(1)
+        await env.maker.getDai(from, daiTokens1, rate1)
+
+        await pool.addDelegate(limitPool.address, { from: from })
+        await dai.approve(pool.address, oneToken, { from: from })
+        await limitPool.sellDaiBySignature(pool.address, to, oneToken, oneToken.div(2), deadline, emptySignature, {
           from: from,
         })
 
@@ -259,6 +317,24 @@ contract('LimitPool', async (accounts) => {
         const abiSignature = defaultAbiCoder.encode(['uint8', 'bytes32', 'bytes32'], [v, r, s])
         await dai.approve(pool.address, daiTokens1, { from: from })
         await limitPool.buyYDaiBySignature(pool.address, to, oneToken, oneToken.mul(2), deadline, abiSignature, {
+          from: from,
+        })
+
+        assert.equal(await yDai1.balanceOf(to), oneToken.toString(), "'To' wallet should have 1 yDai token")
+
+        const expectedDaiIn = new BN(oneToken.toString()).mul(new BN('8835')).div(new BN('10000')) // I just hate javascript
+        const daiIn = new BN(daiTokens1.toString()).sub(new BN(await dai.balanceOf(from)))
+        expect(daiIn).to.be.bignumber.gt(expectedDaiIn.mul(new BN('9999')).div(new BN('10000')))
+        expect(daiIn).to.be.bignumber.lt(expectedDaiIn.mul(new BN('10001')).div(new BN('10000')))
+      })
+
+      it('buys yDai ignoring empty signatures', async () => {
+        const oneToken = toWad(1)
+        await env.maker.getDai(from, daiTokens1, rate1)
+
+        await pool.addDelegate(limitPool.address, { from: from })
+        await dai.approve(pool.address, daiTokens1, { from: from })
+        await limitPool.buyYDaiBySignature(pool.address, to, oneToken, oneToken.mul(2), deadline, emptySignature, {
           from: from,
         })
 

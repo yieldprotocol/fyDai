@@ -32,12 +32,15 @@ contract LimitPool {
     /// @param minYDaiOut Minimum amount of yDai being bought
     /// @param deadline Latest block timestamp for which the signature is valid
     /// @param signature ABI-encoded (uint8 v, bytes32 r, bytes32 s) signature
+    /// If an empty bytes variable is passed as a signature this function will be identical to `sellDai`
     function sellDaiBySignature(address pool, address to, uint128 daiIn, uint128 minYDaiOut, uint deadline, bytes calldata signature)
         public
         returns(uint256)
     {
-        (uint8 v, bytes32 r, bytes32 s) = abi.decode(signature, (uint8, bytes32, bytes32));
-        IPool(pool).addDelegateBySignature(msg.sender, address(this), deadline, v, r, s);
+        if (signature.length != 0) {
+            (uint8 v, bytes32 r, bytes32 s) = abi.decode(signature, (uint8, bytes32, bytes32));
+            IPool(pool).addDelegateBySignature(msg.sender, address(this), deadline, v, r, s);
+        }
         return sellDai(pool, to, daiIn, minYDaiOut);
     }
 
@@ -64,12 +67,15 @@ contract LimitPool {
     /// @param maxYDaiIn Maximum amount of yDai being sold
     /// @param deadline Latest block timestamp for which the signature is valid
     /// @param signature ABI-encoded (uint8 v, bytes32 r, bytes32 s) signature
+    /// If an empty bytes variable is passed as a signature this function will be identical to `buyDai`
     function buyDaiBySignature(address pool, address to, uint128 daiOut, uint128 maxYDaiIn, uint deadline, bytes calldata signature)
         public
         returns(uint256)
     {
-        (uint8 v, bytes32 r, bytes32 s) = abi.decode(signature, (uint8, bytes32, bytes32));
-        IPool(pool).addDelegateBySignature(msg.sender, address(this), deadline, v, r, s);
+        if (signature.length != 0) {
+            (uint8 v, bytes32 r, bytes32 s) = abi.decode(signature, (uint8, bytes32, bytes32));
+            IPool(pool).addDelegateBySignature(msg.sender, address(this), deadline, v, r, s);
+        }
         return buyDai(pool, to, daiOut, maxYDaiIn);
     }
 
@@ -96,12 +102,15 @@ contract LimitPool {
     /// @param minDaiOut Minimum amount of dai being bought
     /// @param deadline Latest block timestamp for which the signature is valid
     /// @param signature ABI-encoded (uint8 v, bytes32 r, bytes32 s) signature
+    /// If an empty bytes variable is passed as a signature this function will be identical to `sellYDai`
     function sellYDaiBySignature(address pool, address to, uint128 yDaiIn, uint128 minDaiOut, uint deadline, bytes calldata signature)
         public
         returns(uint256)
     {
-        (uint8 v, bytes32 r, bytes32 s) = abi.decode(signature, (uint8, bytes32, bytes32));
-        IPool(pool).addDelegateBySignature(msg.sender, address(this), deadline, v, r, s);
+        if (signature.length != 0) {
+            (uint8 v, bytes32 r, bytes32 s) = abi.decode(signature, (uint8, bytes32, bytes32));
+            IPool(pool).addDelegateBySignature(msg.sender, address(this), deadline, v, r, s);
+        }
         return sellYDai(pool, to, yDaiIn, minDaiOut);
     }
 
@@ -128,12 +137,15 @@ contract LimitPool {
     /// @param maxDaiIn Maximum amount of dai being sold
     /// @param deadline Latest block timestamp for which the signature is valid
     /// @param signature ABI-encoded (uint8 v, bytes32 r, bytes32 s) signature
+    /// If an empty bytes variable is passed as a signature this function will be identical to `buyYDai`
     function buyYDaiBySignature(address pool, address to, uint128 yDaiOut, uint128 maxDaiIn, uint deadline, bytes calldata signature)
         public
         returns(uint256)
     {
-        (uint8 v, bytes32 r, bytes32 s) = abi.decode(signature, (uint8, bytes32, bytes32));
-        IPool(pool).addDelegateBySignature(msg.sender, address(this), deadline, v, r, s);
+        if (signature.length != 0) {
+            (uint8 v, bytes32 r, bytes32 s) = abi.decode(signature, (uint8, bytes32, bytes32));
+            IPool(pool).addDelegateBySignature(msg.sender, address(this), deadline, v, r, s);
+        }
         return buyYDai(pool, to, yDaiOut, maxDaiIn);
     }
 }
