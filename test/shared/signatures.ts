@@ -34,7 +34,7 @@ export function getSignatureDigest(
 }
 
 // Returns the EIP712 hash which should be signed by the user
-// in order to make a call to `permit`
+// in order to make a call to `IERC2612.permit`
 export function getPermitDigest(
   permitTypehash: string,
   name: string,
@@ -60,6 +60,40 @@ export function getPermitDigest(
           defaultAbiCoder.encode(
             ['bytes32', 'address', 'address', 'uint256', 'uint256', 'uint256'],
             [permitTypehash, approve.owner, approve.spender, approve.value, nonce, deadline]
+          )
+        ),
+      ]
+    )
+  )
+}
+
+// Returns the EIP712 hash which should be signed by the user
+// in order to make a call to `chai.permit`
+export function getChaiDigest(
+  chaiTypehash: string,
+  name: string,
+  address: string,
+  chainId: number,
+  approve: {
+    holder: string
+    spender: string
+    allowed: boolean
+  },
+  nonce: number,
+  deadline: number
+) {
+  const DOMAIN_SEPARATOR = getDomainSeparator(name, address, 1)
+  return keccak256(
+    solidityPack(
+      ['bytes1', 'bytes1', 'bytes32', 'bytes32'],
+      [
+        '0x19',
+        '0x01',
+        DOMAIN_SEPARATOR,
+        keccak256(
+          defaultAbiCoder.encode(
+            ['bytes32', 'address', 'address', 'uint256', 'uint256', 'bool'],
+            [chaiTypehash, approve.holder, approve.spender, nonce, deadline, approve.allowed]
           )
         ),
       ]

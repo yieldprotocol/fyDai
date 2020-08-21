@@ -5,15 +5,11 @@ const EthProxy = artifacts.require('EthProxy')
 import helper from 'ganache-time-traveler'
 // @ts-ignore
 import { balance } from '@openzeppelin/test-helpers'
-import { WETH, daiTokens1, wethTokens1 } from '../shared/utils'
+import { WETH, CHAI, rate1, chi1, daiTokens1, wethTokens1, chaiTokens1 } from '../shared/utils'
 import { Contract, YieldEnvironmentLite } from '../shared/fixtures'
-import { getSignatureDigest } from '../shared/signatures'
-import { keccak256, toUtf8Bytes } from 'ethers/lib/utils'
+import { getPermitDigest, getSignatureDigest, getChaiDigest } from '../shared/signatures'
+import { defaultAbiCoder, keccak256, toUtf8Bytes } from 'ethers/lib/utils'
 import { ecsign } from 'ethereumjs-util'
-
-const SIGNATURE_TYPEHASH = keccak256(
-  toUtf8Bytes('Signature(address user,address delegate,uint256 nonce,uint256 deadline)')
-)
 
 contract('Controller - EthProxy', async (accounts) => {
   let [owner, user1, user2] = accounts
@@ -23,13 +19,28 @@ contract('Controller - EthProxy', async (accounts) => {
   const userPrivateKey = Buffer.from('d49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb', 'hex')
   const chainId = 31337 // buidlerevm chain id
   const name = 'Yield'
+  const deadline = 100000000000000
+  const emptySignature = Buffer.from('', 'hex')
+  const SIGNATURE_TYPEHASH = keccak256(
+    toUtf8Bytes('Signature(address user,address delegate,uint256 nonce,uint256 deadline)')
+  )
+  const PERMIT_TYPEHASH = keccak256(
+    toUtf8Bytes('Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)')
+  )
+  const CHAI_TYPEHASH = keccak256(
+    toUtf8Bytes('Permit(address holder,address spender,uint256 nonce,uint256 expiry,bool allowed)')
+  )
+
+  let signatureDigest: any
+  let permitDigest: any
 
   let snapshot: any
   let snapshotId: string
 
   let vat: Contract
-  let controller: Contract
+  let chai: Contract
   let treasury: Contract
+  let controller: Contract
   let ethProxy: Contract
   let weth: Contract
 
@@ -41,10 +52,11 @@ contract('Controller - EthProxy', async (accounts) => {
     snapshotId = snapshot['result']
 
     const env = await YieldEnvironmentLite.setup()
-    controller = env.controller
     treasury = env.treasury
+    controller = env.controller
     vat = env.maker.vat
     weth = env.maker.weth
+    chai = env.maker.chai
 
     // Setup yDai
     const block = await web3.eth.getBlockNumber()
@@ -54,7 +66,30 @@ contract('Controller - EthProxy', async (accounts) => {
     await env.newYDai(maturity2, 'Name', 'Symbol')
 
     // Setup EthProxy
-    ethProxy = await EthProxy.new(weth.address, treasury.address, controller.address, { from: owner })
+    ethProxy = await EthProxy.new(weth.address, chai.address, controller.address, { from: owner })
+    
+    // Create the signature digest
+    const signatureStruct = {
+      user: user1,
+      delegate: ethProxy.address,
+    }
+
+    // Get the user's signatureCount
+    const signatureCount = await controller.signatureCount(user1)
+
+    // Get the EIP712 digest
+    signatureDigest = getSignatureDigest(
+      SIGNATURE_TYPEHASH,
+      name,
+      controller.address,
+      chainId,
+      signatureStruct,
+      signatureCount,
+      deadline
+    )
+
+    // Give some chai
+    await env.maker.getChai(user1, chaiTokens1, chi1, rate1)
   })
 
   afterEach(async () => {
@@ -78,6 +113,55 @@ contract('Controller - EthProxy', async (accounts) => {
       await controller.powerOf(WETH, user2),
       daiTokens1.toString(),
       'User2 should have ' + daiTokens1 + ' borrowing power, instead has ' + (await controller.powerOf(WETH, user2))
+    )
+  })
+
+  it('allows user to post chai by signature', async () => {
+    assert.equal(await chai.balanceOf(treasury.address), 0, 'Treasury has chai')
+    assert.equal(await controller.powerOf(CHAI, user1), 0, 'User1 has borrowing power')
+
+    
+    // Delegate signature
+    let delegateSignature: string
+    {
+      const { v, r, s } = ecsign(Buffer.from(signatureDigest.slice(2), 'hex'), userPrivateKey)
+      delegateSignature = defaultAbiCoder.encode(['uint8', 'bytes32', 'bytes32'], [v, r, s])
+    }
+
+    const permitStruct = {
+      holder: user1,
+      spender: treasury.address,
+      allowed: true,
+    }
+
+    // Permit signature
+    // Get the user's nonce
+    const permitCount = await chai.nonces(user1)
+
+    // Get the EIP712 digest
+    const chaiName = await chai.name()
+    const chaiDigest = getChaiDigest(
+      CHAI_TYPEHASH,
+      chaiName,
+      chai.address,
+      chainId,
+      permitStruct,
+      permitCount,
+      deadline
+    )
+    let chaiSignature: string
+    {
+      const { v, r, s } = ecsign(Buffer.from(chaiDigest.slice(2), 'hex'), userPrivateKey)
+      chaiSignature = defaultAbiCoder.encode(['uint8', 'bytes32', 'bytes32'], [v, r, s])
+    }
+    
+    await ethProxy.postChaiBySignature(user1, chaiTokens1, permitCount, deadline, delegateSignature, chaiSignature, { from: user1 })
+
+    assert.equal(await chai.balanceOf(treasury.address), chaiTokens1.toString(), 'Treasury should have chai')
+    assert.equal(
+      await controller.powerOf(CHAI, user1),
+      daiTokens1.toString(),
+      'User1 should have ' + daiTokens1 + ' borrowing power, instead has ' + (await controller.powerOf(CHAI, user1))
     )
   })
 
@@ -105,33 +189,7 @@ contract('Controller - EthProxy', async (accounts) => {
     })
 
     it('allows user to withdraw weth with an encoded signature', async () => {
-      // Create the signature request
-      const signature = {
-        user: user1,
-        delegate: ethProxy.address,
-      }
-
-      // deadline as much as you want in the future
-      const deadline = 100000000000000
-
-      // Get the user's signatureCount
-      const signatureCount = await controller.signatureCount(user1)
-
-      // Get the EIP712 digest
-      const digest = getSignatureDigest(
-        SIGNATURE_TYPEHASH,
-        name,
-        controller.address,
-        chainId,
-        signature,
-        signatureCount,
-        deadline
-      )
-
-      // Sign it
-      // NOTE: Using web3.eth.sign will hash the message internally again which
-      // we do not want, so we're manually signing here
-      const { v, r, s } = ecsign(Buffer.from(digest.slice(2), 'hex'), userPrivateKey)
+      const { v, r, s } = ecsign(Buffer.from(signatureDigest.slice(2), 'hex'), userPrivateKey)
 
       const previousBalance = await balance.current(user2)
       await ethProxy.withdrawBySignature(user2, wethTokens1, deadline, v, r, s, { from: user1 })
