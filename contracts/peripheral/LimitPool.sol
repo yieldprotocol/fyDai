@@ -136,15 +136,27 @@ contract LimitPool {
     /// @param yDaiOut Amount of yDai being bought
     /// @param maxDaiIn Maximum amount of dai being sold
     /// @param deadline Latest block timestamp for which the signature is valid
-    /// @param signature ABI-encoded (uint8 v, bytes32 r, bytes32 s) signature
-    /// If an empty bytes variable is passed as a signature this function will be identical to `buyYDai`
-    function buyYDaiBySignature(address pool, address to, uint128 yDaiOut, uint128 maxDaiIn, uint deadline, bytes calldata signature)
+    /// @param delegateSig ABI-encoded (uint8 v, bytes32 r, bytes32 s) `addDelegateBySignature` signature
+    /// @param permitSig ABI-encoded (uint8 v, bytes32 r, bytes32 s) `permit` signature
+    /// The permit must be for (owner, limitProxy.address, maxDaiIn)
+    /// If an empty bytes variable is passed as a signature its related call won't be attempted
+    /// If both signatures are provided, the deadline for both must be the same
+    function buyYDaiBySignature(
+        address pool, address to, uint128 yDaiOut, uint128 maxDaiIn,
+        uint deadline, bytes calldata delegateSig, bytes calldata permitSig
+    )
         public
         returns(uint256)
     {
-        if (signature.length != 0) {
-            (uint8 v, bytes32 r, bytes32 s) = abi.decode(signature, (uint8, bytes32, bytes32));
-            IPool(pool).addDelegateBySignature(msg.sender, address(this), deadline, v, r, s);
+        IPool _pool = IPool(pool);
+        if (delegateSig.length != 0) {
+            (uint8 v, bytes32 r, bytes32 s) = abi.decode(delegateSig, (uint8, bytes32, bytes32));
+            _pool.addDelegateBySignature(msg.sender, address(this), deadline, v, r, s);
+        }
+        if (permitSig.length != 0) {
+            IERC2612 dai = IERC2612(_pool.dai());
+            (uint8 v, bytes32 r, bytes32 s) = abi.decode(permitSig, (uint8, bytes32, bytes32));
+            dai.permit(msg.sender, address(this), maxDaiIn, deadline, v, r, s);
         }
         return buyYDai(pool, to, yDaiOut, maxDaiIn);
     }

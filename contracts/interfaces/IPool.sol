@@ -2,12 +2,14 @@
 pragma solidity ^0.6.10;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./IDai.sol";
 import "./IDelegable.sol";
 import "./IERC2612.sol";
 import "./IYDai.sol";
 
+
 interface IPool is IDelegable, IERC20, IERC2612 {
-    function dai() external view returns(IERC20);
+    function dai() external view returns(IDai);
     function yDai() external view returns(IYDai);
     function getDaiReserves() external view returns(uint128);
     function getYDaiReserves() external view returns(uint128);

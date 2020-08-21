@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./YieldMath.sol";
 import "../helpers/Delegable.sol";
 import "../helpers/ERC20Permit.sol";
+import "../interfaces/IDai.sol";
 import "../interfaces/IPot.sol";
 import "../interfaces/IYDai.sol";
 import "../interfaces/IPool.sol";
@@ -21,14 +22,14 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     int128 constant public g = int128(uint256((999 << 64)) / 1000); // All constants are `ufixed`, to divide them they must be converted to uint256
     uint128 immutable public maturity;
 
-    IERC20 public override dai;
+    IDai public override dai;
     IYDai public override yDai;
 
     constructor(address dai_, address yDai_, string memory name_, string memory symbol_)
         public
         ERC20Permit(name_, symbol_)
     {
-        dai = IERC20(dai_);
+        dai = IDai(dai_);
         yDai = IYDai(yDai_);
 
         maturity = toUint128(yDai.maturity());
