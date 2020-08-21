@@ -63,13 +63,12 @@ contract LimitPool {
     /// @param daiOut Amount of dai being bought
     /// @param maxYDaiIn Maximum amount of yDai being sold
     /// @param deadline Latest block timestamp for which the signature is valid
-    /// @param v Signature parameter
-    /// @param r Signature parameter
-    /// @param s Signature parameter
-    function buyDaiBySignature(address pool, address to, uint128 daiOut, uint128 maxYDaiIn, uint deadline, uint8 v, bytes32 r, bytes32 s)
+    /// @param signature ABI-encoded (uint8 v, bytes32 r, bytes32 s) signature
+    function buyDaiBySignature(address pool, address to, uint128 daiOut, uint128 maxYDaiIn, uint deadline, bytes calldata signature)
         public
         returns(uint256)
     {
+        (uint8 v, bytes32 r, bytes32 s) = abi.decode(signature, (uint8, bytes32, bytes32));
         IPool(pool).addDelegateBySignature(msg.sender, address(this), deadline, v, r, s);
         return buyDai(pool, to, daiOut, maxYDaiIn);
     }
@@ -96,13 +95,12 @@ contract LimitPool {
     /// @param yDaiIn Amount of yDai being sold
     /// @param minDaiOut Minimum amount of dai being bought
     /// @param deadline Latest block timestamp for which the signature is valid
-    /// @param v Signature parameter
-    /// @param r Signature parameter
-    /// @param s Signature parameter
-    function sellYDaiBySignature(address pool, address to, uint128 yDaiIn, uint128 minDaiOut, uint deadline, uint8 v, bytes32 r, bytes32 s)
+    /// @param signature ABI-encoded (uint8 v, bytes32 r, bytes32 s) signature
+    function sellYDaiBySignature(address pool, address to, uint128 yDaiIn, uint128 minDaiOut, uint deadline, bytes calldata signature)
         public
         returns(uint256)
     {
+        (uint8 v, bytes32 r, bytes32 s) = abi.decode(signature, (uint8, bytes32, bytes32));
         IPool(pool).addDelegateBySignature(msg.sender, address(this), deadline, v, r, s);
         return sellYDai(pool, to, yDaiIn, minDaiOut);
     }
@@ -129,13 +127,12 @@ contract LimitPool {
     /// @param yDaiOut Amount of yDai being bought
     /// @param maxDaiIn Maximum amount of dai being sold
     /// @param deadline Latest block timestamp for which the signature is valid
-    /// @param v Signature parameter
-    /// @param r Signature parameter
-    /// @param s Signature parameter
-    function buyYDaiBySignature(address pool, address to, uint128 yDaiOut, uint128 maxDaiIn, uint deadline, uint8 v, bytes32 r, bytes32 s)
+    /// @param signature ABI-encoded (uint8 v, bytes32 r, bytes32 s) signature
+    function buyYDaiBySignature(address pool, address to, uint128 yDaiOut, uint128 maxDaiIn, uint deadline, bytes calldata signature)
         public
         returns(uint256)
     {
+        (uint8 v, bytes32 r, bytes32 s) = abi.decode(signature, (uint8, bytes32, bytes32));
         IPool(pool).addDelegateBySignature(msg.sender, address(this), deadline, v, r, s);
         return buyYDai(pool, to, yDaiOut, maxDaiIn);
     }

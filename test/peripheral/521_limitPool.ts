@@ -98,8 +98,9 @@ contract('LimitPool', async (accounts) => {
       await yDai1.mint(from, yDaiTokens1, { from: owner })
 
       const { v, r, s } = ecsign(Buffer.from(digest.slice(2), 'hex'), userPrivateKey)
+      const abiSignature = defaultAbiCoder.encode(['uint8', 'bytes32', 'bytes32'], [v, r, s])
       await yDai1.approve(pool.address, yDaiTokens1, { from: from })
-      await limitPool.buyDaiBySignature(pool.address, to, oneToken, oneToken.mul(2), deadline, v, r, s, { from: from })
+      await limitPool.buyDaiBySignature(pool.address, to, oneToken, oneToken.mul(2), deadline, abiSignature, { from: from })
 
       const expectedYDaiIn = new BN(oneToken.toString()).mul(new BN('10019')).div(new BN('10000')) // I just hate javascript
       const yDaiIn = new BN(yDaiTokens1.toString()).sub(new BN(await yDai1.balanceOf(from)))
@@ -141,8 +142,9 @@ contract('LimitPool', async (accounts) => {
       await yDai1.mint(from, oneToken, { from: owner })
 
       const { v, r, s } = ecsign(Buffer.from(digest.slice(2), 'hex'), userPrivateKey)
+      const abiSignature = defaultAbiCoder.encode(['uint8', 'bytes32', 'bytes32'], [v, r, s])
       await yDai1.approve(pool.address, oneToken, { from: from })
-      await limitPool.sellYDaiBySignature(pool.address, to, oneToken, oneToken.div(2), deadline, v, r, s, {
+      await limitPool.sellYDaiBySignature(pool.address, to, oneToken, oneToken.div(2), deadline, abiSignature, {
         from: from,
       })
 
@@ -254,8 +256,9 @@ contract('LimitPool', async (accounts) => {
         await env.maker.getDai(from, daiTokens1, rate1)
 
         const { v, r, s } = ecsign(Buffer.from(digest.slice(2), 'hex'), userPrivateKey)
+        const abiSignature = defaultAbiCoder.encode(['uint8', 'bytes32', 'bytes32'], [v, r, s])
         await dai.approve(pool.address, daiTokens1, { from: from })
-        await limitPool.buyYDaiBySignature(pool.address, to, oneToken, oneToken.mul(2), deadline, v, r, s, {
+        await limitPool.buyYDaiBySignature(pool.address, to, oneToken, oneToken.mul(2), deadline, abiSignature, {
           from: from,
         })
 
