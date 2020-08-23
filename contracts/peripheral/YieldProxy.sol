@@ -36,7 +36,7 @@ contract YieldProxy is DecimalMath {
     bytes32 public constant CHAI = "CHAI";
     bytes32 public constant WETH = "ETH-A";
 
-    constructor(address controller_) public {
+    constructor(address controller_, IPool[] memory pools) public {
         controller = IController(controller_);
         ITreasury treasury = controller.treasury();
 
@@ -44,23 +44,25 @@ contract YieldProxy is DecimalMath {
         dai = treasury.dai();
         chai = treasury.chai();
 
-        // Approve all the coins
+        // for repaying debt
         dai.approve(address(treasury), uint(-1));
+
+        // for posting to the controller
         chai.approve(address(treasury), uint(-1));
         weth.approve(address(treasury), uint(-1));
+
+        // for converting DAI to CHAI
+        dai.approve(address(chai), uint(-1));
+
+        // allow all the pools to pull YDai/dai from us for LPing
+        for (uint i = 0 ; i < pools.length; i++) {
+            dai.approve(address(pools[i]), uint(-1));
+            pools[i].yDai().approve(address(pools[i]), uint(-1));
+        }
     }
 
     /// @dev The WETH9 contract will send ether to EthProxy on `weth.withdraw` using this function.
     receive() external payable { }
-
-    /// Max approval everywhere and adds the proxy as a delegate
-    function authorize() public {
-        ITreasury treasury = controller.treasury();
-        dai.approve(address(treasury), uint(-1));
-        chai.approve(address(treasury), uint(-1));
-        weth.approve(address(treasury), uint(-1));
-        // controller.addDelegate();
-    }
 
     ///////////// EthProxy
 
