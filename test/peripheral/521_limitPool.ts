@@ -1,5 +1,5 @@
 const Pool = artifacts.require('Pool')
-const LimitPool = artifacts.require('LimitPool')
+const YieldProxy = artifacts.require('YieldProxy')
 
 import { keccak256, toUtf8Bytes } from 'ethers/lib/utils'
 import { toWad, toRay, mulRay } from '../shared/utils'
@@ -37,7 +37,7 @@ contract('LimitPool', async (accounts) => {
     pool = await Pool.new(dai.address, yDai1.address, 'Name', 'Symbol', { from: owner })
 
     // Setup LimitPool
-    limitPool = await LimitPool.new(pool.address, { from: owner })
+    limitPool = await YieldProxy.new(env.controller.address, [pool.address], { from: owner })
 
     // Test setup
 

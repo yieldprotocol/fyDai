@@ -1,5 +1,5 @@
 const Pool = artifacts.require('Pool')
-const LiquidityProxy = artifacts.require('LiquidityProxy')
+const LiquidityProxy = artifacts.require('YieldProxy')
 
 import { keccak256, toUtf8Bytes } from 'ethers/lib/utils'
 // @ts-ignore
@@ -18,9 +18,6 @@ contract('LiquidityProxy', async (accounts) => {
   const rate1 = toRay(1.4)
   const daiDebt1 = toWad(96)
   const daiTokens1 = mulRay(daiDebt1, rate1)
-  const yDaiTokens1 = daiTokens1
-
-  const oneToken = toWad(1)
   const initialDai = daiTokens1
 
   let snapshot: any
@@ -28,13 +25,11 @@ contract('LiquidityProxy', async (accounts) => {
 
   let env: YieldEnvironmentLite
   let controller: Contract
-  let chai: Contract
 
   let dai: Contract
   let pool: Contract
   let yDai1: Contract
   let proxy: Contract
-  let treasury: Contract
 
   let maturity1: number
 
@@ -60,25 +55,13 @@ contract('LiquidityProxy', async (accounts) => {
     return poolSupply.mul(daiIn).div(daiReserves)
   }
 
-  const burnedOut = (
-    burned: BigNumber,
-    poolSupply: BigNumber,
-    daiReserves: BigNumber,
-    yDaiReserves: BigNumber
-  ): [BigNumber, BigNumber] => {
-    return [daiReserves.mul(burned).div(poolSupply), yDaiReserves.mul(burned).div(poolSupply)]
-  }
-
   beforeEach(async () => {
     snapshot = await helper.takeSnapshot()
     snapshotId = snapshot['result']
 
     env = await YieldEnvironmentLite.setup()
     dai = env.maker.dai
-    chai = env.maker.chai
-    dai = env.maker.dai
     controller = env.controller
-    treasury = env.treasury
 
     // Setup yDai
     const block = await web3.eth.getBlockNumber()
@@ -92,9 +75,17 @@ contract('LiquidityProxy', async (accounts) => {
     await yDai1.orchestrate(owner, keccak256(toUtf8Bytes('mint(address,uint256)')), { from: owner })
 
     // Setup LiquidityProxy
-    proxy = await LiquidityProxy.new(dai.address, chai.address, treasury.address, controller.address, pool.address, {
-      from: owner,
-    })
+    proxy = await LiquidityProxy.new(env.controller.address, [pool.address])
+
+    await pool.addDelegate(proxy.address, { from: user1 })
+
+    const MAX = BigNumber.from('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
+    await env.maker.chai.approve(proxy.address, MAX, { from: user1 })
+    await dai.approve(proxy.address, MAX, { from: user1 })
+    await yDai1.approve(proxy.address, MAX, { from: user1 })
+
+    await dai.approve(pool.address, MAX, { from: user1 })
+    await yDai1.approve(pool.address, MAX, { from: user1 })
   })
 
   afterEach(async () => {
@@ -148,7 +139,7 @@ contract('LiquidityProxy', async (accounts) => {
 
       await dai.mint(user2, oneToken, { from: owner })
       await dai.approve(proxy.address, oneToken, { from: user2 })
-      await proxy.addLiquidity(daiUsed, maxYDai, { from: user2 })
+      await proxy.addLiquidity(pool.address, daiUsed, maxYDai, { from: user2 })
 
       const debt = BigNumber.from((await controller.debtYDai(CHAI, maturity1, user2)).toString())
       const posted = BigNumber.from((await controller.posted(CHAI, user2)).toString())
@@ -157,7 +148,7 @@ contract('LiquidityProxy', async (accounts) => {
       //asserts
       assert.equal(
         debt.toString(),
-        expectedDebt.toString(),
+        expectedDebt.add(1).toString(),
         'User2 should have ' + expectedDebt + ' yDai debt, instead has ' + debt.toString()
       )
       assert.equal(
@@ -183,7 +174,10 @@ contract('LiquidityProxy', async (accounts) => {
 
       await dai.mint(user2, oneToken, { from: owner })
       await dai.approve(proxy.address, oneToken, { from: user2 })
-      await expectRevert(proxy.addLiquidity(oneToken, 1, { from: user2 }), 'LiquidityProxy: maxYDai exceeded')
+      await expectRevert(
+        proxy.addLiquidity(pool.address, oneToken, 1, { from: user2 }),
+        'LiquidityProxy: maxYDai exceeded'
+      )
     })
 
     describe('with proxied liquidity', () => {
@@ -199,7 +193,7 @@ contract('LiquidityProxy', async (accounts) => {
         const maxBorrow = oneToken
         await dai.mint(user2, oneToken, { from: owner })
         await dai.approve(proxy.address, oneToken, { from: user2 })
-        await proxy.addLiquidity(oneToken, maxBorrow, { from: user2 })
+        await proxy.addLiquidity(pool.address, oneToken, maxBorrow, { from: user2 })
       })
 
       it('removes liquidity early by selling', async () => {
@@ -217,7 +211,7 @@ contract('LiquidityProxy', async (accounts) => {
         expect(await yDai1.balanceOf(user2)).to.be.bignumber.eq(new BN('0'))
 
         await pool.approve(proxy.address, poolTokens, { from: user2 })
-        await proxy.removeLiquidityEarly(poolTokens, '0', { from: user2 })
+        await proxy.removeLiquidityEarly(pool.address, poolTokens, '0', { from: user2 })
 
         // Doesn't have pool tokens
         expect(await pool.balanceOf(user2)).to.be.bignumber.eq(new BN('0'))
@@ -254,7 +248,7 @@ contract('LiquidityProxy', async (accounts) => {
         // Doesn't have yDai
         expect(await yDai1.balanceOf(user2)).to.be.bignumber.eq(new BN('0'))
 
-        await proxy.removeLiquidityMature(poolTokens, { from: user2 })
+        await proxy.removeLiquidityMature(pool.address, poolTokens, { from: user2 })
 
         // Doesn't have pool tokens
         expect(await pool.balanceOf(user2)).to.be.bignumber.eq(new BN('0'))
