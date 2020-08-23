@@ -26,12 +26,12 @@ contract Treasury is ITreasury, Orchestrated(), DecimalMath {
     bytes32 constant WETH = "ETH-A";
 
     IVat public vat;
-    IERC20 public weth;
-    IERC20 public dai;
+    IWeth public override weth;
+    IERC20 public override dai;
     IDaiJoin public daiJoin;
     IGemJoin public wethJoin;
     IPot public pot;
-    IChai public chai;
+    IChai public override chai;
     address public unwind;
 
     bool public override live = true;
@@ -52,7 +52,7 @@ contract Treasury is ITreasury, Orchestrated(), DecimalMath {
         dai = IERC20(dai_);
         chai = IChai(chai_);
         pot = IPot(pot_);
-        weth = IERC20(weth_);
+        weth = IWeth(weth_);
         daiJoin = IDaiJoin(daiJoin_);
         wethJoin = IGemJoin(wethJoin_);
         vat = IVat(vat_);
