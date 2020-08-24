@@ -43,11 +43,10 @@ contract Liquidations is ILiquidations, Orchestrated(), Delegable(), DecimalMath
 
     /// @dev The Liquidations constructor links it to the Dai, Treasury and Controller contracts.
     constructor (
-        address treasury_,
         address controller_
     ) public {
-        treasury = ITreasury(treasury_);
         controller = IController(controller_);
+        treasury = ITreasury(controller.treasury());
     }
 
     /// @dev Only while Liquidations is not unwinding due to a MakerDAO shutdown.
