@@ -220,15 +220,7 @@ export class YieldEnvironment extends YieldEnvironmentLite {
     await treasury.orchestrate(liquidations.address)
 
     const unwind = await Unwind.new(
-      maker.vat.address,
-      maker.daiJoin.address,
-      maker.weth.address,
-      maker.wethJoin.address,
-      maker.pot.address,
       maker.end.address,
-      maker.chai.address,
-      treasury.address,
-      controller.address,
       liquidations.address
     )
     await treasury.orchestrate(unwind.address)

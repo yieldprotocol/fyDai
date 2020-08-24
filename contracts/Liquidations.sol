@@ -28,7 +28,7 @@ contract Liquidations is ILiquidations, Orchestrated(), Delegable(), DecimalMath
     uint256 public constant DUST = 25e15; // 0.025 ETH
 
     ITreasury public treasury;
-    IController public controller;
+    IController public override controller;
 
     struct Vault {
         uint128 collateral;
@@ -46,7 +46,7 @@ contract Liquidations is ILiquidations, Orchestrated(), Delegable(), DecimalMath
         address controller_
     ) public {
         controller = IController(controller_);
-        treasury = ITreasury(controller.treasury());
+        treasury = controller.treasury();
     }
 
     /// @dev Only while Liquidations is not unwinding due to a MakerDAO shutdown.

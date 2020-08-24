@@ -53,8 +53,8 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
         address treasury_
     ) public {
         treasury = ITreasury(treasury_);
-        vat = IVat(treasury.vat());
-        pot = IPot(treasury.pot());
+        vat = treasury.vat();
+        pot = treasury.pot();
     }
 
     /// @dev Modified functions only callable while the Controller is not unwinding due to a MakerDAO shutdown.

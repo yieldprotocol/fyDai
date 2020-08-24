@@ -63,8 +63,8 @@ contract YDai is IYDai, Orchestrated(), Delegable(), DecimalMath, ERC20Permit  {
         // solium-disable-next-line security/no-block-members
         require(maturity_ > now && maturity_ < now + MAX_TIME_TO_MATURITY, "YDai: Invalid maturity");
         treasury = ITreasury(treasury_);
-        vat = IVat(treasury.vat());
-        pot = IPot(treasury.pot());
+        vat = treasury.vat();
+        pot = treasury.pot();
         maturity = maturity_;
         chi0 = UNIT;
         rate0 = UNIT;
