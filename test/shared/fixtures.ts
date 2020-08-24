@@ -117,7 +117,7 @@ export class MakerEnvironment {
   }
 
   public async setupController(treasury: Contract) {
-    const controller = await Controller.new(this.vat.address, this.pot.address, treasury.address)
+    const controller = await Controller.new(treasury.address)
     const treasuryFunctions = ['pushDai', 'pullDai', 'pushChai', 'pullChai', 'pushWeth', 'pullWeth'].map((func) =>
       id(func + '(address,uint256)')
     )
