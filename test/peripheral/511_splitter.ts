@@ -2,6 +2,7 @@ const Pool = artifacts.require('Pool')
 const Splitter = artifacts.require('YieldProxy')
 
 import { BigNumber } from 'ethers'
+import { id } from 'ethers/lib/utils'
 // @ts-ignore
 import { BN, expectRevert } from '@openzeppelin/test-helpers'
 import { WETH, rate1, daiTokens1, wethTokens1, mulRay, divRay } from '../shared/utils'
@@ -44,7 +45,7 @@ contract('Splitter', async (accounts) => {
     splitter1 = await Splitter.new(controller.address, [pool1.address], { from: owner })
 
     // Allow owner to mint yDai the sneaky way, without recording a debt in controller
-    await yDai1.orchestrate(owner, keccak256(toUtf8Bytes('mint(address,uint256)')), { from: owner })
+    await yDai1.orchestrate(owner, id('mint(address,uint256)'), { from: owner })
 
     // Initialize Pool1
     const daiReserves = daiTokens1.mul(5)
