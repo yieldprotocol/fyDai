@@ -159,7 +159,7 @@ contract YDai is IYDai, Orchestrated(), Delegable(), DecimalMath, ERC20Permit  {
     /// This function can only be called by other Yield contracts, not users directly.
     /// @param from Wallet to burn the yDai from.
     /// @param yDaiAmount Amount of yDai to burn.
-    function burn(address from, uint256 yDaiAmount) public override onlyOrchestrated("YDai: Not Authorized") {
+    function burn(address from, uint256 yDaiAmount) public override lock onlyOrchestrated("YDai: Not Authorized") {
         _burn(from, yDaiAmount);
     }
 
