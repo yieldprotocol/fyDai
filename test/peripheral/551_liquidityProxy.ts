@@ -76,15 +76,11 @@ contract('LiquidityProxy', async (accounts) => {
     // Setup LiquidityProxy
     proxy = await LiquidityProxy.new(env.controller.address, [pool.address])
 
-    await pool.addDelegate(proxy.address, { from: user1 })
 
+    // Liquidity proxy requires approving only yDAI + adding the delegate
     const MAX = BigNumber.from('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
-    await env.maker.chai.approve(proxy.address, MAX, { from: user1 })
-    await dai.approve(proxy.address, MAX, { from: user1 })
     await yDai1.approve(proxy.address, MAX, { from: user1 })
-
-    await dai.approve(pool.address, MAX, { from: user1 })
-    await yDai1.approve(pool.address, MAX, { from: user1 })
+    await proxy.authorize({ from: user1 })
   })
 
   afterEach(async () => {
@@ -101,8 +97,7 @@ contract('LiquidityProxy', async (accounts) => {
       await yDai1.approve(pool.address, additionalYDaiReserves, { from: operator })
       await pool.sellYDai(operator, operator, additionalYDaiReserves, { from: operator })
 
-      await controller.addDelegate(proxy.address, { from: user2 })
-      await pool.addDelegate(proxy.address, { from: user2 })
+      await proxy.authorize({ from: user2 })
     })
 
     it('mints liquidity tokens with dai only', async () => {
@@ -147,7 +142,7 @@ contract('LiquidityProxy', async (accounts) => {
       //asserts
       assert.equal(
         debt.toString(),
-        expectedDebt.add(1).toString(),
+        expectedDebt.toString(),
         'User2 should have ' + expectedDebt + ' yDai debt, instead has ' + debt.toString()
       )
       assert.equal(

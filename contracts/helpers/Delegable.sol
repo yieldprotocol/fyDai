@@ -43,9 +43,16 @@ contract Delegable is IDelegable {
     }
 
     /// @dev Enable a delegate to act on the behalf of caller
-    function addDelegate(address delegate) public {
+    function addDelegate(address delegate) public override {
         require(!delegated[msg.sender][delegate], "Delegable: Already delegated");
         _addDelegate(msg.sender, delegate);
+    }
+
+    /// @dev Enable a delegate to act on the behalf of caller. This will use `tx.origin`
+    /// instead of `msg.sender`.
+    function addDelegateTxOrigin(address delegate) public override {
+        require(!delegated[tx.origin][delegate], "Delegable: Already delegated");
+        _addDelegate(tx.origin, delegate);
     }
 
     /// @dev Stop a delegate from acting on the behalf of caller

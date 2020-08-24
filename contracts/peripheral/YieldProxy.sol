@@ -36,7 +36,9 @@ contract YieldProxy is DecimalMath {
     bytes32 public constant CHAI = "CHAI";
     bytes32 public constant WETH = "ETH-A";
 
-    constructor(address controller_, IPool[] memory pools) public {
+    IPool[] pools;
+
+    constructor(address controller_, IPool[] memory _pools) public {
         controller = IController(controller_);
         ITreasury treasury = controller.treasury();
 
@@ -55,9 +57,18 @@ contract YieldProxy is DecimalMath {
         dai.approve(address(chai), uint(-1));
 
         // allow all the pools to pull YDai/dai from us for LPing
-        for (uint i = 0 ; i < pools.length; i++) {
-            dai.approve(address(pools[i]), uint(-1));
-            pools[i].yDai().approve(address(pools[i]), uint(-1));
+        for (uint i = 0 ; i < _pools.length; i++) {
+            dai.approve(address(_pools[i]), uint(-1));
+            _pools[i].yDai().approve(address(_pools[i]), uint(-1));
+        }
+
+        pools = _pools;
+    }
+
+    function authorize() external {
+        controller.addDelegateTxOrigin(address(this));
+        for (uint256 i = 0; i < pools.length; i++) {
+            pools[i].addDelegateTxOrigin(address(this));
         }
     }
 
