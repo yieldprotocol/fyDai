@@ -28,7 +28,7 @@ contract Liquidations is ILiquidations, Orchestrated(), Delegable(), DecimalMath
     uint256 public constant DUST = 25e15; // 0.025 ETH
 
     ITreasury public treasury;
-    IController public controller;
+    IController public override controller;
 
     struct Vault {
         uint128 collateral;
