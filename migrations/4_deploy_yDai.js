@@ -50,8 +50,6 @@ module.exports = async (deployer, network, accounts) => {
     // Setup YDai
     await deployer.deploy(
       YDai,
-      vatAddress,
-      potAddress,
       treasuryAddress,
       maturity,
       name,
