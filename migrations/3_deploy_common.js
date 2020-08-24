@@ -68,8 +68,6 @@ module.exports = async (deployer, network, accounts) => {
   // Setup controller
   await deployer.deploy(
     Controller,
-    vatAddress,
-    potAddress,
     treasuryAddress,
   );
   const controller = await Controller.deployed();

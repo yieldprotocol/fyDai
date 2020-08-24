@@ -117,7 +117,7 @@ export class MakerEnvironment {
   }
 
   public async setupController(treasury: Contract) {
-    const controller = await Controller.new(this.vat.address, this.pot.address, treasury.address)
+    const controller = await Controller.new(treasury.address)
     await treasury.orchestrate(controller.address)
     return controller
   }
