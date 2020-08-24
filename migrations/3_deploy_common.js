@@ -87,15 +87,7 @@ module.exports = async (deployer, network, accounts) => {
   // Setup Unwind
   await deployer.deploy(
     Unwind,
-    vatAddress,
-    daiJoinAddress,
-    wethAddress,
-    wethJoinAddress,
-    potAddress,
     endAddress,
-    chaiAddress,
-    treasuryAddress,
-    controllerAddress,
     liquidationsAddress,
   );
   const unwind = await Unwind.deployed();
