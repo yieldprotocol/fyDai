@@ -2,7 +2,6 @@ const Migrations = artifacts.require("Migrations");
 const Controller = artifacts.require("Controller");
 const YieldProxy = artifacts.require("YieldProxy");
 const YDai = artifacts.require("YDai");
-const Splitter = artifacts.require("Splitter");
 
 module.exports = async (deployer) => {
   const migrations = await Migrations.deployed();
@@ -21,11 +20,7 @@ module.exports = async (deployer) => {
   await deployer.deploy(YieldProxy, controllerAddress, pools);
   const yieldProxy = await YieldProxy.deployed()
 
-  await deployer.deploy(Splitter, controllerAddress, pools);
-  const splitter = await Splitter.deployed()
-
   const deployment = {
-      'Splitter': splitter.address,
       'YieldProxy': yieldProxy.address
   }
 
