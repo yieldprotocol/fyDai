@@ -3,6 +3,9 @@ pragma solidity ^0.6.10;
 
 import "./IWeth.sol";
 import "./IChai.sol";
+import "./IVat.sol";
+import "./IGemJoin.sol";
+import "./IDaiJoin.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface ITreasury {
@@ -17,7 +20,10 @@ interface ITreasury {
     function shutdown() external;
     function live() external view returns(bool);
 
+    function vat() external view returns (IVat);
     function weth() external view returns (IWeth);
     function chai() external view returns (IChai);
     function dai() external view returns (IERC20);
+    function daiJoin() external view returns (IDaiJoin);
+    function wethJoin() external view returns (IGemJoin);
 }

@@ -12,6 +12,7 @@ import "../interfaces/IChai.sol";
 import "../interfaces/IYDai.sol";
 import "../interfaces/IController.sol";
 import "../interfaces/IPool.sol";
+import "../interfaces/IWeth.sol";
 import "../interfaces/IFlashMinter.sol";
 
 
@@ -23,40 +24,34 @@ contract Splitter is IFlashMinter, DecimalMath {
     bool constant public YTM = false;
 
     IVat public vat;
-    IERC20 public weth;
+    IWeth public weth;
     IERC20 public dai;
     IGemJoin public wethJoin;
     IDaiJoin public daiJoin;
     IController public controller;
 
     constructor(
-        address vat_,
-        address weth_,
-        address dai_,
-        address wethJoin_,
-        address daiJoin_,
-        address treasury_,
-        address controller_,
-        address[] memory pools
+        IController controller_,
+        IPool[] memory pools
     ) public {
-        vat = IVat(vat_);
-        weth = IERC20(weth_);
-        dai = IERC20(dai_);
-        wethJoin = IGemJoin(wethJoin_);
-        daiJoin = IDaiJoin(daiJoin_);
         controller = IController(controller_);
+        ITreasury treasury = controller.treasury();
+        daiJoin = treasury.daiJoin();
+        wethJoin = treasury.wethJoin();
+        vat = treasury.vat();
+        weth = treasury.weth();
+        dai = treasury.dai();
 
-        vat.hope(daiJoin_);
-        vat.hope(wethJoin_);
+        vat.hope(address(daiJoin));
+        vat.hope(address(wethJoin));
 
-        dai.approve(daiJoin_, uint(-1));
-        weth.approve(wethJoin_, uint(-1));
-        weth.approve(treasury_, uint(-1));
+        dai.approve(address(daiJoin), uint(-1));
+        weth.approve(address(wethJoin), uint(-1));
+        weth.approve(address(treasury), uint(-1));
 
         for (uint i = 0; i < pools.length; i++) {
-            IYDai yDai = IPool(pools[i]).yDai();
-            yDai.approve(pools[i], uint256(-1));
-            dai.approve(pools[i], uint256(-1));            
+            pools[i].yDai().approve(address(pools[i]), uint256(-1));
+            dai.approve(address(pools[i]), uint256(-1));
         }
     }
 

@@ -61,12 +61,6 @@ contract('Splitter', async (accounts) => {
 
     // Setup Splitter
     splitter1 = await Splitter.new(
-      vat.address,
-      weth.address,
-      dai.address,
-      wethJoin.address,
-      daiJoin.address,
-      treasury.address,
       controller.address,
       [pool1.address],
       { from: owner }

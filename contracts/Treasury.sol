@@ -25,11 +25,11 @@ import "./helpers/Orchestrated.sol";
 contract Treasury is ITreasury, Orchestrated(), DecimalMath {
     bytes32 constant WETH = "ETH-A";
 
-    IVat public vat;
+    IVat public override vat;
     IWeth public override weth;
     IERC20 public override dai;
-    IDaiJoin public daiJoin;
-    IGemJoin public wethJoin;
+    IDaiJoin public override daiJoin;
+    IGemJoin public override wethJoin;
     IPot public pot;
     IChai public override chai;
     address public unwind;
