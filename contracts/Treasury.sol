@@ -30,8 +30,8 @@ contract Treasury is ITreasury, Orchestrated(), DecimalMath {
     IERC20 public override dai;
     IDaiJoin public override daiJoin;
     IGemJoin public override wethJoin;
-    IPot public pot;
     IChai public override chai;
+    IPot public override pot;
     address public unwind;
 
     bool public override live = true;
