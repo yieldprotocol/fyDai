@@ -37,12 +37,12 @@ module.exports = async (deployer, network) => {
     [1625097599, 'yDai-2021-06-30', 'yDai-2021-06-30'],
   ]);
 
-  if (network === 'development') {
-    const block = await web3.eth.getBlockNumber();
-    maturitiesInput.add(
-      [(await web3.eth.getBlock(block)).timestamp + 100, 'yDai-t0', 'yDai-t0'],
-    );
-  }
+  // if (network === 'development') {
+  //   const block = await web3.eth.getBlockNumber();
+  //   maturitiesInput.add(
+  //     [(await web3.eth.getBlock(block)).timestamp + 100, 'yDai-t0', 'yDai-t0'],
+  //   );
+  // }
 
   let index = 0;
   for (const [maturity, name, symbol] of maturitiesInput.values()) {

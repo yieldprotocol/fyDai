@@ -14,6 +14,8 @@ const EthProxy = artifacts.require("EthProxy");
 const Splitter = artifacts.require("Splitter");
 const LimitPool = artifacts.require("LimitPool");
 const DaiProxy = artifacts.require("DaiProxy");
+const LiquidityProxy = artifacts.require("LiquidityProxy");
+const Chai = artifacts.require("Chai");
 
 
 module.exports = async (deployer, network, accounts) => {
@@ -32,6 +34,7 @@ module.exports = async (deployer, network, accounts) => {
     wethAddress = fixed_addrs[network].wethAddress;
     wethJoinAddress = fixed_addrs[network].wethJoinAddress;
     daiAddress = fixed_addrs[network].daiAddress;
+    chaiAddress = fixed_addrs[network].chaiAddress;
     daiJoinAddress = fixed_addrs[network].daiJoinAddress;
     potAddress = fixed_addrs[network].potAddress;
   } else {
@@ -39,6 +42,7 @@ module.exports = async (deployer, network, accounts) => {
     wethAddress = (await Weth.deployed()).address;
     wethJoinAddress = (await GemJoin.deployed()).address;
     daiAddress = (await ERC20.deployed()).address;
+    chaiAddress = (await Chai.deployed()).address;
     daiJoinAddress = (await DaiJoin.deployed()).address;
     potAddress = (await Pot.deployed()).address;
   }
@@ -68,6 +72,7 @@ module.exports = async (deployer, network, accounts) => {
   // Setup DaiProxy
   const yDaiNames = ['yDai0', 'yDai1', 'yDai2', 'yDai3'];
   const poolAddresses = []
+  const poolMap = new Map();
 
   for (yDaiName of yDaiNames) {
     yDaiAddress = await migrations.contracts(web3.utils.fromAscii(yDaiName));
@@ -75,18 +80,21 @@ module.exports = async (deployer, network, accounts) => {
     yDaiFullName = await yDai.name();
     poolAddress = await migrations.contracts(web3.utils.fromAscii( yDaiFullName + '-Pool') );
     poolAddresses.push(poolAddress)
+    poolMap.set(yDaiFullName, poolAddress)
   }
   await deployer.deploy(
     DaiProxy,
     daiAddress,
     controllerAddress,
-    poolAddresses,
+    poolAddresses, // Array.from(poolMap.values())
+    
   );
   daiProxyAddress = (await DaiProxy.deployed()).address;
 
   await migrations.register(web3.utils.fromAscii('DaiProxy'), daiProxyAddress);
   console.log('DaiProxy', daiProxyAddress);
 
+  // Deploy Splitter
   await deployer.deploy(
     Splitter,
     vatAddress,
@@ -96,10 +104,27 @@ module.exports = async (deployer, network, accounts) => {
     daiJoinAddress,
     treasuryAddress,
     controllerAddress,
-    poolAddresses,
+    poolAddresses, // Array.from(poolMap.values())
   );
   splitterAddress = (await Splitter.deployed()).address;
 
   await migrations.register(web3.utils.fromAscii('Splitter'), splitterAddress);
   console.log('Splitter', splitterAddress);
+
+  // Setup Liquidity Proxies
+  for ( const [yDaiName,poolAddr] of poolMap) {
+    const proxy = await deployer.deploy(
+      LiquidityProxy,
+      daiAddress,
+      chaiAddress, 
+      treasuryAddress,
+      controllerAddress,
+      poolAddr,
+    );
+    const proxyAddress = proxy.address;
+    const proxyName = `${yDaiName}-LiquidityProxy`
+    
+    await migrations.register(web3.utils.fromAscii(proxyName), proxyAddress);
+    console.log(proxyName,' : ', proxyAddress)
+  }
 };
