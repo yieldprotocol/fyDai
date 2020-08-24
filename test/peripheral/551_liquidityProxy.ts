@@ -77,7 +77,6 @@ contract('LiquidityProxy', async (accounts) => {
     // Setup LiquidityProxy
     proxy = await LiquidityProxy.new(env.controller.address, [pool.address])
 
-
     // Liquidity proxy requires approving only yDAI + adding the delegate
     const MAX = BigNumber.from('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
     await yDai1.approve(proxy.address, MAX, { from: user1 })

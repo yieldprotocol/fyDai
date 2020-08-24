@@ -59,7 +59,7 @@ contract('DaiProxy', async (accounts) => {
     await yDai1.orchestrate(owner, keccak256(toUtf8Bytes('mint(address,uint256)')), { from: owner })
 
     // need delegate to the controller to send/post collateral
-    await daiProxy.authorize({ from: user1 });
+    await daiProxy.authorize({ from: user1 })
     await dai.approve(daiProxy.address, MAX, { from: user1 })
     await yDai1.approve(daiProxy.address, MAX, { from: user1 })
   })
