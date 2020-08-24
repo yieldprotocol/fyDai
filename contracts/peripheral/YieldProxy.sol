@@ -101,12 +101,10 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         }
     }
 
-    /// @dev The WETH9 contract will send ether to EthProxy on `weth.withdraw` using this function.
+    /// @dev The WETH9 contract will send ether to YieldProxy on `weth.withdraw` using this function.
     receive() external payable { }
 
-    ///////////// EthProxy
-
-    /// @dev Users use `post` in EthProxy to post ETH to the Controller, which will be converted to Weth here.
+    /// @dev Users use `post` in YieldProxy to post ETH to the Controller, which will be converted to Weth here.
     /// @param to Yield Vault to deposit collateral in.
     /// @param amount Amount of collateral to move.
     function post(address to, uint256 amount)
@@ -116,7 +114,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     }
 
     /// @dev Users wishing to withdraw their Weth as ETH from the Controller should use this function.
-    /// Users must have called `controller.addDelegate(ethProxy.address)` to authorize EthProxy to act in their behalf.
+    /// Users must have called `controller.addDelegate(yieldProxy.address)` to authorize YieldProxy to act in their behalf.
     /// @param to Wallet to send Eth to.
     /// @param amount Amount of weth to move.
     function withdraw(address payable to, uint256 amount)
@@ -126,10 +124,8 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         to.transfer(amount);
     }
 
-    //// Liquidity Proxy
-
     /// @dev Mints liquidity with provided Dai by borrowing yDai with some of the Dai.
-    /// Caller must have approved the proxy using`controller.addDelegate(liquidityProxy)` and `pool.addDelegate(liquidityProxy)`
+    /// Caller must have approved the proxy using`controller.addDelegate(yieldProxy)` and `pool.addDelegate(yieldProxy)`
     /// Caller must have approved the dai transfer with `dai.approve(daiUsed)`
     /// @param daiUsed amount of Dai to use to mint liquidity. 
     /// @param maxYDai maximum amount of yDai to be borrowed to mint liquidity. 
@@ -162,7 +158,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     }
 
     /// @dev Burns tokens and repays yDai debt. Buys needed yDai or sells any excess, and all Dai is returned.
-    /// Caller must have approved the proxy using`controller.addDelegate(liquidityProxy)` and `pool.addDelegate(liquidityProxy)`
+    /// Caller must have approved the proxy using`controller.addDelegate(yieldProxy)` and `pool.addDelegate(yieldProxy)`
     /// Caller must have approved the liquidity burn with `pool.approve(poolTokens)`
     /// @param poolTokens amount of pool tokens to burn. 
     /// @param minimumDai minimum amount of Dai to be bought with yDai when burning. 
@@ -181,7 +177,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     }
 
     /// @dev Burns tokens and repays yDai debt after Maturity. 
-    /// Caller must have approved the proxy using`controller.addDelegate(liquidityProxy)`
+    /// Caller must have approved the proxy using`controller.addDelegate(yieldProxy)`
     /// Caller must have approved the liquidity burn with `pool.approve(poolTokens)`
     /// @param poolTokens amount of pool tokens to burn.
     function removeLiquidityMature(IPool pool, uint256 poolTokens) external {
@@ -214,10 +210,8 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         require(dai.transfer(msg.sender, dai.balanceOf(address(this))), "LiquidityProxy: Dai Transfer Failed");
     }
 
-    /// DAI Proxy
-
     /// @dev Borrow yDai from Controller and sell it immediately for Dai, for a maximum yDai debt.
-    /// Must have approved the operator with `controller.addDelegate(daiProxy.address)`.
+    /// Must have approved the operator with `controller.addDelegate(yieldProxy.address)`.
     /// @param collateral Valid collateral type.
     /// @param maturity Maturity of an added series
     /// @param to Wallet to send the resulting Dai to.
@@ -235,7 +229,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         returns (uint256)
     {
         uint256 yDaiToBorrow = pool.buyDaiPreview(daiToBorrow.toUint128());
-        require (yDaiToBorrow <= maximumYDai, "DaiProxy: Too much yDai required");
+        require (yDaiToBorrow <= maximumYDai, "YieldProxy: Too much yDai required");
 
         // The collateral for this borrow needs to have been posted beforehand
         controller.borrow(collateral, maturity, msg.sender, address(this), yDaiToBorrow);
@@ -245,7 +239,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     }
 
     /// @dev Borrow yDai from Controller and sell it immediately for Dai, if a minimum amount of Dai can be obtained such.
-    /// Must have approved the operator with `controller.addDelegate(daiProxy.address)`.
+    /// Must have approved the operator with `controller.addDelegate(yieldProxy.address)`.
     /// @param collateral Valid collateral type.
     /// @param maturity Maturity of an added series
     /// @param to Wallet to sent the resulting Dai to.
@@ -262,17 +256,18 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         public
         returns (uint256)
     {
+        require(poolsMap[address(pool)], "YieldProxy: Unknown pool");
         // The collateral for this borrow needs to have been posted beforehand
         controller.borrow(collateral, maturity, msg.sender, address(this), yDaiToBorrow);
         uint256 boughtDai = pool.sellYDai(address(this), to, yDaiToBorrow.toUint128());
-        require (boughtDai >= minimumDaiToBorrow, "DaiProxy: Not enough Dai obtained");
+        require (boughtDai >= minimumDaiToBorrow, "YieldProxy: Not enough Dai obtained");
 
         return boughtDai;
     }
 
 
     /// @dev Repay an amount of yDai debt in Controller using Dai exchanged for yDai at pool rates, up to a maximum amount of Dai spent.
-    /// Must have approved the operator with `pool.addDelegate(daiProxy.address)`.
+    /// Must have approved the operator with `pool.addDelegate(yieldProxy.address)`.
     /// @param collateral Valid collateral type.
     /// @param maturity Maturity of an added series
     /// @param to Yield Vault to repay yDai debt for.
@@ -289,15 +284,16 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         public
         returns (uint256)
     {
+        require(poolsMap[address(pool)], "YieldProxy: Unknown pool");
         uint256 repaymentInDai = pool.buyYDai(msg.sender, address(this), yDaiRepayment.toUint128());
-        require (repaymentInDai <= maximumRepaymentInDai, "DaiProxy: Too much Dai required");
+        require (repaymentInDai <= maximumRepaymentInDai, "YieldProxy: Too much Dai required");
         controller.repayYDai(collateral, maturity, address(this), to, yDaiRepayment);
 
         return repaymentInDai;
     }
 
     /// @dev Repay an amount of yDai debt in Controller using a given amount of Dai exchanged for yDai at pool rates, with a minimum of yDai debt required to be paid.
-    /// Must have approved the operator with `pool.addDelegate(daiProxy.address)`.
+    /// Must have approved the operator with `pool.addDelegate(yieldProxy.address)`.
     /// @param collateral Valid collateral type.
     /// @param maturity Maturity of an added series
     /// @param to Yield Vault to repay yDai debt for.
@@ -315,7 +311,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         returns (uint256)
     {
         uint256 yDaiRepayment = pool.sellDai(msg.sender, address(this), repaymentInDai.toUint128());
-        require (yDaiRepayment >= minimumYDaiRepayment, "DaiProxy: Not enough yDai debt repaid");
+        require (yDaiRepayment >= minimumYDaiRepayment, "YieldProxy: Not enough yDai debt repaid");
         controller.repayYDai(collateral, maturity, address(this), to, yDaiRepayment);
 
         return yDaiRepayment;
