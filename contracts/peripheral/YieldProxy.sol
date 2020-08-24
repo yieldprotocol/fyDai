@@ -49,6 +49,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     IDaiJoin public daiJoin;
 
     IPool[] public pools;
+    mapping (address => bool) public poolsMap;
 
     bytes32 public constant CHAI = "CHAI";
     bytes32 public constant WETH = "ETH-A";
@@ -88,6 +89,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         for (uint i = 0 ; i < _pools.length; i++) {
             dai.approve(address(_pools[i]), uint(-1));
             _pools[i].yDai().approve(address(_pools[i]), uint(-1));
+            poolsMap[address(_pools[i])]= true;
         }
 
         pools = _pools;
@@ -132,6 +134,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     /// @return The amount of liquidity tokens minted.  
     function addLiquidity(IPool pool, uint256 daiUsed, uint256 maxYDai) external returns (uint256)
     {
+        require(poolsMap[address(pool)], "YieldProxy: Unknown pool");
         IYDai yDai = pool.yDai();
         require(yDai.isMature() != true, "LiquidityProxy: Only before maturity");
         require(dai.transferFrom(msg.sender, address(this), daiUsed), "LiquidityProxy: Transfer Failed");
@@ -163,6 +166,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     /// @param poolTokens amount of pool tokens to burn. 
     /// @param minimumDai minimum amount of Dai to be bought with yDai when burning. 
     function removeLiquidityEarly(IPool pool, uint256 poolTokens, uint256 minimumDai) external {
+        require(poolsMap[address(pool)], "YieldProxy: Unknown pool");
         IYDai yDai = pool.yDai();
         (uint256 daiObtained, uint256 yDaiObtained) = pool.burn(msg.sender, address(this), poolTokens);
         repayDebt(yDai, daiObtained, yDaiObtained);
@@ -181,6 +185,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     /// Caller must have approved the liquidity burn with `pool.approve(poolTokens)`
     /// @param poolTokens amount of pool tokens to burn.
     function removeLiquidityMature(IPool pool, uint256 poolTokens) external {
+        require(poolsMap[address(pool)], "YieldProxy: Unknown pool");
         IYDai yDai = pool.yDai();
         (uint256 daiObtained, uint256 yDaiObtained) = pool.burn(msg.sender, address(this), poolTokens);
         if (yDaiObtained > 0) yDai.redeem(address(this), address(this), yDaiObtained);
@@ -228,6 +233,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         public
         returns (uint256)
     {
+        require(poolsMap[address(pool)], "YieldProxy: Unknown pool");
         uint256 yDaiToBorrow = pool.buyDaiPreview(daiToBorrow.toUint128());
         require (yDaiToBorrow <= maximumYDai, "YieldProxy: Too much yDai required");
 
@@ -310,6 +316,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         public
         returns (uint256)
     {
+        require(poolsMap[address(pool)], "YieldProxy: Unknown pool");
         uint256 yDaiRepayment = pool.sellDai(msg.sender, address(this), repaymentInDai.toUint128());
         require (yDaiRepayment >= minimumYDaiRepayment, "YieldProxy: Not enough yDai debt repaid");
         controller.repayYDai(collateral, maturity, address(this), to, yDaiRepayment);

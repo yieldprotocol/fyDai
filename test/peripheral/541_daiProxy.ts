@@ -83,6 +83,20 @@ contract('DaiProxy', async (accounts) => {
       await yDai1.mint(user1, yDaiTokens1, { from: owner })
     })
 
+    it('fails on unknown pools', async () => {
+      const fakePoolContract = await Pool.new(dai.address, yDai1.address, 'Fake', 'Fake')
+      const fakePool = fakePoolContract.address;
+
+      await expectRevert(daiProxy.addLiquidity(fakePool, 1, 1), "YieldProxy: Unknown pool")
+      await expectRevert(daiProxy.removeLiquidityEarly(fakePool, 1, 1), "YieldProxy: Unknown pool")
+      await expectRevert(daiProxy.removeLiquidityMature(fakePool, 1), "YieldProxy: Unknown pool")
+      await expectRevert(daiProxy.borrowDaiForMaximumYDai(fakePool, WETH, 1, owner, 1, 1), "YieldProxy: Unknown pool")
+      await expectRevert(daiProxy.borrowMinimumDaiForYDai(fakePool, WETH, 1, owner, 1, 1), "YieldProxy: Unknown pool")
+      await expectRevert(daiProxy.repayMinimumYDaiDebtForDai(fakePool, WETH, 1, owner, 1, 1), "YieldProxy: Unknown pool")
+      await expectRevert(daiProxy.repayYDaiDebtForMaximumDai(fakePool, WETH, 1, owner, 1, 1), "YieldProxy: Unknown pool")
+    })
+
+
     it('borrows dai for maximum yDai', async () => {
       await daiProxy.borrowDaiForMaximumYDai(pool.address, WETH, maturity1, user2, yDaiTokens1, one, {
         from: user1,
@@ -96,7 +110,7 @@ contract('DaiProxy', async (accounts) => {
         daiProxy.borrowDaiForMaximumYDai(pool.address, WETH, maturity1, user2, yDaiTokens1, daiTokens1, {
           from: user1,
         }),
-        'DaiProxy: Too much yDai required'
+        'YieldProxy: Too much yDai required'
       )
     })
 
@@ -119,7 +133,7 @@ contract('DaiProxy', async (accounts) => {
     it("doesn't borrow dai if limit not reached", async () => {
       await expectRevert(
         daiProxy.borrowMinimumDaiForYDai(pool.address, WETH, maturity1, user2, one, daiTokens1, { from: user1 }),
-        'DaiProxy: Not enough Dai obtained'
+        'YieldProxy: Not enough Dai obtained'
       )
     })
 
@@ -155,7 +169,7 @@ contract('DaiProxy', async (accounts) => {
       it("doesn't repay debt if limit not reached", async () => {
         await expectRevert(
           daiProxy.repayMinimumYDaiDebtForDai(pool.address, WETH, maturity1, user2, two, one, { from: user1 }),
-          'DaiProxy: Not enough yDai debt repaid'
+          'YieldProxy: Not enough yDai debt repaid'
         )
       })
 
@@ -172,7 +186,7 @@ contract('DaiProxy', async (accounts) => {
       it("doesn't repay debt if limit not reached", async () => {
         await expectRevert(
           daiProxy.repayYDaiDebtForMaximumDai(pool.address, WETH, maturity1, user2, two, one, { from: user1 }),
-          'DaiProxy: Too much Dai required'
+          'YieldProxy: Too much Dai required'
         )
       })
     })
