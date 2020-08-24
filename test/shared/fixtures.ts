@@ -218,10 +218,12 @@ export class YieldEnvironment extends YieldEnvironmentLite {
   public static async setup() {
     const { maker, treasury, controller } = await YieldEnvironmentLite.setup()
 
-    const liquidations = await Liquidations.new(treasury.address, controller.address)
+    const liquidations = await Liquidations.new(controller.address)
     await controller.orchestrate(liquidations.address, id('erase(bytes32,address)'))
-    await treasury.orchestrate(liquidations.address, id('pushDai(address,uint256)'))
-    await treasury.orchestrate(liquidations.address, id('pullWeth(address,uint256)'))
+    await treasury.batchOrchestrate(
+        liquidations.address, 
+        [id('pushDai(address,uint256)'), id('pullWeth(address,uint256)')]
+    )
 
     const unwind = await Unwind.new(
       maker.vat.address,
