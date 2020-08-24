@@ -78,7 +78,6 @@ module.exports = async (deployer, network, accounts) => {
   // Setup Liquidations
   await deployer.deploy(
     Liquidations,
-    treasuryAddress,
     controllerAddress,
   )
   liquidationsAddress = (await Liquidations.deployed()).address;
