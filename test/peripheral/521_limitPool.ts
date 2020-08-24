@@ -45,10 +45,10 @@ contract('LimitPool', async (accounts) => {
     // Allow owner to mint yDai the sneaky way, without recording a debt in controller
     await yDai1.orchestrate(owner, keccak256(toUtf8Bytes('mint(address,uint256)')), { from: owner })
 
-    await yDai1.approve(pool.address, -1, { from: user1 })
-    await dai.approve(pool.address, -1, { from: user1 })
-    await yDai1.approve(pool.address, -1, { from: from })
-    await dai.approve(pool.address, -1, { from: from })
+    for (const sender of [user1, from, operator]) {
+      await yDai1.approve(pool.address, -1, { from: sender })
+      await dai.approve(pool.address, -1, { from: sender })
+    }
   })
 
   describe('with liquidity', () => {
