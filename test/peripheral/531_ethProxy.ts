@@ -15,7 +15,7 @@ const SIGNATURE_TYPEHASH = keccak256(
   toUtf8Bytes('Signature(address user,address delegate,uint256 nonce,uint256 deadline)')
 )
 
-contract('Controller - EthProxy', async (accounts) => {
+contract('YieldProxy - EthProxy', async (accounts) => {
   let [owner, user1, user2] = accounts
 
   // this is the SECOND account that buidler creates

@@ -10,7 +10,7 @@ import { YieldEnvironmentLite, Contract } from '../shared/fixtures'
 
 import { assert, expect } from 'chai'
 
-contract('Splitter', async (accounts) => {
+contract('YieldProxy - Splitter', async (accounts) => {
   let [owner, user] = accounts
 
   const yDaiTokens1 = daiTokens1

@@ -11,7 +11,7 @@ import { BN, expectRevert } from '@openzeppelin/test-helpers'
 import { assert, expect } from 'chai'
 import { BigNumber } from 'ethers'
 
-contract('LiquidityProxy', async (accounts) => {
+contract('YieldProxy - LiquidityProxy', async (accounts) => {
   let [owner, user1, operator, user2, to] = accounts
 
   // These values impact the pool results

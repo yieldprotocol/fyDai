@@ -12,7 +12,7 @@ import { expectRevert } from '@openzeppelin/test-helpers'
 import { assert, expect } from 'chai'
 import { BigNumber } from 'ethers'
 
-contract('DaiProxy', async (accounts) => {
+contract('YieldProxy - DaiProxy', async (accounts) => {
   let [owner, user1, user2, operator] = accounts
 
   // These values impact the pool results
