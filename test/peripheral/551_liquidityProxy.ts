@@ -77,6 +77,10 @@ contract('YieldProxy - LiquidityProxy', async (accounts) => {
     // Setup LiquidityProxy
     proxy = await LiquidityProxy.new(env.controller.address, [pool.address])
 
+    const MAX = BigNumber.from('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
+    await env.maker.chai.approve(proxy.address, MAX, { from: user1 })
+    await dai.approve(proxy.address, MAX, { from: user1 })
+    await dai.approve(pool.address, MAX, { from: user1 })
     await controller.addDelegate(proxy.address, { from: user1 })
   })
 
@@ -165,10 +169,7 @@ contract('YieldProxy - LiquidityProxy', async (accounts) => {
 
       await dai.mint(user2, oneToken, { from: owner })
       await dai.approve(proxy.address, oneToken, { from: user2 })
-      await expectRevert(
-        proxy.addLiquidity(pool.address, oneToken, 1, { from: user2 }),
-        'LiquidityProxy: maxYDai exceeded'
-      )
+      await expectRevert(proxy.addLiquidity(pool.address, oneToken, 1, { from: user2 }), 'YieldProxy: maxYDai exceeded')
     })
 
     describe('with proxied liquidity', () => {
@@ -241,6 +242,7 @@ contract('YieldProxy - LiquidityProxy', async (accounts) => {
         expect(await yDai1.balanceOf(user2)).to.be.bignumber.eq(new BN('0'))
 
         await pool.addDelegate(proxy.address, { from: user2 })
+
         await proxy.removeLiquidityMature(pool.address, poolTokens, { from: user2 })
 
         // Doesn't have pool tokens

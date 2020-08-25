@@ -72,7 +72,7 @@ contract('YieldProxy - LimitPool', async (accounts) => {
 
       await expectRevert(
         limitPool.buyDai(pool.address, to, oneToken, oneToken.div(2), { from: from }),
-        'LimitPool: Limit exceeded'
+        'YieldProxy: Limit exceeded'
       )
     })
 
@@ -96,7 +96,7 @@ contract('YieldProxy - LimitPool', async (accounts) => {
 
       await expectRevert(
         limitPool.sellYDai(pool.address, to, oneToken, oneToken.mul(2), { from: from }),
-        'LimitPool: Limit not reached'
+        'YieldProxy: Limit not reached'
       )
     })
 
@@ -127,7 +127,7 @@ contract('YieldProxy - LimitPool', async (accounts) => {
       it("doesn't sell dai if limit not reached", async () => {
         await expectRevert(
           limitPool.sellDai(pool.address, to, oneToken, oneToken.mul(2), { from: from }),
-          'LimitPool: Limit not reached'
+          'YieldProxy: Limit not reached'
         )
       })
 
@@ -145,7 +145,7 @@ contract('YieldProxy - LimitPool', async (accounts) => {
       it("doesn't buy yDai if limit exceeded", async () => {
         await expectRevert(
           limitPool.buyYDai(pool.address, to, oneToken, oneToken.div(2), { from: from }),
-          'LimitPool: Limit exceeded'
+          'YieldProxy: Limit exceeded'
         )
       })
     })

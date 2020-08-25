@@ -61,7 +61,7 @@ contract('YieldProxy - Splitter', async (accounts) => {
   it('does not allow to move more debt than existing in maker', async () => {
     await expectRevert(
       splitter1.makerToYield(pool1.address, user, wethTokens1, daiTokens1.mul(10), { from: user }),
-      'Splitter: Not enough debt in Maker'
+      'YieldProxy: Not enough debt in Maker'
     )
   })
 
@@ -70,7 +70,7 @@ contract('YieldProxy - Splitter', async (accounts) => {
 
     await expectRevert(
       splitter1.makerToYield(pool1.address, user, BigNumber.from(wethTokens1).mul(10), daiTokens1, { from: user }),
-      'Splitter: Not enough collateral in Maker'
+      'YieldProxy: Not enough collateral in Maker'
     )
   })
 
@@ -117,7 +117,7 @@ contract('YieldProxy - Splitter', async (accounts) => {
   it('does not allow to move more debt than existing in env', async () => {
     await expectRevert(
       splitter1.yieldToMaker(pool1.address, user, yDaiTokens1, wethTokens1, { from: user }),
-      'Splitter: Not enough debt in Yield'
+      'YieldProxy: Not enough debt in Yield'
     )
   })
 
@@ -127,7 +127,7 @@ contract('YieldProxy - Splitter', async (accounts) => {
 
     await expectRevert(
       splitter1.yieldToMaker(pool1.address, user, yDaiTokens1, BigNumber.from(wethTokens1).mul(2), { from: user }),
-      'Splitter: Not enough collateral in Yield'
+      'YieldProxy: Not enough collateral in Yield'
     )
   })
 
