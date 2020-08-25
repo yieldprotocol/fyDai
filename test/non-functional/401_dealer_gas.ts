@@ -25,18 +25,16 @@ contract('Gas Usage', async (accounts) => {
     snapshot = await helper.takeSnapshot()
     snapshotId = snapshot['result']
 
-    env = await YieldEnvironment.setup()
-    controller = env.controller
-    treasury = env.treasury
-    dai = env.maker.dai
-    unwind = env.unwind
-
     // Setup yDai
     const block = await web3.eth.getBlockNumber()
     maturity1 = (await web3.eth.getBlock(block)).timestamp + 1000
     maturity2 = (await web3.eth.getBlock(block)).timestamp + 2000
-    await env.newYDai(maturity1, 'Name', 'Symbol')
-    await env.newYDai(maturity2, 'Name', 'Symbol')
+
+    env = await YieldEnvironment.setup([maturity1, maturity2])
+    controller = env.controller
+    treasury = env.treasury
+    dai = env.maker.dai
+    unwind = env.unwind
   })
 
   afterEach(async () => {

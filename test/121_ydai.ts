@@ -38,17 +38,17 @@ contract('yDai', async (accounts) => {
     snapshot = await helper.takeSnapshot()
     snapshotId = snapshot['result']
 
-    env = await YieldEnvironmentLite.setup()
+    const block = await web3.eth.getBlockNumber()
+    maturity = (await web3.eth.getBlock(block)).timestamp + 1000
+
+    env = await YieldEnvironmentLite.setup([maturity])
     treasury = env.treasury
     weth = env.maker.weth
     pot = env.maker.pot
     vat = env.maker.vat
     dai = env.maker.dai
 
-    // Setup yDai1
-    const block = await web3.eth.getBlockNumber()
-    maturity = (await web3.eth.getBlock(block)).timestamp + 1000
-    yDai1 = await env.newYDai(maturity, 'Name', 'Symbol')
+    yDai1 = env.ydais[0]
 
     // Test setup
     // Setup Flash Minter
