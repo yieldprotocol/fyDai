@@ -160,7 +160,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     }
 
     /// @dev Mints liquidity with provided Dai by borrowing yDai with some of the Dai.
-    /// Caller must have approved the proxy using`controller.addDelegate(yieldProxy)` and `pool.addDelegate(yieldProxy)`
+    /// Caller must have approved the proxy using`controller.addDelegate(yieldProxy)`
     /// Caller must have approved the dai transfer with `dai.approve(daiUsed)`
     /// @param daiUsed amount of Dai to use to mint liquidity. 
     /// @param maxYDai maximum amount of yDai to be borrowed to mint liquidity. 
