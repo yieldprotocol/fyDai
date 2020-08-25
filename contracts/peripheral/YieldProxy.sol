@@ -103,8 +103,8 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         }
     }
 
-    /// @dev Performs the initial onboarding of the user. It `permit`'s DAI and CHAI to be used by the proxy, and adds the proxy as a delegate in the controller
-    function onboard(address from, bytes memory daiSignature, bytes memory chaiSignature, bytes memory controllerSig) external {
+    /// @dev Performs the initial onboarding of the user. It `permit`'s DAI to be used by the proxy, and adds the proxy as a delegate in the controller
+    function onboard(address from, bytes memory daiSignature, bytes memory controllerSig) external {
         bytes32 r;
         bytes32 s;
         uint8 v;
@@ -112,10 +112,6 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         (r, s, v) = unpack(daiSignature);
         dai.permit(from, address(this), dai.nonces(from), uint(-1), true, v, r, s);
 
-        (r, s, v) = unpack(chaiSignature);
-        chai.permit(from, address(this), chai.nonces(from), uint(-1), true, v, r, s);
-
-        // 2. controller delegate
         (r, s, v) = unpack(controllerSig);
         controller.addDelegateBySignature(from, address(this), uint(-1), v, r, s);
     }
@@ -165,8 +161,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     /// @param daiUsed amount of Dai to use to mint liquidity. 
     /// @param maxYDai maximum amount of yDai to be borrowed to mint liquidity. 
     /// @return The amount of liquidity tokens minted.  
-    function addLiquidity(IPool pool, uint256 daiUsed, uint256 maxYDai) external returns (uint256)
-    {
+    function addLiquidity(IPool pool, uint256 daiUsed, uint256 maxYDai) external returns (uint256) {
         require(poolsMap[address(pool)], "YieldProxy: Unknown pool");
         IYDai yDai = pool.yDai();
         require(yDai.isMature() != true, "LiquidityProxy: Only before maturity");

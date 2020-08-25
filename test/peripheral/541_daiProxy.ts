@@ -97,21 +97,8 @@ contract('YieldProxy - DaiProxy', async (accounts) => {
     )
     let daiSig = sign(digest, userPrivateKey)
 
-    // Authorize CHAI
-    const chai = env.maker.chai
-    digest = getChaiDigest(
-      {
-        owner: user1,
-        spender: daiProxy.address,
-        can: true,
-      },
-      bnify(await chai.nonces(user1)),
-      deadline
-    )
-    let chaiSig = sign(digest, userPrivateKey)
-
     // Send it! (note how it's not necessarily the user broadcasting it)
-    await daiProxy.onboard(user1, daiSig, chaiSig, controllerSig, { from: operator })
+    await daiProxy.onboard(user1, daiSig, controllerSig, { from: operator })
 
     // Authorize the proxy for the pool
     digest = getSignatureDigest(
