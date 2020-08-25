@@ -6,8 +6,8 @@ import "../pool/YieldMath.sol";
 contract CryticTestYieldMath {
     uint128 internal oneDAI = 10**18;
     uint128 internal tol = 10 * oneDAI;
-    int128 constant internal k = int128(uint256((1 << 64)) / 126144000); // 1 / Seconds in 4 years, in 64.64
-    int128 constant internal g = 2**64; // No fees
+    int128 constant public k = int128(uint256((1 << 64)) / 126144000); // 1 / Seconds in 4 years, in 64.64
+    int128 constant public g = int128(uint256((999 << 64)) / 1000); // All constants are `ufixed`, to divide them they must be converted to uint256
     constructor() public {}
     function equalWithTol(uint128 x, uint128 y) internal view returns (bool) {
         if (x > y)
