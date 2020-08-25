@@ -3,8 +3,8 @@ pragma solidity ^0.6.10;
 
 import "../interfaces/IController.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IWeth.sol";
+import "../interfaces/IDai.sol";
 import "../interfaces/IGemJoin.sol";
 import "../interfaces/IDaiJoin.sol";
 import "../interfaces/IVat.sol";
@@ -42,7 +42,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     IController public controller;
 
     IVat public vat;
-    IERC20 public dai;
+    IDai public dai;
     IChai public chai;
     IWeth public weth;
     IGemJoin public wethJoin;
@@ -62,7 +62,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         ITreasury treasury = controller.treasury();
 
         weth = treasury.weth();
-        dai = treasury.dai();
+        dai = IDai(address(treasury.dai()));
         chai = treasury.chai();
         daiJoin = treasury.daiJoin();
         wethJoin = treasury.wethJoin();
@@ -95,12 +95,45 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         pools = _pools;
     }
 
-    /// @dev Authorizes the controller and all pools to act as delegates for the user.
-    function authorize() external {
-        controller.addDelegateTxOrigin(address(this));
-        for (uint256 i = 0; i < pools.length; i++) {
-            pools[i].addDelegateTxOrigin(address(this));
+    function unpack(bytes memory signature) private pure returns (bytes32 r, bytes32 s, uint8 v) {
+        assembly {
+            r := mload(add(signature, 0x20))
+            s := mload(add(signature, 0x40))
+            v := byte(0, mload(add(signature, 0x60)))
         }
+    }
+
+    function onboard(address from, bytes memory daiSignature, bytes memory chaiSignature, bytes memory controllerSig) external {
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+
+        (r, s, v) = unpack(daiSignature);
+        dai.permit(from, address(this), dai.nonces(from), uint(-1), true, v, r, s);
+
+        (r, s, v) = unpack(chaiSignature);
+        chai.permit(from, address(this), chai.nonces(from), uint(-1), true, v, r, s);
+
+        // 2. controller delegate
+        (r, s, v) = unpack(controllerSig);
+        controller.addDelegateBySignature(from, address(this), uint(-1), v, r, s);
+    }
+
+    /// @dev Given a pool and 3 signatures, it `permit`'s dai and yDAI for that pool and adds it as a delegate
+    function authorizePool(IPool pool, address from, bytes memory daiSig, bytes memory yDaiSig, bytes memory poolSig) public {
+        require(poolsMap[address(pool)], "YieldProxy: Unknown pool");
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+
+        (r, s, v) = unpack(daiSig);
+        dai.permit(from, address(pool), dai.nonces(from), uint(-1), true, v, r, s);
+
+        (r, s, v) = unpack(yDaiSig);
+        pool.yDai().permit(from, address(this), uint(-1), uint(-1), v, r, s);
+
+        (r, s, v) = unpack(poolSig);
+        pool.addDelegateBySignature(from, address(this), uint(-1), v, r, s);
     }
 
     /// @dev The WETH9 contract will send ether to YieldProxy on `weth.withdraw` using this function.
