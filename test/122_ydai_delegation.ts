@@ -36,7 +36,7 @@ contract('yDai - Delegation', async (accounts) => {
     vat = env.maker.vat
     dai = env.maker.dai
 
-    yDai1 = env.ydais[0]
+    yDai1 = env.yDais[0]
 
     // Post collateral to MakerDAO through Treasury
     await treasury.orchestrate(owner, id('pushWeth(address,uint256)'), { from: owner })

@@ -41,7 +41,7 @@ contract('Pool', async (accounts) => {
     maturity1 = (await web3.eth.getBlock(block)).timestamp + 31556952 // One year
     env = await YieldEnvironmentLite.setup([maturity1])
     dai = env.maker.dai
-    yDai1 = env.ydais[0]
+    yDai1 = env.yDais[0]
 
     // Setup Pool
     pool = await Pool.new(dai.address, yDai1.address, 'Name', 'Symbol', { from: owner })

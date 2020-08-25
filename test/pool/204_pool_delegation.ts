@@ -29,7 +29,7 @@ contract('Pool - Delegation', async (accounts) => {
 
     env = await YieldEnvironmentLite.setup([maturity1])
     dai = env.maker.dai
-    yDai1 = env.ydais[0]
+    yDai1 = env.yDais[0]
 
     // Setup Pool
     pool = await Pool.new(dai.address, yDai1.address, 'Name', 'Symbol', { from: owner })

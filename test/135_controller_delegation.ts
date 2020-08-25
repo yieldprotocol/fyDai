@@ -36,7 +36,7 @@ contract('Controller - Delegation', async (accounts) => {
     treasury = env.treasury
     weth = env.maker.weth
     dai = env.maker.dai
-    yDai1 = env.ydais[0]
+    yDai1 = env.yDais[0]
   })
 
   afterEach(async () => {

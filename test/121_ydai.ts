@@ -48,7 +48,7 @@ contract('yDai', async (accounts) => {
     vat = env.maker.vat
     dai = env.maker.dai
 
-    yDai1 = env.ydais[0]
+    yDai1 = env.yDais[0]
 
     // Test setup
     // Setup Flash Minter

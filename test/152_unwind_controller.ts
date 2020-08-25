@@ -54,8 +54,8 @@ contract('Unwind - Controller', async (accounts) => {
     controller = env.controller
     treasury = env.treasury
     unwind = env.unwind
-    yDai1 = env.ydais[0]
-    yDai2 = env.ydais[1]
+    yDai1 = env.yDais[0]
+    yDai2 = env.yDais[1]
 
     weth = env.maker.weth
     end = env.maker.end

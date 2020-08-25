@@ -51,8 +51,8 @@ contract('Controller - Weth', async (accounts) => {
     weth = env.maker.weth
     vat = env.maker.vat
     dai = env.maker.dai
-    yDai1 = env.ydais[0]
-    yDai2 = env.ydais[1]
+    yDai1 = env.yDais[0]
+    yDai2 = env.yDais[1]
   })
 
   afterEach(async () => {

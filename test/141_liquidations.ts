@@ -61,7 +61,7 @@ contract('Liquidations', async (accounts) => {
     dai = env.maker.dai
     weth = env.maker.weth
 
-    yDai1 = env.ydais[0]
+    yDai1 = env.yDais[0]
   })
 
   afterEach(async () => {

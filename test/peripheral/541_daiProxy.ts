@@ -51,7 +51,7 @@ contract('DaiProxy', async (accounts) => {
     treasury = env.treasury
     controller = env.controller
 
-    yDai1 = env.ydais[0]
+    yDai1 = env.yDais[0]
 
     // Setup Pool
     pool = await Pool.new(dai.address, yDai1.address, 'Name', 'Symbol', { from: owner })

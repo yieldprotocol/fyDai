@@ -37,7 +37,7 @@ contract('Gas Usage', async (accounts) => {
     treasury = env.treasury
     dai = env.maker.dai
     unwind = env.unwind
-    series = env.ydais
+    series = env.yDais
   })
 
   afterEach(async () => {

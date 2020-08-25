@@ -83,7 +83,7 @@ contract('LiquidityProxy', async (accounts) => {
     dai = env.maker.dai
     controller = env.controller
     treasury = env.treasury
-    yDai1 = env.ydais[0]
+    yDai1 = env.yDais[0]
 
     // Setup Pool
     pool = await Pool.new(dai.address, yDai1.address, 'Name', 'Symbol', { from: owner })

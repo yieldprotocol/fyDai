@@ -34,7 +34,7 @@ module.exports = async (deployer, network, accounts) => {
   treasuryAddress = treasury.address;
 
   let numYDais = network === 'development' ? 5 : 4
-  let ydais = await Promise.all([...Array(numYDais).keys()].map(async (index) => {
+  let yDais = await Promise.all([...Array(numYDais).keys()].map(async (index) => {
       return await migrations.contracts(web3.utils.fromAscii('yDai' + index))
   }))
 
@@ -42,7 +42,7 @@ module.exports = async (deployer, network, accounts) => {
   await deployer.deploy(
     Controller,
     treasuryAddress,
-    ydais,
+    yDais,
   );
   const controller = await Controller.deployed();
   controllerAddress = controller.address;
@@ -71,7 +71,7 @@ module.exports = async (deployer, network, accounts) => {
   await treasury.registerUnwind(unwindAddress);
 
   // YDai orchestration
-  for (const addr of ydais) {
+  for (const addr of yDais) {
       const yDai = await YDai.at(addr)
       await treasury.orchestrate(addr, id('pullDai(address,uint256)'))
 

@@ -54,7 +54,7 @@ contract('Splitter', async (accounts) => {
     wethJoin = env.maker.wethJoin
     daiJoin = env.maker.daiJoin
 
-    yDai1 = env.ydais[0]
+    yDai1 = env.yDais[0]
 
     // Setup Pool
     pool1 = await Pool.new(dai.address, yDai1.address, 'Name', 'Symbol', { from: owner })

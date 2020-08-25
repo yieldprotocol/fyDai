@@ -37,7 +37,7 @@ contract('Pool', async (accounts) => {
     env = await YieldEnvironmentLite.setup([maturity1])
     dai = env.maker.dai
 
-    yDai1 = env.ydais[0]
+    yDai1 = env.yDais[0]
     await yDai1.orchestrate(owner, keccak256(toUtf8Bytes('mint(address,uint256)')))
 
     // Setup Pool

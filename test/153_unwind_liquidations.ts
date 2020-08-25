@@ -50,7 +50,7 @@ contract('Unwind - Controller', async (accounts) => {
     end = env.maker.end
 
     // Setup yDai
-    yDai1 = env.ydais[0]
+    yDai1 = env.yDais[0]
     await end.rely(owner, { from: owner }) // `owner` replaces MKR governance
   })
 
