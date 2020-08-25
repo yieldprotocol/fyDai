@@ -77,10 +77,7 @@ contract('LiquidityProxy', async (accounts) => {
     // Setup LiquidityProxy
     proxy = await LiquidityProxy.new(env.controller.address, [pool.address])
 
-    // Liquidity proxy requires approving only yDAI + adding the delegate
-    const MAX = BigNumber.from('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
-    await yDai1.approve(proxy.address, MAX, { from: user1 })
-    await proxy.authorize({ from: user1 })
+    await controller.addDelegate(proxy.address, { from : user1 })
   })
 
   afterEach(async () => {
@@ -97,7 +94,7 @@ contract('LiquidityProxy', async (accounts) => {
       await yDai1.approve(pool.address, additionalYDaiReserves, { from: operator })
       await pool.sellYDai(operator, operator, additionalYDaiReserves, { from: operator })
 
-      await proxy.authorize({ from: user2 })
+      await controller.addDelegate(proxy.address, { from : user2 })
     })
 
     it('mints liquidity tokens with dai only', async () => {
@@ -204,7 +201,9 @@ contract('LiquidityProxy', async (accounts) => {
         // Doesn't have yDai
         expect(await yDai1.balanceOf(user2)).to.be.bignumber.eq(new BN('0'))
 
-        await pool.approve(proxy.address, poolTokens, { from: user2 })
+        // the proxy must be a delegate in the pool because in order to remove
+        // liquidity via the proxy we must authorize the proxy to burn from our balance
+        await pool.addDelegate(proxy.address, { from: user2 })
         await proxy.removeLiquidityEarly(pool.address, poolTokens, '0', { from: user2 })
 
         // Doesn't have pool tokens
@@ -231,7 +230,6 @@ contract('LiquidityProxy', async (accounts) => {
         const poolTokens = await pool.balanceOf(user2)
         const debt = await controller.debtYDai(CHAI, maturity1, user2)
         const daiBalance = await dai.balanceOf(user2)
-        await pool.approve(proxy.address, poolTokens, { from: user2 })
 
         // Has pool tokens
         expect(poolTokens).to.be.bignumber.gt(new BN('0'))
@@ -242,6 +240,7 @@ contract('LiquidityProxy', async (accounts) => {
         // Doesn't have yDai
         expect(await yDai1.balanceOf(user2)).to.be.bignumber.eq(new BN('0'))
 
+        await pool.addDelegate(proxy.address, { from: user2 })
         await proxy.removeLiquidityMature(pool.address, poolTokens, { from: user2 })
 
         // Doesn't have pool tokens

@@ -139,13 +139,12 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     /// @dev The WETH9 contract will send ether to YieldProxy on `weth.withdraw` using this function.
     receive() external payable { }
 
-    /// @dev Users use `post` in YieldProxy to post ETH to the Controller, which will be converted to Weth here.
+    /// @dev Users use `post` in YieldProxy to post ETH to the Controller (amount = msg.value), which will be converted to Weth here.
     /// @param to Yield Vault to deposit collateral in.
-    /// @param amount Amount of collateral to move.
-    function post(address to, uint256 amount)
+    function post(address to)
         public payable {
-        weth.deposit{ value: amount }();
-        controller.post(WETH, address(this), to, amount);
+        weth.deposit{ value: msg.value }();
+        controller.post(WETH, address(this), to, msg.value);
     }
 
     /// @dev Users wishing to withdraw their Weth as ETH from the Controller should use this function.

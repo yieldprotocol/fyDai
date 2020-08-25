@@ -66,7 +66,7 @@ contract('Controller - EthProxy', async (accounts) => {
     assert.equal(await controller.powerOf(WETH, user2), 0, 'User2 has borrowing power')
 
     const previousBalance = await balance.current(user1)
-    await ethProxy.post(user2, wethTokens1, { from: user1, value: wethTokens1 })
+    await ethProxy.post(user2, { from: user1, value: wethTokens1 })
 
     expect(await balance.current(user1)).to.be.bignumber.lt(previousBalance)
     assert.equal(
@@ -83,7 +83,7 @@ contract('Controller - EthProxy', async (accounts) => {
 
   describe('with posted eth', () => {
     beforeEach(async () => {
-      await ethProxy.post(user1, wethTokens1, { from: user1, value: wethTokens1 })
+      await ethProxy.post(user1, { from: user1, value: wethTokens1 })
 
       assert.equal(
         (await vat.urns(WETH, treasury.address)).ink,

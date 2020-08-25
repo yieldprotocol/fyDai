@@ -170,10 +170,9 @@ contract('DaiProxy', async (accounts) => {
       await yDai1.approve(pool.address, MAX, { from: user1 })
       await pool.init(daiReserves, { from: user1 })
 
-      // Post some weth to controller to be able to borrow
-      await weth.deposit({ from: user1, value: wethTokens1 })
-      await weth.approve(treasury.address, wethTokens1, { from: user1 })
-      await controller.post(WETH, user1, user1, wethTokens1, { from: user1 })
+      // Post some weth to controller via the proxy to be able to borrow
+      // without requiring an `approve`!
+      await daiProxy.post(user1, { from: user1, value: wethTokens1 })
 
       // Give some yDai to user1
       await yDai1.mint(user1, yDaiTokens1, { from: owner })
@@ -247,9 +246,7 @@ contract('DaiProxy', async (accounts) => {
         await pool.sellYDai(operator, operator, additionalYDaiReserves, { from: operator })
 
         // Create some yDai debt for `user2`
-        await weth.deposit({ from: user2, value: wethTokens1 })
-        await weth.approve(treasury.address, wethTokens1, { from: user2 })
-        await controller.post(WETH, user2, user2, wethTokens1, { from: user2 })
+        await daiProxy.post(user2, { from: user2, value: wethTokens1 })
         await controller.borrow(WETH, maturity1, user2, user2, daiTokens1, { from: user2 })
 
         // Give some Dai to `user1`
