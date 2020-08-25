@@ -77,7 +77,7 @@ contract('LiquidityProxy', async (accounts) => {
     // Setup LiquidityProxy
     proxy = await LiquidityProxy.new(env.controller.address, [pool.address])
 
-    await controller.addDelegate(proxy.address, { from : user1 })
+    await controller.addDelegate(proxy.address, { from: user1 })
   })
 
   afterEach(async () => {
@@ -94,7 +94,7 @@ contract('LiquidityProxy', async (accounts) => {
       await yDai1.approve(pool.address, additionalYDaiReserves, { from: operator })
       await pool.sellYDai(operator, operator, additionalYDaiReserves, { from: operator })
 
-      await controller.addDelegate(proxy.address, { from : user2 })
+      await controller.addDelegate(proxy.address, { from: user2 })
     })
 
     it('mints liquidity tokens with dai only', async () => {
