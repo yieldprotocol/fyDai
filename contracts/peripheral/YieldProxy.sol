@@ -21,7 +21,7 @@ library SafeCast {
     function toUint128(uint256 x) internal pure returns(uint128) {
         require(
             x <= type(uint128).max,
-            "Pool: Cast overflow"
+            "YieldProxy: Cast overflow"
         );
         return uint128(x);
     }
@@ -30,7 +30,7 @@ library SafeCast {
     function toInt256(uint256 x) internal pure returns(int256) {
         require(
             x <= uint256(type(int256).max),
-            "Treasury: Cast overflow"
+            "YieldProxy: Cast overflow"
         );
         return int256(x);
     }
@@ -164,8 +164,8 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     function addLiquidity(IPool pool, uint256 daiUsed, uint256 maxYDai) external returns (uint256) {
         require(poolsMap[address(pool)], "YieldProxy: Unknown pool");
         IYDai yDai = pool.yDai();
-        require(yDai.isMature() != true, "LiquidityProxy: Only before maturity");
-        require(dai.transferFrom(msg.sender, address(this), daiUsed), "LiquidityProxy: Transfer Failed");
+        require(yDai.isMature() != true, "YieldProxy: Only before maturity");
+        require(dai.transferFrom(msg.sender, address(this), daiUsed), "YieldProxy: Transfer Failed");
 
         // calculate needed yDai
         uint256 daiReserves = dai.balanceOf(address(pool));
@@ -174,7 +174,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         uint256 daiToConvert = daiUsed.sub(daiToAdd);
         require(
             daiToConvert <= maxYDai,
-            "LiquidityProxy: maxYDai exceeded"
+            "YieldProxy: maxYDai exceeded"
         ); // 1 Dai == 1 yDai
 
         // convert dai to chai and borrow needed yDai
@@ -202,7 +202,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         if (remainingYDai > 0) {
             require(
                 pool.sellYDai(address(this), address(this), uint128(remainingYDai)) >= minimumDai,
-                "LiquidityProxy: minimumDai not reached"
+                "YieldProxy: minimumDai not reached"
             );
         }
         withdrawAssets(yDai);
@@ -240,7 +240,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
             controller.withdraw(CHAI, msg.sender, address(this), controller.posted(CHAI, msg.sender));
             chai.exit(address(this), chai.balanceOf(address(this)));
         }
-        require(dai.transfer(msg.sender, dai.balanceOf(address(this))), "LiquidityProxy: Dai Transfer Failed");
+        require(dai.transfer(msg.sender, dai.balanceOf(address(this))), "YieldProxy: Dai Transfer Failed");
     }
 
     /// @dev Borrow yDai from Controller and sell it immediately for Dai, for a maximum yDai debt.
@@ -363,7 +363,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         uint256 yDaiOut = IPool(pool).sellDai(msg.sender, to, daiIn);
         require(
             yDaiOut >= minYDaiOut,
-            "LimitPool: Limit not reached"
+            "YieldProxy: Limit not reached"
         );
         return yDaiOut;
     }
@@ -379,7 +379,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         uint256 yDaiIn = IPool(pool).buyDai(msg.sender, to, daiOut);
         require(
             maxYDaiIn >= yDaiIn,
-            "LimitPool: Limit exceeded"
+            "YieldProxy: Limit exceeded"
         );
         return yDaiIn;
     }
@@ -395,7 +395,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         uint256 daiOut = IPool(pool).sellYDai(msg.sender, to, yDaiIn);
         require(
             daiOut >= minDaiOut,
-            "LimitPool: Limit not reached"
+            "YieldProxy: Limit not reached"
         );
         return daiOut;
     }
@@ -411,12 +411,12 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         uint256 daiIn = IPool(pool).buyYDai(msg.sender, to, yDaiOut);
         require(
             maxDaiIn >= daiIn,
-            "LimitPool: Limit exceeded"
+            "YieldProxy: Limit exceeded"
         );
         return daiIn;
     }
 
-    // Splitter: Maker to Yield proxy
+    // YieldProxy: Maker to Yield proxy
 
     /// @dev Transfer debt and collateral from MakerDAO to Yield
     /// Needs vat.hope(splitter.address, { from: user });
@@ -432,11 +432,11 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         (, uint256 rate,,,) = vat.ilks("ETH-A");
         require(
             daiAmount <= muld(art, rate),
-            "Splitter: Not enough debt in Maker"
+            "YieldProxy: Not enough debt in Maker"
         );
         require(
             wethAmount <= ink,
-            "Splitter: Not enough collateral in Maker"
+            "YieldProxy: Not enough collateral in Maker"
         );
         // Flash mint the yDai
         IYDai yDai = IPool(pool).yDai();
@@ -461,11 +461,11 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         // The user specifies the yDai he wants to move, and the weth to be passed on as collateral
         require(
             yDaiAmount <= controller.debtYDai(WETH, yDai.maturity(), user),
-            "Splitter: Not enough debt in Yield"
+            "YieldProxy: Not enough debt in Yield"
         );
         require(
             wethAmount <= controller.posted(WETH, user),
-            "Splitter: Not enough collateral in Yield"
+            "YieldProxy: Not enough collateral in Yield"
         );
         // Flash mint the yDai
         yDai.flashMint(
@@ -517,7 +517,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         IPool _pool = IPool(pool);
         IYDai yDai = IYDai(_pool.yDai());
 
-        // Pool should take exactly all yDai flash minted. Splitter will hold the dai temporarily
+        // Pool should take exactly all yDai flash minted. YieldProxy will hold the dai temporarily
         uint256 yDaiSold = _pool.buyDai(address(this), address(this), daiAmount.toUint128());
 
         daiJoin.join(user, daiAmount);      // Put the Dai in Maker
@@ -532,7 +532,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         );
 
         vat.flux("ETH-A", user, address(this), wethAmount);             // Remove the collateral from Maker
-        wethJoin.exit(address(this), wethAmount);                       // Hold the weth in Splitter
+        wethJoin.exit(address(this), wethAmount);                       // Hold the weth in YieldProxy
         controller.post(WETH, address(this), user, wethAmount);         // Add the collateral to Yield
         controller.borrow(WETH, yDai.maturity(), user, address(this), yDaiSold); // Borrow the yDai
     }
@@ -550,11 +550,11 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         IPool _pool = IPool(pool);
         IYDai yDai = IYDai(_pool.yDai());
 
-        // Pay the Yield debt - Splitter pays YDai to remove the debt of `user`
+        // Pay the Yield debt - YieldProxy pays YDai to remove the debt of `user`
         // Controller should take exactly all yDai flash minted.
         controller.repayYDai(WETH, yDai.maturity(), address(this), user, yDaiAmount);
 
-        // Withdraw the collateral from Yield, Splitter will hold it
+        // Withdraw the collateral from Yield, YieldProxy will hold it
         controller.withdraw(WETH, user, address(this), wethAmount);
 
         // Post the collateral to Maker, in the `user` vault
@@ -573,8 +573,8 @@ contract YieldProxy is DecimalMath, IFlashMinter {
             wethAmount.toInt256(),                   // Adding Weth collateral
             divdrup(daiAmount, rate).toInt256()      // Adding Dai debt
         );
-        vat.move(user, address(this), daiAmount.mul(UNIT)); // Transfer the Dai to Splitter within MakerDAO, in RAD
-        daiJoin.exit(address(this), daiAmount);             // Splitter will hold the dai temporarily
+        vat.move(user, address(this), daiAmount.mul(UNIT)); // Transfer the Dai to YieldProxy within MakerDAO, in RAD
+        daiJoin.exit(address(this), daiAmount);             // YieldProxy will hold the dai temporarily
 
         // Sell the Dai for YDai at Pool - It should make up for what was taken with repayYdai
         _pool.buyYDai(address(this), address(this), yDaiAmount.toUint128());
