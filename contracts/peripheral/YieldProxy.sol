@@ -103,7 +103,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         }
     }
 
-    /// @dev Performs the initial onboarding of the user. It ``permit`s DAI and CHAI to be used by the proxy, and adds the proxy as a delegate in the controller
+    /// @dev Performs the initial onboarding of the user. It `permit`'s DAI and CHAI to be used by the proxy, and adds the proxy as a delegate in the controller
     function onboard(address from, bytes memory daiSignature, bytes memory chaiSignature, bytes memory controllerSig) external {
         bytes32 r;
         bytes32 s;
