@@ -59,7 +59,6 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
         pot = treasury.pot();
         for (uint256 i = 0; i < yDais.length; i += 1) {
             addSeries(yDais[i]);
-
         }
     }
 
