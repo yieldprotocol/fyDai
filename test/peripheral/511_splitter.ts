@@ -10,7 +10,7 @@ import { YieldEnvironmentLite, Contract } from '../shared/fixtures'
 
 import { assert, expect } from 'chai'
 
-contract('Splitter', async (accounts) => {
+contract('YieldProxy - Splitter', async (accounts) => {
   let [owner, user] = accounts
 
   const yDaiTokens1 = daiTokens1
@@ -19,7 +19,6 @@ contract('Splitter', async (accounts) => {
   let dai: Contract
   let vat: Contract
   let controller: Contract
-  let treasury: Contract
   let weth: Contract
   let yDai1: Contract
   let splitter1: Contract
@@ -31,7 +30,6 @@ contract('Splitter', async (accounts) => {
 
     env = await YieldEnvironmentLite.setup([maturity1])
     controller = env.controller
-    treasury = env.treasury
     vat = env.maker.vat
     dai = env.maker.dai
     weth = env.maker.weth
@@ -89,9 +87,7 @@ contract('Splitter', async (accounts) => {
 
     // If we need any extra, we are posting it directly on Controller
     const extraWethNeeded = wethInController.sub(new BN(wethTokens1.toString())) // It will always be zero or more
-    await weth.deposit({ from: user, value: extraWethNeeded })
-    await weth.approve(treasury.address, extraWethNeeded, { from: user })
-    await controller.post(WETH, user, user, extraWethNeeded, { from: user })
+    await splitter1.post(user, { from: user, value: extraWethNeeded.toString() })
 
     // Add permissions for vault migration
     await controller.addDelegate(splitter1.address, { from: user }) // Allowing Splitter to create debt for use in Yield

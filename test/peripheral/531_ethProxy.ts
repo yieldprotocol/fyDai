@@ -15,7 +15,7 @@ const SIGNATURE_TYPEHASH = keccak256(
   toUtf8Bytes('Signature(address user,address delegate,uint256 nonce,uint256 deadline)')
 )
 
-contract('Controller - EthProxy', async (accounts) => {
+contract('YieldProxy - EthProxy', async (accounts) => {
   let [owner, user1, user2] = accounts
 
   // this is the SECOND account that buidler creates
@@ -64,7 +64,7 @@ contract('Controller - EthProxy', async (accounts) => {
     assert.equal(await controller.powerOf(WETH, user2), 0, 'User2 has borrowing power')
 
     const previousBalance = await balance.current(user1)
-    await ethProxy.post(user2, wethTokens1, { from: user1, value: wethTokens1 })
+    await ethProxy.post(user2, { from: user1, value: wethTokens1 })
 
     expect(await balance.current(user1)).to.be.bignumber.lt(previousBalance)
     assert.equal(
@@ -81,7 +81,7 @@ contract('Controller - EthProxy', async (accounts) => {
 
   describe('with posted eth', () => {
     beforeEach(async () => {
-      await ethProxy.post(user1, wethTokens1, { from: user1, value: wethTokens1 })
+      await ethProxy.post(user1, { from: user1, value: wethTokens1 })
 
       assert.equal(
         (await vat.urns(WETH, treasury.address)).ink,
