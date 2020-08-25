@@ -4,7 +4,6 @@ pragma solidity ^0.6.10;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "../interfaces/IDai.sol";
 
-import "@nomiclabs/buidler/console.sol";
 
 contract TestDai is ERC20, IDai {
     bytes32 public immutable DOMAIN_SEPARATOR;
