@@ -168,12 +168,7 @@ export class YieldEnvironmentLite {
   }
 
   public async newYDai(maturity: number, name: string, symbol: string, dontAdd?: boolean) {
-    const yDai = await YDai.new(
-      this.treasury.address,
-      maturity,
-      name,
-      symbol
-    )
+    const yDai = await YDai.new(this.treasury.address, maturity, name, symbol)
     if (!dontAdd) {
       await this.controller.addSeries(yDai.address)
       await yDai.batchOrchestrate(this.controller.address, [id('mint(address,uint256)'), id('burn(address,uint256)')])
@@ -220,15 +215,12 @@ export class YieldEnvironment extends YieldEnvironmentLite {
 
     const liquidations = await Liquidations.new(controller.address)
     await controller.orchestrate(liquidations.address, id('erase(bytes32,address)'))
-    await treasury.batchOrchestrate(
-        liquidations.address, 
-        [id('pushDai(address,uint256)'), id('pullWeth(address,uint256)')]
-    )
+    await treasury.batchOrchestrate(liquidations.address, [
+      id('pushDai(address,uint256)'),
+      id('pullWeth(address,uint256)'),
+    ])
 
-    const unwind = await Unwind.new(
-      maker.end.address,
-      liquidations.address
-    )
+    const unwind = await Unwind.new(maker.end.address, liquidations.address)
     await treasury.registerUnwind(unwind.address)
     await controller.orchestrate(unwind.address, id('erase(bytes32,address)'))
     await liquidations.orchestrate(unwind.address, id('erase(address)'))
