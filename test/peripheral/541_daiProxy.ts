@@ -3,7 +3,7 @@ const DaiProxy = artifacts.require('YieldProxy')
 
 import { WETH, wethTokens1, toWad, toRay, subBN, mulRay } from '../shared/utils'
 import { YieldEnvironmentLite, Contract } from '../shared/fixtures'
-import { getSignatureDigest } from '../shared/signatures'
+import { getSignatureDigest, getPermitDigest, getDaiDigest, getChaiDigest } from '../shared/signatures'
 import { keccak256, toUtf8Bytes } from 'ethers/lib/utils'
 import { ecsign } from 'ethereumjs-util'
 
@@ -24,7 +24,6 @@ contract('DaiProxy', async (accounts) => {
   let maturity1: number
   let weth: Contract
   let dai: Contract
-  let treasury: Contract
   let controller: Contract
   let yDai1: Contract
   let pool: Contract
@@ -38,11 +37,15 @@ contract('DaiProxy', async (accounts) => {
   const MAX = BigNumber.from('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
   const bnify = (num: any) => BigNumber.from(num.toString())
 
+  const userPrivateKey = Buffer.from('d49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb', 'hex')
+  const chainId = 31337 // buidlerevm chain id
+  const name = 'Yield'
+  let digest: any
+
   beforeEach(async () => {
     env = await YieldEnvironmentLite.setup()
     weth = env.maker.weth
     dai = env.maker.dai
-    treasury = env.treasury
     controller = env.controller
 
     // Setup yDai
@@ -59,10 +62,103 @@ contract('DaiProxy', async (accounts) => {
     // Allow owner to mint yDai the sneaky way, without recording a debt in controller
     await yDai1.orchestrate(owner, keccak256(toUtf8Bytes('mint(address,uint256)')), { from: owner })
 
-    // need delegate to the controller to send/post collateral
-    await daiProxy.authorize({ from: user1 })
-    await dai.approve(daiProxy.address, MAX, { from: user1 })
-    await yDai1.approve(daiProxy.address, MAX, { from: user1 })
+    const sign = (digest: any, privateKey: any) => {
+      const { v, r, s } = ecsign(Buffer.from(digest.slice(2), 'hex'), privateKey)
+      return '0x' + r.toString('hex') + s.toString('hex') + v.toString(16)
+    }
+
+    const deadline = MAX
+
+    // Authorize the proxy for the controller
+    digest = getSignatureDigest(
+      name,
+      controller.address,
+      chainId,
+      {
+        user: user1,
+        delegate: daiProxy.address,
+      },
+      await controller.signatureCount(user1),
+      MAX
+    )
+    const controllerSig = sign(digest, userPrivateKey)
+
+    // Authorize DAI
+    digest = getDaiDigest(
+      await dai.name(),
+      dai.address,
+      chainId,
+      {
+        owner: user1,
+        spender: daiProxy.address,
+        can: true,
+      },
+      bnify(await dai.nonces(user1)),
+      deadline
+    )
+    let daiSig = sign(digest, userPrivateKey)
+
+    // Authorize CHAI
+    const chai = env.maker.chai
+    digest = getChaiDigest(
+      {
+        owner: user1,
+        spender: daiProxy.address,
+        can: true,
+      },
+      bnify(await chai.nonces(user1)),
+      deadline
+    )
+    let chaiSig = sign(digest, userPrivateKey)
+
+    // Send it! (note how it's not necessarily the user broadcasting it)
+    await daiProxy.onboard(user1, daiSig, chaiSig, controllerSig, { from: operator })
+
+    // Authorize the proxy for the pool
+    digest = getSignatureDigest(
+      name,
+      pool.address,
+      chainId,
+      {
+        user: user1,
+        delegate: daiProxy.address,
+      },
+      bnify(await pool.signatureCount(user1)),
+      MAX
+    )
+    const poolSig = sign(digest, userPrivateKey)
+
+    // Authorize YDai for the pool
+    digest = getPermitDigest(
+      await yDai1.name(),
+      await pool.yDai(),
+      chainId,
+      {
+        owner: user1,
+        spender: daiProxy.address,
+        value: MAX,
+      },
+      bnify(await yDai1.nonces(user1)),
+      MAX
+    )
+    const ydaiSig = sign(digest, userPrivateKey)
+
+    // Authorize DAI for the pool
+    digest = getDaiDigest(
+      await dai.name(),
+      dai.address,
+      chainId,
+      {
+        owner: user1,
+        spender: pool.address,
+        can: true,
+      },
+      bnify(await dai.nonces(user1)),
+      deadline
+    )
+    const daiSig2 = sign(digest, userPrivateKey)
+    // Send it!
+    await daiProxy.authorizePool(pool.address, user1, daiSig2, ydaiSig, poolSig, { from: operator })
   })
 
   describe('with liquidity', () => {
@@ -85,17 +181,22 @@ contract('DaiProxy', async (accounts) => {
 
     it('fails on unknown pools', async () => {
       const fakePoolContract = await Pool.new(dai.address, yDai1.address, 'Fake', 'Fake')
-      const fakePool = fakePoolContract.address;
+      const fakePool = fakePoolContract.address
 
-      await expectRevert(daiProxy.addLiquidity(fakePool, 1, 1), "YieldProxy: Unknown pool")
-      await expectRevert(daiProxy.removeLiquidityEarly(fakePool, 1, 1), "YieldProxy: Unknown pool")
-      await expectRevert(daiProxy.removeLiquidityMature(fakePool, 1), "YieldProxy: Unknown pool")
-      await expectRevert(daiProxy.borrowDaiForMaximumYDai(fakePool, WETH, 1, owner, 1, 1), "YieldProxy: Unknown pool")
-      await expectRevert(daiProxy.borrowMinimumDaiForYDai(fakePool, WETH, 1, owner, 1, 1), "YieldProxy: Unknown pool")
-      await expectRevert(daiProxy.repayMinimumYDaiDebtForDai(fakePool, WETH, 1, owner, 1, 1), "YieldProxy: Unknown pool")
-      await expectRevert(daiProxy.repayYDaiDebtForMaximumDai(fakePool, WETH, 1, owner, 1, 1), "YieldProxy: Unknown pool")
+      await expectRevert(daiProxy.addLiquidity(fakePool, 1, 1), 'YieldProxy: Unknown pool')
+      await expectRevert(daiProxy.removeLiquidityEarly(fakePool, 1, 1), 'YieldProxy: Unknown pool')
+      await expectRevert(daiProxy.removeLiquidityMature(fakePool, 1), 'YieldProxy: Unknown pool')
+      await expectRevert(daiProxy.borrowDaiForMaximumYDai(fakePool, WETH, 1, owner, 1, 1), 'YieldProxy: Unknown pool')
+      await expectRevert(daiProxy.borrowMinimumDaiForYDai(fakePool, WETH, 1, owner, 1, 1), 'YieldProxy: Unknown pool')
+      await expectRevert(
+        daiProxy.repayMinimumYDaiDebtForDai(fakePool, WETH, 1, owner, 1, 1),
+        'YieldProxy: Unknown pool'
+      )
+      await expectRevert(
+        daiProxy.repayYDaiDebtForMaximumDai(fakePool, WETH, 1, owner, 1, 1),
+        'YieldProxy: Unknown pool'
+      )
     })
-
 
     it('borrows dai for maximum yDai', async () => {
       await daiProxy.borrowDaiForMaximumYDai(pool.address, WETH, maturity1, user2, yDaiTokens1, one, {
@@ -156,7 +257,6 @@ contract('DaiProxy', async (accounts) => {
       })
 
       it('repays minimum yDai debt with dai', async () => {
-        await dai.approve(pool.address, daiTokens1, { from: user1 })
         await daiProxy.repayMinimumYDaiDebtForDai(pool.address, WETH, maturity1, user2, one, two, {
           from: user1,
         })
