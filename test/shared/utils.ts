@@ -65,7 +65,7 @@ export const limits = toRad(10000)
 
 export const spot = toRay(150)
 export const chi1 = toRay(1.2)
-export const rate1 = toRay(1.4)
+export const rate1 = toRay(1.45)
 
 export const daiDebt1 = toWad(120)
 export const daiTokens1 = mulRay(daiDebt1, rate1)
