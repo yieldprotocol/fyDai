@@ -1,7 +1,7 @@
 const Pool = artifacts.require('Pool')
 const DaiProxy = artifacts.require('YieldProxy')
 
-import { WETH, wethTokens1, toWad, toRay, subBN, mulRay, bnify } from '../shared/utils'
+import { WETH, rate1, daiTokens1, wethTokens1, toWad, toRay, subBN, mulRay, bnify } from '../shared/utils'
 import { YieldEnvironmentLite, Contract } from '../shared/fixtures'
 import { getSignatureDigest, getPermitDigest, getDaiDigest, getChaiDigest } from '../shared/signatures'
 import { keccak256, toUtf8Bytes } from 'ethers/lib/utils'
@@ -15,12 +15,6 @@ import { BigNumber } from 'ethers'
 contract('YieldProxy - DaiProxy', async (accounts) => {
   let [owner, user1, user2, operator] = accounts
 
-  // These values impact the pool results
-  const rate1 = toRay(1.4)
-  const daiDebt1 = toWad(96)
-  const daiTokens1 = mulRay(daiDebt1, rate1)
-  const yDaiTokens1 = daiTokens1
-
   let maturity1: number
   let weth: Contract
   let dai: Contract
@@ -32,6 +26,7 @@ contract('YieldProxy - DaiProxy', async (accounts) => {
 
   const one = toWad(1)
   const two = toWad(2)
+  const yDaiTokens1 = daiTokens1
   const yDaiDebt = daiTokens1
 
   const MAX = bnify('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
