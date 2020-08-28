@@ -89,7 +89,7 @@ export const limits = toRad(10000)
 export const spot = toRay(150)// At the time of writing, spot is 258.05, a reasonable range is [50, 1000]
 export const chi1 = toRay(1.1) // At the time of writing, chi is 1.018008449363110619399951035, a reasonable upper boundary is 1.2
 export const rate1 = toRay(1.02) // At the time of writing, rate is 1.02004188, a reasonable upper boundary is 1.2
-export const precision = 2 // Loss in wei that is tolerated with each operation
+export const precision = 10 // Loss in wei that is tolerated with each operation
 
 export const daiDebt1 = toWad(120).toString()
 export const daiTokens1 = mulRay(daiDebt1, rate1).toString()

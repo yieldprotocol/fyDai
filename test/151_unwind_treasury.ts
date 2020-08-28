@@ -216,7 +216,7 @@ contract('Unwind - Treasury', async (accounts) => {
           almostEqual(
             await weth.balanceOf(unwind.address, { from: owner }),
             fixedWeth.toString(),
-            10 // We are off by more than the usual precision here, not a big deal
+            precision // We are off by more than the usual precision here, not a big deal
           )
         })
       })
