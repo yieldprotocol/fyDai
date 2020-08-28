@@ -152,7 +152,7 @@ contract('Pool', async (accounts) => {
       await yDai1.approve(pool.address, oneToken, { from: from })
       const event = (await pool.sellYDai(from, to, oneToken, { from: operator })).logs[3]
 
-      const expectedDaiOut = new BN(oneToken.toString()).mul(new BN('99745')).div(new BN('100000')) // I just hate javascript
+      const expectedDaiOut = new BN(oneToken.toString()).mul(new BN('99745')).div(new BN('100000'))
       const daiOut = new BN(await dai.balanceOf(to))
 
       assert.equal(event.event, 'Trade')
@@ -197,7 +197,7 @@ contract('Pool', async (accounts) => {
       await yDai1.approve(pool.address, yDaiTokens1, { from: from })
       const event = (await pool.buyDai(from, to, oneToken, { from: operator })).logs[3]
 
-      const expectedYDaiIn = new BN(oneToken.toString()).mul(new BN('100260')).div(new BN('100000')) // I just hate javascript
+      const expectedYDaiIn = new BN(oneToken.toString()).mul(new BN('100260')).div(new BN('100000'))
       const yDaiIn = new BN(yDaiTokens1.toString()).sub(new BN(await yDai1.balanceOf(from)))
 
       assert.equal(event.event, 'Trade')
@@ -328,7 +328,7 @@ contract('Pool', async (accounts) => {
         await dai.approve(pool.address, oneToken, { from: from })
         const event = (await pool.sellDai(from, to, oneToken, { from: operator })).logs[3]
 
-        const expectedYDaiOut = new BN(oneToken.toString()).mul(new BN('118480')).div(new BN('100000')) // I just hate javascript
+        const expectedYDaiOut = new BN(oneToken.toString()).mul(new BN('118480')).div(new BN('100000'))
         const yDaiOut = new BN(await yDai1.balanceOf(to))
 
         assert.equal(event.event, 'Trade')
@@ -377,7 +377,7 @@ contract('Pool', async (accounts) => {
         await dai.approve(pool.address, daiTokens1, { from: from })
         const event = (await pool.buyYDai(from, to, oneToken, { from: operator })).logs[3]
 
-        const expectedDaiIn = new BN(oneToken.toString()).mul(new BN('84361')).div(new BN('100000')) // I just hate javascript
+        const expectedDaiIn = new BN(oneToken.toString()).mul(new BN('84361')).div(new BN('100000'))
         const daiIn = new BN(daiTokens1.toString()).sub(new BN(await dai.balanceOf(from)))
 
         assert.equal(event.event, 'Trade')
