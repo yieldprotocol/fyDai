@@ -226,7 +226,7 @@ contract('YieldProxy - DaiProxy', async (accounts) => {
         await pool.sellYDai(operator, operator, additionalYDaiReserves, { from: operator })
 
         // Create some yDai debt for `user2`
-        await daiProxy.post(user2, { from: user2, value: wethTokens1 })
+        await daiProxy.post(user2, { from: user2, value: bnify(wethTokens1).mul(2).toString() })
         await controller.borrow(WETH, maturity1, user2, user2, daiTokens1, { from: user2 })
 
         // Give some Dai to `user1`
