@@ -145,7 +145,10 @@ contract('Unwind - Liquidations', async (accounts) => {
           assert.equal(
             await weth.balanceOf(user2, { from: user2 }),
             wethRemainder.toString(),
-            'User2 should have ' + wethRemainder + ' weth, instead has ' + (await weth.balanceOf(user2, { from: user2 }))
+            'User2 should have ' +
+              wethRemainder +
+              ' weth, instead has ' +
+              (await weth.balanceOf(user2, { from: user2 }))
           )
         }
       })
