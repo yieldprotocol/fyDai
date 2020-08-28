@@ -152,7 +152,7 @@ contract('YieldProxy - DaiProxy', async (accounts) => {
 
       // Post some weth to controller via the proxy to be able to borrow
       // without requiring an `approve`!
-      await daiProxy.post(user1, { from: user1, value: wethTokens1 })
+      await daiProxy.post(user1, { from: user1, value: bnify(wethTokens1).mul(2).toString() })
 
       // Give some yDai to user1
       await yDai1.mint(user1, yDaiTokens1, { from: owner })
