@@ -1,5 +1,5 @@
 const Test = artifacts.require('YieldMathEchidna')
-const YieldMath = artifacts.require('YieldMathMock')
+// const YieldMath = artifacts.require('YieldMathMock')
 
 // @ts-ignore
 import helper from 'ganache-time-traveler'
@@ -7,12 +7,12 @@ import { bnify } from '../shared/utils'
 import { Contract } from '../shared/fixtures'
 // @ts-ignore
 
-contract('YieldMath', async (accounts) => {
+contract('YieldMath - Liquidity Invariant', async (accounts) => {
   let snapshot: any
   let snapshotId: string
 
   let test: Contract
-  let yieldMath: Contract
+  // let yieldMath: Contract
 
   const b = bnify('18446744073709551615')
   const k = bnify('126144000').div(b)
@@ -24,10 +24,10 @@ contract('YieldMath', async (accounts) => {
 
     // Setup YieldMathDAIWrapper
     test = await Test.new()
-    yieldMath = await YieldMath.new()
+    // yieldMath = await YieldMath.new()
   })
 
-  it('log_2 monotonically grows', async () => {
+  /* it('log_2 monotonically grows', async () => {
     console.log('    ' + (await yieldMath.log_2_128('4000916067400943041987521580724335131')).toString())
     console.log('    ' + (await yieldMath.log_2_128('4000916067400943041987521580724335132')).toString())
   })
@@ -35,9 +35,9 @@ contract('YieldMath', async (accounts) => {
   it('log_2 precission losses round down', async () => {
     console.log('    ' + (await yieldMath.log_2_64('4000916067400943041987521580724335131')).toString())
     console.log('    ' + (await yieldMath.log_2_128('4000916067400943041987521580724335132')).toString())
-  })
+  }) */
 
-  it('Outputs the invariant for two consecutive seconds', async () => {
+  /* it('Outputs the invariant for two consecutive seconds', async () => {
     // maxDaiReserves = 10**27; // $1B
     // maxYDaiReserves = 10**27; // $1B
     // maxTrade = 10**26; // $100M
@@ -75,7 +75,7 @@ contract('YieldMath', async (accounts) => {
       ).toString()
     )
     // console.log((await test.testLiquidityInvariant('66329041300990984000', '34400000000000000000', '10000000000000000000', '31556951')).toString());
-  })
+  }) */
 
   it('Sells yDai and reverses the trade', async () => {
     // maxDaiReserves = 10**27; // $1B
@@ -93,10 +93,10 @@ contract('YieldMath', async (accounts) => {
     // const yDaiIn = minTrade
     // const timeTillMaturity = minTimeTillMaturity
 
-    const daiReserves =   '1000000000000000000000'
+    const daiReserves =   '912896046632372301188284076'
     const yDaiReserves = '1000000000000000000001'
-    const yDaiIn =          '1000000000000000000'
-    const timeTillMaturity = '43200'
+    const yDaiIn =          '1000000000432404785'
+    const timeTillMaturity = '1994870'
 
     console.log('yDai Reserves:       ' + yDaiReserves.toString())
     console.log('Dai Reserves:        ' + daiReserves.toString())
@@ -149,16 +149,22 @@ contract('YieldMath', async (accounts) => {
     // const yDaiIn = minTrade
     // const timeTillMaturity = minTimeTillMaturity
 
-    const daiReserves =   '349061773210894792196710'
-    const yDaiReserves = '1001649248511020033788'
-    const daiIn =          '1000000000000000001'
-    const timeTillMaturity = '49034'
+    let daiReserves =   '1000000000000001133485'
+    let yDaiReserves = '1000000000000000000084'
+    let daiIn =          '1000001001108599807'
+    let timeTillMaturity = '770'
 
     console.log('yDai Reserves:       ' + yDaiReserves.toString())
     console.log('Dai Reserves:        ' + daiReserves.toString())
     console.log('Time until maturity: ' + timeTillMaturity.toString())
-    console.log('Dai in:             ' + daiIn.toString())
-    console.log('Dai out:            ' + (await test.sellDaiAndReverse(daiReserves, yDaiReserves, daiIn, timeTillMaturity)).toString());
+    console.log('Dai in:              ' + daiIn.toString())
+    console.log('Dai out:             ' + (await test.sellDaiAndReverse(daiReserves, yDaiReserves, daiIn, timeTillMaturity)).toString());
+
+    daiReserves =   '1133485'
+    yDaiReserves = '83'
+    daiIn =          '1001108599807'
+    timeTillMaturity = '770'
+    console.log('Pass:                ' + (await test.testSellDaiAndReverse(daiReserves, yDaiReserves, daiIn, timeTillMaturity)).toString());
   })
 
   it('Buys Dai and reverses the trade', async () => {
