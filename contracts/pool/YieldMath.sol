@@ -46,6 +46,7 @@ library YieldMath {
 
     uint256 result = yDAIReserves - pow (uint128 (sum), 0x10000000000000000, uint128 (a));
     require (result < 0x100000000000000000000000000000000, "YieldMath: Rounding induced error");
+    result > 1e12 ? result = result - 1e12 : result = 0; // Substract error guard, flooring the result at zero
 
     return uint128 (result);
   }
@@ -86,6 +87,7 @@ library YieldMath {
       daiReserves -
       pow (uint128 (sum), 0x10000000000000000, uint128 (a));
     require (result < 0x100000000000000000000000000000000, "YieldMath: Rounding induced error");
+    result > 1e12 ? result = result - 1e12 : result = 0; // Substract error guard, flooring the result at zero
 
     return uint128 (result);
   }
@@ -124,6 +126,7 @@ library YieldMath {
 
     uint256 result = pow (uint128 (sum), 0x10000000000000000, uint128 (a)) - yDAIReserves;
     require (result < 0x100000000000000000000000000000000, "YieldMath: Rounding induced error");
+    result < type(uint256).max - 1e12 ? result = result + 1e12 : result = type(uint256).max; // Add error guard, ceiling the result at max
 
     return uint128 (result);
   }
@@ -163,6 +166,7 @@ library YieldMath {
       pow (uint128 (sum), 0x10000000000000000, uint128 (a)) -
       daiReserves;
     require (result < 0x100000000000000000000000000000000, "YieldMath: Rounding induced error");
+    result < type(uint256).max - 1e12 ? result = result + 1e12 : result = type(uint256).max; // Add error guard, ceiling the result at max
 
     return uint128 (result);
   }
@@ -256,7 +260,6 @@ library YieldMath {
     b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x400000000000000000000;}
     b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x200000000000000000000;}
     b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x100000000000000000000;}
-    /*
     b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x80000000000000000000;}
     b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x40000000000000000000;}
     b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x20000000000000000000;}
@@ -273,6 +276,7 @@ library YieldMath {
     b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x40000000000000000;}
     b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x20000000000000000;}
     b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x10000000000000000;}
+    /* Precision reduced to 64 bits
     b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x8000000000000000;}
     b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x4000000000000000;}
     b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x2000000000000000;}
@@ -392,7 +396,6 @@ library YieldMath {
     if (x & 0x400000000000000000000 > 0) r = r * 0x8000000000b17217f7d24a78a3c7ef02 >> 127;
     if (x & 0x200000000000000000000 > 0) r = r * 0x800000000058b90bfbe9067c93e474a6 >> 127;
     if (x & 0x100000000000000000000 > 0) r = r * 0x80000000002c5c85fdf47b8e5a72599f >> 127;
-    /*
     if (x & 0x80000000000000000000 > 0) r = r * 0x8000000000162e42fefa3bdb315934a2 >> 127;
     if (x & 0x40000000000000000000 > 0) r = r * 0x80000000000b17217f7d1d7299b49c46 >> 127;
     if (x & 0x20000000000000000000 > 0) r = r * 0x8000000000058b90bfbe8e9a8d1c4ea0 >> 127;
@@ -409,6 +412,7 @@ library YieldMath {
     if (x & 0x40000000000000000 > 0) r = r * 0x80000000000000b17217f7d1cf7a26c8 >> 127;
     if (x & 0x20000000000000000 > 0) r = r * 0x8000000000000058b90bfbe8e7bcf4a4 >> 127;
     if (x & 0x10000000000000000 > 0) r = r * 0x800000000000002c5c85fdf473de72a2 >> 127;
+    /* Precision reduced to 64 bits
     if (x & 0x8000000000000000 > 0) r = r * 0x80000000000000162e42fefa39ef3765 >> 127;
     if (x & 0x4000000000000000 > 0) r = r * 0x800000000000000b17217f7d1cf79b37 >> 127;
     if (x & 0x2000000000000000 > 0) r = r * 0x80000000000000058b90bfbe8e7bcd7d >> 127;
