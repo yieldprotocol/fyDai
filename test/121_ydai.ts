@@ -83,9 +83,9 @@ contract('yDai', async (accounts) => {
     const earlyMaturity = timestamp - 1000
     const lateMaturity = timestamp + 126144000 + 15
 
-    await expectRevert(env.newYDai(earlyMaturity, 'Name', 'Symbol'), 'YDai: Invalid maturity')
+    await expectRevert(env.newYDai(earlyMaturity), 'YDai: Invalid maturity')
 
-    await expectRevert(env.newYDai(lateMaturity, 'Name', 'Symbol'), 'YDai: Invalid maturity')
+    await expectRevert(env.newYDai(lateMaturity), 'YDai: Invalid maturity')
   })
 
   it('yDai1 is not mature before maturity', async () => {

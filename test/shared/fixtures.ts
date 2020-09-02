@@ -185,8 +185,8 @@ export class YieldEnvironmentLite {
     return new YieldEnvironmentLite(maker, treasury, controller, yDais)
   }
 
-  public async newYDai(maturity: number, name: string, symbol: string) {
-    const yDai = await YDai.new(this.treasury.address, maturity, name, symbol)
+  public async newYDai(maturity: number) {
+    const yDai = await YDai.new(this.treasury.address, maturity)
     await this.treasury.orchestrate(yDai.address, id('pullDai(address,uint256)'))
     return yDai
   }

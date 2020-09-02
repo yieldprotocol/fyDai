@@ -60,29 +60,27 @@ module.exports = async (deployer, network) => {
   const treasury = await Treasury.deployed();
   treasuryAddress = treasury.address;
   
-  const maturitiesInput = new Set([
-    [1601510399, 'yDai-2020-09-30', 'yDai-2020-09-30'],
-    [1609459199, 'yDai-2020-12-31', 'yDai-2020-12-31'],
-    [1617235199, 'yDai-2021-03-31', 'yDai-2021-03-31'],
-    [1625097599, 'yDai-2021-06-30', 'yDai-2021-06-30'],
-  ]);
+  const maturitiesInput = [
+      1601510399,
+      1609459199,
+      1617235199,
+      1625097599,
+  ];
 
   if (network === 'development') {
     const block = await web3.eth.getBlockNumber();
-    maturitiesInput.add(
-      [(await web3.eth.getBlock(block)).timestamp + 100, 'yDai-t0', 'yDai-t0'],
+    maturitiesInput.push(
+      (await web3.eth.getBlock(block)).timestamp + 100,
     );
   }
 
   let index = 0;
-  for (const [maturity, name, symbol] of maturitiesInput.values()) {
+  for (const maturity of maturitiesInput) {
     // Setup YDai
     await deployer.deploy(
       YDai,
       treasuryAddress,
       maturity,
-      name,
-      symbol,
     );
     const yDai = await YDai.deployed()
 
