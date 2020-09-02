@@ -1,3 +1,4 @@
+import { expect } from 'chai'
 import { id } from 'ethers/lib/utils'
 import { YieldEnvironmentLite, Contract } from './shared/fixtures'
 const FlashMinterMock = artifacts.require('FlashMinterMock')
@@ -65,6 +66,25 @@ contract('yDai', async (accounts) => {
     // Mint some yDai1 the sneaky way, only difference is that the Controller doesn't record the user debt.
     await yDai1.orchestrate(owner, id('mint(address,uint256)'), { from: owner })
     await yDai1.mint(user1, daiTokens1, { from: owner })
+  })
+
+  it('name contains maturity date in human readable format', async () => {
+      const maturity = await yDai1.maturity()
+      const date = new Date(maturity.toNumber() * 1000)
+      console.log(maturity.toString())
+
+      const year = date.getFullYear()
+      // month is 0-based https://stackoverflow.com/a/1507625
+      const month = date.getUTCMonth() + 1
+      // I have no idea why getUTCDay is off by one
+      const day = date.getUTCDay() - 1
+      const hour = date.getUTCHours()
+      const minute = date.getUTCMinutes()
+      const seconds = date.getUTCSeconds()
+
+      const expectedDate = `${year}-${month}-${day}-${hour}:${minute}:${seconds}`
+      expect(await yDai1.name()).to.equal(`yield Dai Stablecoin-${expectedDate}`)
+      expect(await yDai1.symbol()).to.equal(`yDAI-${expectedDate}`)
   })
 
   afterEach(async () => {

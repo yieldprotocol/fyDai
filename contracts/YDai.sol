@@ -11,7 +11,7 @@ import "./helpers/Delegable.sol";
 import "./helpers/DecimalMath.sol";
 import "./helpers/Orchestrated.sol";
 import "./helpers/ERC20Permit.sol";
-import "./helpers/StringUtils.sol";
+import "./helpers/DateUtils.sol";
 
 
 
@@ -59,8 +59,8 @@ contract YDai is IYDai, Orchestrated(), Delegable(), DecimalMath, ERC20Permit  {
         address treasury_,
         uint256 maturity_
     ) public ERC20Permit(
-          string(abi.encodePacked("yield Dai Stablecoin-", StringUtils.uint2str(maturity_))),
-          string(abi.encodePacked("yDAI-", StringUtils.uint2str(maturity_)))
+          string(abi.encodePacked("yield Dai Stablecoin-", DateUtils.timestampToString(maturity_))),
+          string(abi.encodePacked("yDAI-", DateUtils.timestampToString(maturity_)))
     ) {
         // solium-disable-next-line security/no-block-members
         require(maturity_ > now && maturity_ < now + MAX_TIME_TO_MATURITY, "YDai: Invalid maturity");

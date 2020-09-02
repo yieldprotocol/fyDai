@@ -170,7 +170,7 @@ export class YieldEnvironmentLite {
   public static async setupYDais(treasury: Contract, maturities: Array<number>): Promise<Array<Contract>> {
     return await Promise.all(
       maturities.map(async (maturity) => {
-        const yDai = await YDai.new(treasury.address, maturity, 'Name', 'Symbol')
+        const yDai = await YDai.new(treasury.address, maturity)
         await treasury.orchestrate(yDai.address, id('pullDai(address,uint256)'))
         return yDai
       })
