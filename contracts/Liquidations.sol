@@ -25,7 +25,8 @@ contract Liquidations is ILiquidations, Orchestrated(), Delegable(), DecimalMath
 
     bytes32 public constant WETH = "ETH-A";
     uint256 public constant AUCTION_TIME = 3600;
-    uint256 public constant DUST = 25e15; // 0.025 ETH
+    uint256 public dust = 25e15; // 0.025 ETH
+    uint256 public rho = block.timestamp;
 
     ITreasury public treasury;
     IController public override controller;
@@ -91,12 +92,18 @@ contract Liquidations is ILiquidations, Orchestrated(), Delegable(), DecimalMath
         live = false;
     }
 
-
     /// @dev Return if the debt of an user is between zero and the dust level
     /// @param user Address of the user vault
     function aboveDustOrZero(address user) public view returns (bool) {
         uint256 collateral = vaults[user].collateral;
-        return collateral == 0 || DUST < collateral;
+        return collateral == 0 || dust < collateral;
+    }
+
+    /// @dev Move the dust variable towards the eth required to pay for 250K gas
+    function updateDust() external {
+        require (block.timestamp > rho, "Controller: Only once per block");
+        rho = block.timestamp;
+        dust = (dust * 9 / 10) + (250000 * tx.gasprice) / 10;
     }
 
     /// @dev Starts a liquidation process for an undercollateralized vault.

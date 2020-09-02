@@ -33,8 +33,9 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
 
     bytes32 public constant CHAI = "CHAI";
     bytes32 public constant WETH = "ETH-A";
-    uint256 public constant DUST = 50e15; // 0.05 ETH
     uint256 public constant THREE_MONTHS = 7776000;
+    uint256 public dust = 50e15; // 0.05 ETH
+    uint256 public rho = block.timestamp;
 
     IVat public vat;
     IPot public pot;
@@ -117,7 +118,14 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
     /// @param user Address of the user vault
     function aboveDustOrZero(bytes32 collateral, address user) public view returns (bool) {
         uint256 postedCollateral = posted[collateral][user];
-        return postedCollateral == 0 || DUST < postedCollateral;
+        return postedCollateral == 0 || dust < postedCollateral;
+    }
+
+    /// @dev Move the dust variable towards the eth required to pay for 500K gas
+    function updateDust() external {
+        require (block.timestamp > rho, "Controller: Only once per block");
+        rho = block.timestamp;
+        dust = (dust * 9 / 10) + (500000 * tx.gasprice) / 10;
     }
 
     /// @dev Return the total number of series registered
