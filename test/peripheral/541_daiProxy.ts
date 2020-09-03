@@ -32,7 +32,6 @@ contract('YieldProxy - DaiProxy', async (accounts) => {
     const block = await web3.eth.getBlockNumber()
     maturity1 = (await web3.eth.getBlock(block)).timestamp + 31556952 // One year
     env = await YieldEnvironmentLite.setup([maturity1])
-    weth = env.maker.weth
     dai = env.maker.dai
     controller = env.controller
 
