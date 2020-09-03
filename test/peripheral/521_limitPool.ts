@@ -68,7 +68,7 @@ contract('YieldProxy - LimitPool', async (accounts) => {
       expect(yDaiIn).to.be.bignumber.lt(expectedYDaiIn.mul(new BN('10001')).div(new BN('10000')))
     })
 
-    it.only('buys dai with permit', async () => {
+    it('buys dai with permit', async () => {
       await pool.addDelegate(limitPool.address, { from: user1 })
       await yDai1.approve(pool.address, 0, { from: user1 })
       await yDai1.mint(user1, yDaiTokens1, { from: owner })
