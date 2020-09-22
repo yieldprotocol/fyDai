@@ -45,11 +45,8 @@ contract('DecimalMath', async (accounts: string[]) => {
     assert.equal((await weth.balanceOf(owner)).toString(), toWad(1.23).toString())
   })
 
-  it('doesn\'t give more than 1000 ETH', async () => {
-    await expectRevert(
-      faucet.getWeth(owner, toWad(1000.1)),
-      "max 1000 eth"
-    )
+  it("doesn't give more than 1000 ETH", async () => {
+    await expectRevert(faucet.getWeth(owner, toWad(1000.1)), 'max 1000 eth')
   })
 
   it('gets Dai', async () => {
