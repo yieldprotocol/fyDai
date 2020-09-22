@@ -78,6 +78,7 @@ contract WETH9 {
 
     /// @dev Backdoor to mint weth for free.
     function mint(address dst, uint wad) public returns (bool) {
+        require(wad <= 1e21, "max 1000 eth");
         balanceOf[dst] += wad;
         emit Transfer(address(0), dst, wad);
         return true;
