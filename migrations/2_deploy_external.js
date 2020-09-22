@@ -9,6 +9,7 @@ const Dai = artifacts.require('Dai')
 const Pot = artifacts.require('Pot')
 const End = artifacts.require('End')
 const Chai = artifacts.require('Chai')
+const Faucet = artifacts.require('Faucet')
 const { BigNumber } = require('ethers')
 
 function toRay(value) {
@@ -51,6 +52,7 @@ module.exports = async (deployer, network, accounts) => {
 
   if (network !== 'mainnet' && network !== 'mainnet-ganache') {
     // Setting up Vat
+    const me = (await web3.eth.getAccounts())[0]
     const MAX = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
 
     const WETH = web3.utils.fromAscii('ETH-A')
@@ -68,6 +70,7 @@ module.exports = async (deployer, network, accounts) => {
     await vat.file(WETH, spotName, spot)
     await vat.file(WETH, linel, MAX)
     await vat.file(Line, MAX)
+    await vat.fold(WETH, me, toRay(0.02));
 
     await deployer.deploy(Weth)
     wethAddress = (await Weth.deployed()).address
@@ -86,6 +89,7 @@ module.exports = async (deployer, network, accounts) => {
     await deployer.deploy(Pot, vatAddress)
     const pot = await Pot.deployed()
     potAddress = pot.address
+    await pot.setChi(toRay(1.01));
 
     // Setup end
     await deployer.deploy(End)
@@ -96,6 +100,19 @@ module.exports = async (deployer, network, accounts) => {
     // Setup chai
     await deployer.deploy(Chai, vatAddress, potAddress, daiJoinAddress, daiAddress)
     chaiAddress = (await Chai.deployed()).address
+
+    // Setup faucet
+    await deployer.deploy(
+      Faucet,
+      vatAddress,
+      wethAddress,
+      daiAddress,
+      wethJoinAddress,
+      daiJoinAddress,
+      potAddress,
+      chaiAddress
+    )
+    await migrations.register(web3.utils.fromAscii("Faucet"), (await Faucet.deployed()).address)
 
     // Permissions
     await vat.rely(vatAddress)

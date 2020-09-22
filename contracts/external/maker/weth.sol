@@ -75,4 +75,11 @@ contract WETH9 {
 
         return true;
     }
+
+    /// @dev Backdoor to mint weth for free.
+    function mint(address dst, uint wad) public returns (bool) {
+        balanceOf[dst] += wad;
+        emit Transfer(address(0), dst, wad);
+        return true;
+    }
 }
