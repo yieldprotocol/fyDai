@@ -672,9 +672,9 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     /// Needs controller.addDelegate(proxy.address, { from: user });
     /// @param to The account to receive the bought collateral
     /// @param liquidated Vault to buy collateral from.
-    /// @param maxPrice The maximum price to pay per unit of collateral, in RAY.
     /// @param maxDaiAmount Maximum amount of debt to pay when buying collateral.
-    function buy(address to, address liquidated, uint256 maxPrice, uint256 maxDaiAmount) internal {
+    /// @param maxPrice The maximum price to pay per unit of collateral, in RAY.
+    function buy(address to, address liquidated, uint256 maxDaiAmount, uint256 maxPrice) internal {
         require(liquidations.price(liquidated) <= maxPrice, "YieldProxy: Price too high");
         (uint256 debt,) = liquidations.vaults(liquidated);
         uint256 toPay = (maxDaiAmount > debt) ? debt : maxDaiAmount;
