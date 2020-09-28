@@ -2,7 +2,7 @@ const Pool = artifacts.require('Pool')
 const DaiProxy = artifacts.require('YieldProxy')
 
 import { WETH, rate1, daiTokens1, wethTokens1, toWad, subBN, bnify, MAX, chainId, name, ZERO } from '../shared/utils'
-import { MakerEnvironment, YieldEnvironmentLite, Contract } from '../shared/fixtures'
+import { MakerEnvironment, YieldEnvironment, Contract } from '../shared/fixtures'
 import { getSignatureDigest, getPermitDigest, getDaiDigest, userPrivateKey, sign } from '../shared/signatures'
 import { keccak256, toUtf8Bytes } from 'ethers/lib/utils'
 
@@ -20,7 +20,7 @@ contract('YieldProxy - DaiProxy', async (accounts) => {
   let pool: Contract
   let daiProxy: Contract
   let maker: MakerEnvironment
-  let env: YieldEnvironmentLite
+  let env: YieldEnvironment
 
   const one = toWad(1)
   const two = toWad(2)
@@ -32,7 +32,7 @@ contract('YieldProxy - DaiProxy', async (accounts) => {
   beforeEach(async () => {
     const block = await web3.eth.getBlockNumber()
     maturity1 = (await web3.eth.getBlock(block)).timestamp + 31556952 // One year
-    env = await YieldEnvironmentLite.setup([maturity1])
+    env = await YieldEnvironment.setup([maturity1])
     maker = env.maker
     dai = env.maker.dai
     controller = env.controller
@@ -43,7 +43,7 @@ contract('YieldProxy - DaiProxy', async (accounts) => {
     pool = await Pool.new(dai.address, eDai1.address, 'Name', 'Symbol', { from: owner })
 
     // Setup DaiProxy
-    daiProxy = await DaiProxy.new(env.controller.address, [pool.address])
+    daiProxy = await DaiProxy.new(env.liquidations.address, [pool.address])
 
     // Allow owner to mint eDai the sneaky way, without recording a debt in controller
     await eDai1.orchestrate(owner, keccak256(toUtf8Bytes('mint(address,uint256)')), { from: owner })

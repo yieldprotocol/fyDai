@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.6.10;
 
+import "../interfaces/ILiquidations.sol";
 import "../interfaces/IController.sol";
 import "../interfaces/IWeth.sol";
 import "../interfaces/IDai.sol";
@@ -46,6 +47,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     IChai public chai;
     IController public controller;
     ITreasury public treasury;
+    ILiquidations public liquidations;
 
     IPool[] public pools;
     mapping (address => bool) public poolsMap;
@@ -56,8 +58,9 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     bool constant public YTM = false;
 
 
-    constructor(address controller_, IPool[] memory _pools) public {
-        controller = IController(controller_);
+    constructor(address liquidations_, IPool[] memory _pools) public {
+        liquidations = ILiquidations(liquidations_);
+        controller = liquidations.controller();
         treasury = controller.treasury();
 
         weth = treasury.weth();
@@ -503,8 +506,8 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     // YieldProxy: Maker to Yield proxy
 
     /// @dev Transfer debt and collateral from MakerDAO to Yield
-    /// Needs vat.hope(splitter.address, { from: user });
-    /// Needs controller.addDelegate(splitter.address, { from: user });
+    /// Needs vat.hope(proxy.address, { from: user });
+    /// Needs controller.addDelegate(proxy.address, { from: user });
     /// @param pool The pool to trade in (and therefore eDai series to borrow)
     /// @param user Vault to migrate.
     /// @param wethAmount weth to move from MakerDAO to Yield. Needs to be high enough to collateralize the dai debt in Yield,
@@ -532,8 +535,8 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     }
 
     /// @dev Transfer debt and collateral from Yield to MakerDAO
-    /// Needs vat.hope(splitter.address, { from: user });
-    /// Needs controller.addDelegate(splitter.address, { from: user });
+    /// Needs vat.hope(proxy.address, { from: user });
+    /// Needs controller.addDelegate(proxy.address, { from: user });
     /// @param pool The pool to trade in (and therefore eDai series to migrate)
     /// @param user Vault to migrate.
     /// @param wethAmount weth to move from Yield to MakerDAO. Needs to be high enough to collateralize the dai debt in MakerDAO,
@@ -595,8 +598,8 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     /// @param wethAmount weth to move from MakerDAO to Yield. Needs to be high enough to collateralize the dai debt in Yield,
     /// and low enough to make sure that debt left in MakerDAO is also collateralized.
     /// @param daiAmount dai debt to move from MakerDAO to Yield. Denominated in Dai (= art * rate)
-    /// Needs vat.hope(splitter.address, { from: user });
-    /// Needs controller.addDelegate(splitter.address, { from: user });
+    /// Needs vat.hope(proxy.address, { from: user });
+    /// Needs controller.addDelegate(proxy.address, { from: user });
     function _makerToYield(address pool, address user, uint256 wethAmount, uint256 daiAmount) internal {
         IPool _pool = IPool(pool);
         IEDai eDai = IEDai(_pool.eDai());
@@ -623,8 +626,8 @@ contract YieldProxy is DecimalMath, IFlashMinter {
 
 
     /// @dev Internal function to transfer debt and collateral from Yield to MakerDAO
-    /// Needs vat.hope(splitter.address, { from: user });
-    /// Needs controller.addDelegate(splitter.address, { from: user });
+    /// Needs vat.hope(proxy.address, { from: user });
+    /// Needs controller.addDelegate(proxy.address, { from: user });
     /// @param pool The pool to trade in (and therefore eDai series to migrate)
     /// @param user Vault to migrate.
     /// @param wethAmount weth to move from Yield to MakerDAO. Needs to be high enough to collateralize the dai debt in MakerDAO,
@@ -662,5 +665,19 @@ contract YieldProxy is DecimalMath, IFlashMinter {
 
         // Sell the Dai for EDai at Pool - It should make up for what was taken with repayYdai
         _pool.buyEDai(address(this), address(this), eDaiAmount.toUint128());
+    }
+
+    // YieldProxy: Liquidations proxy
+    /// @dev Buys up to an amount of debt
+    /// Needs controller.addDelegate(proxy.address, { from: user });
+    /// @param to The account to receive the bought collateral
+    /// @param liquidated Vault to buy collateral from.
+    /// @param maxPrice The maximum price to pay per unit of collateral, in RAY.
+    /// @param maxDaiAmount Maximum amount of debt to pay when buying collateral.
+    function buy(address to, address liquidated, uint256 maxPrice, uint256 maxDaiAmount) internal {
+        require(liquidations.price(liquidated) <= maxPrice, "YieldProxy: Price too high");
+        (uint256 debt,) = liquidations.vaults(liquidated);
+        uint256 toPay = (maxDaiAmount > debt) ? debt : maxDaiAmount;
+        liquidations.buy(msg.sender, to, liquidated, toPay);
     }
 }

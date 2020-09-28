@@ -17,7 +17,7 @@ import {
   bnify,
   ZERO,
 } from '../shared/utils'
-import { MakerEnvironment, YieldEnvironmentLite, Contract } from '../shared/fixtures'
+import { MakerEnvironment, YieldEnvironment, Contract } from '../shared/fixtures'
 // @ts-ignore
 import { BN, expectRevert } from '@openzeppelin/test-helpers'
 import { assert, expect } from 'chai'
@@ -32,7 +32,7 @@ contract('YieldProxy - LiquidityProxy', async (accounts) => {
   let snapshotId: string
 
   let maker: MakerEnvironment
-  let env: YieldEnvironmentLite
+  let env: YieldEnvironment
   let treasury: Contract
   let controller: Contract
 
@@ -68,7 +68,7 @@ contract('YieldProxy - LiquidityProxy', async (accounts) => {
     const block = await web3.eth.getBlockNumber()
     maturity1 = (await web3.eth.getBlock(block)).timestamp + 31556952 // One year
 
-    env = await YieldEnvironmentLite.setup([maturity1])
+    env = await YieldEnvironment.setup([maturity1])
     maker = env.maker
     dai = env.maker.dai
     chai = env.maker.chai
@@ -83,7 +83,7 @@ contract('YieldProxy - LiquidityProxy', async (accounts) => {
     await eDai1.orchestrate(owner, keccak256(toUtf8Bytes('mint(address,uint256)')), { from: owner })
 
     // Setup LiquidityProxy
-    proxy = await LiquidityProxy.new(env.controller.address, [pool.address])
+    proxy = await LiquidityProxy.new(env.liquidations.address, [pool.address])
 
     const MAX = bnify('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
     await env.maker.chai.approve(proxy.address, MAX, { from: user1 })

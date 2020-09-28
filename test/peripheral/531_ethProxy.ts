@@ -6,7 +6,7 @@ import helper from 'ganache-time-traveler'
 // @ts-ignore
 import { balance } from '@openzeppelin/test-helpers'
 import { WETH, spot, daiTokens1, wethTokens1, mulRay } from '../shared/utils'
-import { Contract, YieldEnvironmentLite } from '../shared/fixtures'
+import { Contract, YieldEnvironment } from '../shared/fixtures'
 import { getSignatureDigest } from '../shared/signatures'
 import { keccak256, toUtf8Bytes } from 'ethers/lib/utils'
 import { ecsign } from 'ethereumjs-util'
@@ -45,14 +45,14 @@ contract('YieldProxy - EthProxy', async (accounts) => {
     maturity1 = (await web3.eth.getBlock(block)).timestamp + 1000
     maturity2 = (await web3.eth.getBlock(block)).timestamp + 2000
 
-    const env = await YieldEnvironmentLite.setup([maturity1, maturity2])
+    const env = await YieldEnvironment.setup([maturity1, maturity2])
     controller = env.controller
     treasury = env.treasury
     vat = env.maker.vat
     weth = env.maker.weth
 
     // Setup EthProxy
-    ethProxy = await EthProxy.new(env.controller.address, [])
+    ethProxy = await EthProxy.new(env.liquidations.address, [])
   })
 
   afterEach(async () => {

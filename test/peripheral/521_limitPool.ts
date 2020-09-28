@@ -4,7 +4,7 @@ const YieldProxy = artifacts.require('YieldProxy')
 import { keccak256, toUtf8Bytes } from 'ethers/lib/utils'
 import { toWad, toRay, mulRay, chainId, bnify, MAX, name } from '../shared/utils'
 import { getPermitDigest, sign, userPrivateKey } from '../shared/signatures'
-import { YieldEnvironmentLite, Contract } from '../shared/fixtures'
+import { YieldEnvironment, Contract } from '../shared/fixtures'
 // @ts-ignore
 import { BN, expectRevert } from '@openzeppelin/test-helpers'
 import { assert, expect } from 'chai'
@@ -24,12 +24,12 @@ contract('YieldProxy - LimitPool', async (accounts) => {
   let limitPool: Contract
   let pool: Contract
   let dai: Contract
-  let env: YieldEnvironmentLite
+  let env: YieldEnvironment
 
   beforeEach(async () => {
     const block = await web3.eth.getBlockNumber()
     maturity1 = (await web3.eth.getBlock(block)).timestamp + 31556952 // One year
-    env = await YieldEnvironmentLite.setup([maturity1])
+    env = await YieldEnvironment.setup([maturity1])
     dai = env.maker.dai
     eDai1 = env.eDais[0]
 
@@ -37,7 +37,7 @@ contract('YieldProxy - LimitPool', async (accounts) => {
     pool = await Pool.new(dai.address, eDai1.address, 'Name', 'Symbol', { from: owner })
 
     // Setup LimitPool
-    limitPool = await YieldProxy.new(env.controller.address, [pool.address], { from: owner })
+    limitPool = await YieldProxy.new(env.liquidations.address, [pool.address], { from: owner })
 
     // Allow owner to mint eDai the sneaky way, without recording a debt in controller
     await eDai1.orchestrate(owner, keccak256(toUtf8Bytes('mint(address,uint256)')), { from: owner })

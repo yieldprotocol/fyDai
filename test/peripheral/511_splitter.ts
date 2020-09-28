@@ -17,7 +17,7 @@ import {
   precision,
   ZERO,
 } from '../shared/utils'
-import { YieldEnvironmentLite, Contract } from '../shared/fixtures'
+import { YieldEnvironment, Contract } from '../shared/fixtures'
 
 import { assert, expect } from 'chai'
 
@@ -26,7 +26,7 @@ contract('YieldProxy - Splitter', async (accounts) => {
 
   const eDaiTokens1 = daiTokens1
   let maturity1: number
-  let env: YieldEnvironmentLite
+  let env: YieldEnvironment
   let dai: Contract
   let vat: Contract
   let controller: Contract
@@ -39,7 +39,7 @@ contract('YieldProxy - Splitter', async (accounts) => {
     const block = await web3.eth.getBlockNumber()
     maturity1 = (await web3.eth.getBlock(block)).timestamp + 30000000 // Far enough so that the extra weth to borrow is above dust
 
-    env = await YieldEnvironmentLite.setup([maturity1])
+    env = await YieldEnvironment.setup([maturity1])
     controller = env.controller
     vat = env.maker.vat
     dai = env.maker.dai
@@ -51,7 +51,7 @@ contract('YieldProxy - Splitter', async (accounts) => {
     pool1 = await Pool.new(dai.address, eDai1.address, 'Name', 'Symbol', { from: owner })
 
     // Setup Splitter
-    splitter1 = await Splitter.new(controller.address, [pool1.address], { from: owner })
+    splitter1 = await Splitter.new(env.liquidations.address, [pool1.address], { from: owner })
 
     // Allow owner to mint eDai the sneaky way, without recording a debt in controller
     await eDai1.orchestrate(owner, id('mint(address,uint256)'), { from: owner })

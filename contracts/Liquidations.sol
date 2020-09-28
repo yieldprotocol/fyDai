@@ -36,7 +36,7 @@ contract Liquidations is ILiquidations, Orchestrated(), Delegable(), DecimalMath
     }
 
     mapping(address => uint256) public liquidations;
-    mapping(address => Vault) public vaults;
+    mapping(address => Vault) public override vaults;
     Vault public override totals;
 
     bool public live = true;
@@ -136,7 +136,7 @@ contract Liquidations is ILiquidations, Orchestrated(), Delegable(), DecimalMath
     /// @param daiAmount Amount of Dai to give in exchange for liquidated collateral.
     /// @return The amount of collateral obtained.
     function buy(address from, address to, address liquidated, uint256 daiAmount)
-        public onlyLive
+        public override onlyLive
         onlyHolderOrDelegate(from, "Controller: Only Holder Or Delegate")
         returns (uint256)
     {
@@ -220,7 +220,7 @@ contract Liquidations is ILiquidations, Orchestrated(), Delegable(), DecimalMath
     //                collateral      1      min(auction, elapsed)
     // price = 1 / (------------- * (--- + -----------------------))
     //                   debt         2       2 * auction
-    function price(address user) public view returns (uint256) {
+    function price(address user) public view override returns (uint256) {
         require(
             liquidations[user] > 0,
             "Liquidations: Vault is not targeted"

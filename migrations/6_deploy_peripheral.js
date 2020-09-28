@@ -1,12 +1,12 @@
 const Migrations = artifacts.require('Migrations')
-const Controller = artifacts.require('Controller')
+const Liquidations = artifacts.require('Liquidations')
 const YieldProxy = artifacts.require('YieldProxy')
 
 module.exports = async (deployer, network) => {
   const migrations = await Migrations.deployed()
 
-  const controller = await Controller.deployed()
-  const controllerAddress = controller.address
+  const liquidations = await Liquidations.deployed()
+  const liquidationsAddress = liquidations.address
 
   const poolAddresses = []
   for (let i = 0; i < (await migrations.length()); i++) {
@@ -15,7 +15,7 @@ module.exports = async (deployer, network) => {
       poolAddresses.push(await migrations.contracts(web3.utils.fromAscii(contractName)))
   }
 
-  await deployer.deploy(YieldProxy, controllerAddress, poolAddresses)
+  await deployer.deploy(YieldProxy, liquidationsAddress, poolAddresses)
   const yieldProxy = await YieldProxy.deployed()
 
   const deployment = {
