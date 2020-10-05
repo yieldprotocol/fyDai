@@ -27,11 +27,16 @@ module.exports = async (deployer, network) => {
 
   const toDate = (timestamp) => new Date(timestamp * 1000).toISOString().slice(0, 10)
   const toTimestamp = (date) => new Date(date).getTime() / 1000 + 86399
-  const toSymbol = (date) =>
-    new Intl.DateTimeFormat('en', { year: 'numeric' }).format(new Date(date)).slice(2) +
-    new Intl.DateTimeFormat('en', { month: 'short' }).format(new Date(date))
 
-  let dates = ['2020-10-07', '2020-10-31', '2020-12-31', '2021-03-31', '2021-06-30', '2021-09-30', '2021-12-31']
+  const toSymbol = (date) => {
+    const d = new Intl.DateTimeFormat('en', { year: 'numeric' }).format(new Date(date)).slice(2) +
+    new Intl.DateTimeFormat('en', { month: 'short' }).format(new Date(date))
+    if (network !== 'mainnet') 
+      return d + new Intl.DateTimeFormat('en', { day: 'numeric' }).format(new Date(date))
+    else return d
+  }
+
+  let dates = ['2020-10-06', '2020-10-09', '2020-10-31', '2020-12-31', '2021-03-31', '2021-06-30', '2021-09-30', '2021-12-31']
   let maturities = dates.map(toTimestamp)
 
   if (network === 'mainnet' || network === 'mainnet-ganache') {
