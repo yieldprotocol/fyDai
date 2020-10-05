@@ -1,15 +1,12 @@
-const Treasury = artifacts.require("Treasury");
-const WETH9 = artifacts.require("WETH9");
-const Dai = artifacts.require("TestDai");
 const UniswapV2Pair = artifacts.require("UniswapV2Pair");
-const Liquidations = artifacts.require("Liquidations");
 const Flash = artifacts.require("Flash");
 const Multicall = artifacts.require('MultiCall');
 const Migrations = artifacts.require('Migrations');
 const { ethers } = require('ethers')
 
 module.exports = async (deployer) => {
-    const migrations = await Migrations.at("0x74D26CFDB3416adF724d01fbbb7CAfD4Fad7B29E")
+    // const migrations = await Migrations.at("0x0F7e629bd50439f99B47251779406C21a2F347ce")
+    const migrations = await Migrations.deployed()
     const weth = await migrations.contracts(ethers.utils.formatBytes32String('Weth'))
     const dai = await migrations.contracts(ethers.utils.formatBytes32String('Dai'))
 
@@ -31,8 +28,8 @@ module.exports = async (deployer) => {
     const flash = await Flash.deployed()
 
     // we use the multicall contract for reducing RPC calls
-    // await deployer.deploy(Multicall);
-    // const multicall = await Multicall.deployed()
+    await deployer.deploy(Multicall);
+    const multicall = await Multicall.deployed()
     await migrations.register(
         ethers.utils.formatBytes32String("Uniswap"),
         pair.address,
@@ -43,7 +40,7 @@ module.exports = async (deployer) => {
     )
     await migrations.register(
         ethers.utils.formatBytes32String("Multicall"),
-        "0x2cc8688c5f75e365aaeeb4ea8d6a480405a48d2a",// kovan
-        // multicall.address,
+        // "0x2cc8688c5f75e365aaeeb4ea8d6a480405a48d2a",// kovan
+        multicall.address,
     )
 }
