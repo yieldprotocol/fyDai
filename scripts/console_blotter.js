@@ -51,9 +51,6 @@ CHAI = ethers.utils.formatBytes32String("CHAI")
 
 accounts = await web3.eth.getAccounts()
 me = accounts[0]
-allan = "0xc4f8dFd99ef6B88FE81413076140eC30f72Fc83a"
-bruce = "0xcd16CA1398DA7b8f072eCF0028A3f4677B19fcd0"
-georgios = "0x727060BcA718EE836ddA4cb5be59369844B61DAA"
 
 // Maturities
 maturity0 = await fyDai0.maturity()

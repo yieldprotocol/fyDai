@@ -10,9 +10,11 @@ artifacts
 node_modules/
 output/
 
+# Secrets
+.infuraKey*
+.secret*
+
 # Truffle files
-.infuraKey
-.secret
 build/
 
 # Solidity-coverage
