@@ -1,3 +1,5 @@
+const { id } = require('ethers/lib/utils')
+
 const Migrations = artifacts.require('Migrations')
 const Controller = artifacts.require('Controller')
 const YieldProxy = artifacts.require('YieldProxy')
