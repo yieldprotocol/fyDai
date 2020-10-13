@@ -85,7 +85,7 @@ contract('YieldProxy - Splitter', async (accounts) => {
     const sizeOfC = sizeOfB - sizeOfD
     console.log(
       '    |  ' +
-      splitter1.constructor._json.contractName.padEnd(18, ' ') +
+        splitter1.constructor._json.contractName.padEnd(18, ' ') +
         '|' +
         ('' + sizeOfB).padStart(16, ' ') +
         '  ' +
@@ -101,10 +101,7 @@ contract('YieldProxy - Splitter', async (accounts) => {
   })
 
   it('does not allow to execute the flash mint callback to users', async () => {
-    await expectRevert(
-      splitter1.executeOnFlashMint(0, '0x00', { from: user }),
-      'YieldProxy: Not Authorized'
-    )
+    await expectRevert(splitter1.executeOnFlashMint(0, '0x00', { from: user }), 'YieldProxy: Not Authorized')
   })
 
   it('does not allow to move more debt than existing in maker', async () => {
