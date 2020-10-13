@@ -13,6 +13,7 @@ import "../interfaces/IFYDai.sol";
 import "../interfaces/IChai.sol";
 import "../interfaces/IFlashMinter.sol";
 import "../helpers/DecimalMath.sol";
+import "../helpers/Orchestrated.sol";
 
 
 library SafeCast {
@@ -35,7 +36,7 @@ library SafeCast {
     }
 }
 
-contract YieldProxy is DecimalMath, IFlashMinter {
+contract YieldProxy is DecimalMath, IFlashMinter, Orchestrated() {
     using SafeCast for uint256;
 
     IVat public vat;
@@ -117,7 +118,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     }
 
     /// @dev Given a pool and 3 signatures, it `permit`'s dai and fyDai for that pool and adds it as a delegate
-    function authorizePool(IPool pool, address from, bytes memory daiSig, bytes memory fyDaiSig, bytes memory poolSig) public {
+    /* function authorizePool(IPool pool, address from, bytes memory daiSig, bytes memory fyDaiSig, bytes memory poolSig) public {
         require(poolsMap[address(pool)], "YieldProxy: Unknown pool");
         bytes32 r;
         bytes32 s;
@@ -131,7 +132,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
 
         (r, s, v) = unpack(poolSig);
         pool.addDelegateBySignature(from, address(this), uint(-1), v, r, s);
-    }
+    } */
 
     /// @dev The WETH9 contract will send ether to YieldProxy on `weth.withdraw` using this function.
     receive() external payable { }
@@ -514,7 +515,6 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         controller.repayDai(collateral, maturity, msg.sender, to, daiAmount);
     }
 
-
     // YieldProxy: Maker to Yield proxy
 
     /// @dev Transfer debt and collateral from MakerDAO to Yield
@@ -540,7 +540,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         // Flash mint the fyDai
         IFYDai fyDai = IPool(pool).fyDai();
         fyDai.flashMint(
-            fyDaiForDai(pool, daiAmount),
+            IPool(pool).buyDaiPreview(daiAmount.toUint128()),
             abi.encode(MTY, pool, user, wethAmount, daiAmount)
         );
     }
@@ -572,8 +572,11 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         ); // The daiAmount encoded is ignored
     }
 
-    /// @dev Callback from `FYDai.flashMint()`
-    function executeOnFlashMint(uint256 fyDaiAmount, bytes calldata data) external override {
+    /// @dev Callback from `FYDai.flashMint()`. It can only be called from orchestrated contracts.
+    function executeOnFlashMint(uint256 fyDaiAmount, bytes calldata data)
+        external override 
+        onlyOrchestrated("YieldProxy: Not Authorized")
+    {
         (bool direction, address pool, address user, uint256 wethAmount, uint256 daiAmount) = 
             abi.decode(data, (bool, address, address, uint256, uint256));
         if(direction == MTY) _makerToYield(pool, user, wethAmount, daiAmount);

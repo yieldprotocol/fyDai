@@ -35,6 +35,8 @@ contract('YieldProxy - Splitter', async (accounts) => {
   let splitter1: Contract
   let pool1: Contract
 
+  const flashMintSignature = id('executeOnFlashMint(uint256,bytes)')
+
   beforeEach(async () => {
     const block = await web3.eth.getBlockNumber()
     maturity1 = (await web3.eth.getBlock(block)).timestamp + 30000000 // Far enough so that the extra weth to borrow is above dust
@@ -52,6 +54,7 @@ contract('YieldProxy - Splitter', async (accounts) => {
 
     // Setup Splitter
     splitter1 = await Splitter.new(controller.address, [pool1.address], { from: owner })
+    await splitter1.orchestrate(fyDai1.address, flashMintSignature)
 
     // Allow owner to mint fyDai the sneaky way, without recording a debt in controller
     await fyDai1.orchestrate(owner, id('mint(address,uint256)'), { from: owner })
@@ -67,6 +70,41 @@ contract('YieldProxy - Splitter', async (accounts) => {
     await fyDai1.mint(owner, additionalFYDaiReserves, { from: owner })
     await fyDai1.approve(pool1.address, additionalFYDaiReserves, { from: owner })
     await pool1.sellFYDai(owner, owner, additionalFYDaiReserves, { from: owner })
+  })
+
+  it('get the size of the contract', async () => {
+    console.log()
+    console.log('    ·--------------------|------------------|------------------|------------------·')
+    console.log('    |  Contract          ·  Bytecode        ·  Deployed        ·  Constructor     |')
+    console.log('    ·····················|··················|··················|···················')
+
+    const bytecode = splitter1.constructor._json.bytecode
+    const deployed = splitter1.constructor._json.deployedBytecode
+    const sizeOfB = bytecode.length / 2
+    const sizeOfD = deployed.length / 2
+    const sizeOfC = sizeOfB - sizeOfD
+    console.log(
+      '    |  ' +
+      splitter1.constructor._json.contractName.padEnd(18, ' ') +
+        '|' +
+        ('' + sizeOfB).padStart(16, ' ') +
+        '  ' +
+        '|' +
+        ('' + sizeOfD).padStart(16, ' ') +
+        '  ' +
+        '|' +
+        ('' + sizeOfC).padStart(16, ' ') +
+        '  |'
+    )
+    console.log('    ·--------------------|------------------|------------------|------------------·')
+    console.log()
+  })
+
+  it('does not allow to execute the flash mint callback to users', async () => {
+    await expectRevert(
+      splitter1.executeOnFlashMint(0, '0x00', { from: user }),
+      'YieldProxy: Not Authorized'
+    )
   })
 
   it('does not allow to move more debt than existing in maker', async () => {

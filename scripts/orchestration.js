@@ -24,6 +24,7 @@ const CONTRACTS = [
   'Controller',
   'Unwind',
   'Liquidations',
+  'YieldProxy',
   'fyDai0',
   'fyDai1',
   'fyDai2',
@@ -49,6 +50,8 @@ const SIGNATURES = [
 
   'erase(address)',
   'erase(bytes32,address)',
+
+  'executeOnFlashMint(uint256,bytes)',
 ].map((s) => ethers.utils.id(s).slice(0, 10))
 
 const NAMES = [
@@ -66,6 +69,8 @@ const NAMES = [
 
   'ERASE_AUCTION',
   'ERASE_VAULT',
+
+  'EXECUTE_ON_FLASH_MINT',
 ]
 
 ;(async () => {

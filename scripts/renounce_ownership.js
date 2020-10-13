@@ -4,6 +4,7 @@ const Controller = artifacts.require('Controller')
 const Liquidations = artifacts.require('Liquidations')
 const Unwind = artifacts.require('Unwind')
 const FYDai = artifacts.require('FYDai')
+const YieldProxy = artifacts.require('YieldProxy')
 
 module.exports = async (deployer, network) => {
   const migrations = await Migrations.deployed()
@@ -20,7 +21,10 @@ module.exports = async (deployer, network) => {
 
   const unwind = await Unwind.deployed()
   await unwind.renounceOwnership()
-  
+
+  const yieldProxy = await YieldProxy.deployed()
+  await yieldProxy.renounceOwnership()
+
   for (let i = 0; i < (await migrations.length()); i++) {
     const contractName = web3.utils.toAscii(await migrations.names(i))
     if (contractName.includes('fyDai') && !contractName.includes('LP')) {

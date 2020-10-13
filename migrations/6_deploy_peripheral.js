@@ -18,6 +18,15 @@ module.exports = async (deployer, network) => {
   await deployer.deploy(YieldProxy, controllerAddress, poolAddresses)
   const yieldProxy = await YieldProxy.deployed()
 
+  for (let i = 0; i < (await migrations.length()); i++) {
+    const contractName = web3.utils.toAscii(await migrations.names(i))
+    if (contractName.includes('fyDai') && !contractName.includes('LP'))
+      await yieldProxy.orchestrate(
+        await migrations.contracts(web3.utils.fromAscii(contractName)),
+        id('executeOnFlashMint(uint256,bytes)')
+      )
+  }
+
   const deployment = {
     YieldProxy: yieldProxy.address,
   }
