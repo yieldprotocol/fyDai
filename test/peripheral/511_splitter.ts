@@ -69,6 +69,12 @@ contract('YieldProxy - Splitter', async (accounts) => {
     await pool1.sellFYDai(owner, owner, additionalFYDaiReserves, { from: owner })
   })
 
+  it('does not allow to execute the flash mint callback to users', async () => {
+    const data =
+      '0x000000000000000000000000000000000000000000000000000000000000000100000000000000000000000065a7d8d33e148d5bf9fe11fd1425d31a4bf3d9e1000000000000000000000000ead9c93b79ae7c1591b1fb5323bd777e86e150d40000000000000000000000000000000000000000000000000688821f032f13b1000000000000000000000000000000000000000000000006a2a4277f3bd00002'
+    await expectRevert(splitter1.executeOnFlashMint(1, data, { from: user }), 'YieldProxy: Restricted callback')
+  })
+
   it('does not allow to move more debt than existing in maker', async () => {
     await expectRevert(
       splitter1.makerToYield(pool1.address, user, wethTokens1, bnify(daiTokens1).mul(10), { from: user }),
