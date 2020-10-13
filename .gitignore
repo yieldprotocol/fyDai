@@ -11,9 +11,10 @@ node_modules/
 output/
 
 # Truffle files
-.infuraKey
-.secret
+.infuraKey*
+.secret*
 build/
+scripts/console-blotter.js
 
 # Solidity-coverage
 coverage/
