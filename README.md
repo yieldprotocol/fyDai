@@ -7,7 +7,7 @@ These smart contracts have been deployed to [Kovan and the Mainnet](http://docs.
 Detailed documentation can be found in the [Yield docs](http://docs.yield.is).
 
 ## Warning
-This code is provided as-is, with no guarantees of any kind. Also don't buy any fyDai governance token or interact with any contracts not listed on our [deployments](http://docs.yield.is) page.
+This code is provided as-is, with no guarantees of any kind.
 
 ## Install
 
