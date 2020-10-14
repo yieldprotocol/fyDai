@@ -13,7 +13,7 @@ contract WhitepaperInvariant {
     int128 constant internal g2 = int128(uint256((1000 << 64)) / 950); // To be used when selling fyDai to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
 
     uint128 minDaiReserves = 10**21; // $1000
-    uint128 minFYDaiReserves = minDaiReserves + 1;
+    uint128 minFYDaiReserves = 10**21; // $1000
     uint128 minTrade = minDaiReserves / 1000; // $1
     uint128 minTimeTillMaturity = 0;
     uint128 maxDaiReserves = 10**27; // $1B
@@ -39,7 +39,7 @@ contract WhitepaperInvariant {
     }
 
     /// @dev Ensures that reserves grow with any daiOutForFYDaiIn trade.
-    function testLiquiditfyDaiOutForFYDaiIn(uint128 daiReserves, uint128 fyDaiReserves, uint128 fyDaiIn, uint128 timeTillMaturity)
+    function testLiquidityDaiOutForFYDaiIn(uint128 daiReserves, uint128 fyDaiReserves, uint128 fyDaiIn, uint128 timeTillMaturity)
         public view returns (bool)
     {
         daiReserves = minDaiReserves + daiReserves % maxDaiReserves;
@@ -56,7 +56,7 @@ contract WhitepaperInvariant {
     }
 
     /// @dev Ensures that reserves grow with any fyDaiInForDaiOut trade.
-    function testLiquiditfyDaiInForFYDaiOut(uint128 daiReserves, uint128 fyDaiReserves, uint128 fyDaiOut, uint128 timeTillMaturity)
+    function testLiquidityDaiInForFYDaiOut(uint128 daiReserves, uint128 fyDaiReserves, uint128 fyDaiOut, uint128 timeTillMaturity)
         public view returns (bool)
     {
         daiReserves = minDaiReserves + daiReserves % maxDaiReserves;
