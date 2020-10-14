@@ -13,7 +13,6 @@ import "../interfaces/IFYDai.sol";
 import "../interfaces/IChai.sol";
 import "../interfaces/IFlashMinter.sol";
 import "../helpers/DecimalMath.sol";
-import "@nomiclabs/buidler/console.sol";
 
 
 library SafeCast {
@@ -575,10 +574,8 @@ contract YieldProxy is DecimalMath, IFlashMinter {
 
     /// @dev Callback from `FYDai.flashMint()`
     function executeOnFlashMint(uint256 fyDaiAmount, bytes calldata data) external override {
-        console.logBytes(data);
         (bool direction, address pool, address user, uint256 wethAmount, uint256 daiAmount) = 
             abi.decode(data, (bool, address, address, uint256, uint256));
-        // console.log(address(IPool(pool).fyDai()));
         require(msg.sender == address(IPool(pool).fyDai()), "YieldProxy: Restricted callback");
 
         if(direction == MTY) _makerToYield(pool, user, wethAmount, daiAmount);

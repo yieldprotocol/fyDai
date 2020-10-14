@@ -70,8 +70,9 @@ contract('YieldProxy - Splitter', async (accounts) => {
   })
 
   it('does not allow to execute the flash mint callback to users', async () => {
-    const data =
-      '0x000000000000000000000000000000000000000000000000000000000000000100000000000000000000000065a7d8d33e148d5bf9fe11fd1425d31a4bf3d9e1000000000000000000000000ead9c93b79ae7c1591b1fb5323bd777e86e150d40000000000000000000000000000000000000000000000000688821f032f13b1000000000000000000000000000000000000000000000006a2a4277f3bd00002'
+    const data = web3.eth.abi.encodeParameters(
+      ['bool', 'address', 'address', 'uint256', 'uint256'],
+      [true, pool1.address, user, 1, 0])
     await expectRevert(splitter1.executeOnFlashMint(1, data, { from: user }), 'YieldProxy: Restricted callback')
   })
 
