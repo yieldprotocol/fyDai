@@ -83,11 +83,11 @@ $ npx truffle migrate --network mainnet-ganache
 
 ## Math
 In developing fyDai we have used two different libraries for fixed point arithmetic.
- - For general use we have forked and refined [DecimalMath.sol](https://github.com/HQ20/contracts/tree/master/contracts/math), trading off performance for clarity.
- - For heavy-duty use in the YieldSpace formula, we have used [ABDKMath](https://github.com/abdk-consulting/abdk-libraries-solidity) as GPLv3, trading off clarity for performance.
+ - For general use we have used a [decimal-based fixed point math library](https://github.com/yieldprotocol/fyDai/blob/master/contracts/helpers/DecimalMath.sol), trading off performance for clarity.
+ - For heavy-duty use in the YieldSpace formula, we have used a [binary-based fixed point math library](https://github.com/yieldprotocol/fyDai/blob/master/contracts/pool/YieldMath.sol), trading off clarity for performance.
 
 ## Security
-In developing the code in this repository we have set the highest bar possible for security. We have been fully audited by [Trail of Bits](https://www.trailofbits.com/), with the [results](http://www.yield.is) publicly available. We have also pioneered the use of fuzzing tests for the Pool and YieldMath contracts, allowing us to find edge cases and vulnerabilities that we would have missed otherwise.
+In developing the code in this repository we have set the highest bar possible for security. We have been fully audited by [Trail of Bits](https://www.trailofbits.com/), with the [results](http://www.yield.is) publicly available. We have also used fuzzing tests for the Pool and YieldMath contracts, allowing us to find edge cases and vulnerabilities that we would have missed otherwise.
 
 ## Bug Bounty
 Yield is offering bounties for bugs disclosed to us at [security@yield.is](mailto:security@yield.is). The bounty reward is up to $25,000, depending on severity. Please include full details of the vulnerability and steps/code to reproduce. We ask that you permit us time to review and remediate any findings before public disclosure.
