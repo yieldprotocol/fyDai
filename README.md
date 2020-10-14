@@ -2,10 +2,12 @@
 YieldToken is an implementation of zero-coupon Dai bonds. It is inspired by the paper ["The Yield Protocol: On-Chain Lending With
 Interest Rate Discovery"](https://yield.is/Yield.pdf) by Dan Robinson and Allan Niemerg.
 
-The Yield specification can be found [here](https://docs.google.com/document/d/1TSc63v0E9X_aqmAL5VeIM1GDpALsf6yHiq0wGpfnsns/edit?usp=sharing).
+These smart contracts have been deployed to [Kovan and the Mainnet](http://docs.yield.is), and a web frontend is deployed at [http://app.yield.is](http://app.yield.is)
+
+Detailed documentation can be found in the [Yield docs](http://docs.yield.is).
 
 ## Warning
-Legalese here. Also don't buy any fyDai governance token or interact with any contracts not listed on our deployments page.
+This code is provided as-is, with no guarantees of any kind. Also don't buy any fyDai governance token or interact with any contracts not listed on our [deployments](http://docs.yield.is) page.
 
 ## Install
 
@@ -79,28 +81,22 @@ or
 $ npx truffle migrate --network mainnet-ganache
 ```
 
-## Architecture
-A quick description of the deployment environment and the permissions given across the contracts in this repository can be found [here](https://docs.google.com/document/d/1BLh-CgoUIAFuB3aLcy2cbOLAMZyKcxN39HaHCb_KdBY/edit?usp=sharing)
-
 ## Math
 In developing fyDai we have used two different libraries for fixed point arithmetic.
  - For general use we have forked and refined [DecimalMath.sol](https://github.com/HQ20/contracts/tree/master/contracts/math), trading off performance for clarity.
  - For heavy-duty use in the YieldSpace formula, we have relicensed [ABDKMath](https://github.com/abdk-consulting/abdk-libraries-solidity) as GPLv3, trading off clarity for performance.
 
 ## Security
-In developing the code in this repository we have set the highest bar possible for security. 
+In developing the code in this repository we have set the highest bar possible for security. We have been fully audited by [Trail of Bits](https://www.trailofbits.com/), with the [results](http://www.yield.is) publicly available. We have also pioneered the use of fuzzing tests for the Pool and YieldMath contracts, allowing us to find edge cases and vulnerabilities that we would have missed otherwise.
 
-We have been fully audited by [Trail of Bits](https://www.trailofbits.com/), with the results publicly available.
-
-We have pioneered the use of fuzzing tests for the Pool and YieldMath contracts, allowing us to find edge cases and vulnerabilities that we would have missed otherwise.
-
-Finally, we have had the repository independently reviewed by Sam Sun from Paradigm, revealing the final bugs that were lurking in the code.
+## Bug Bounty
+Yield is offering bounties for bugs disclosed to us at [security@yield.is](mailto:security@yield.is). The bounty reward is up to $25,000, depending on severity. Please include full details of the vulnerability and steps/code to reproduce. We ask that you permit us time to review and remediate any findings before public disclosure.
 
 ## Contributing
 This project doesn't include any governance or upgradability features. If you have a contribution to make, please reach us out on Discord and we will consider it for a future release or product.
 
 ## Acknowledgements
-We would like to thank Dan Robinson (Paradigm), Georgios Konstantopoulos (Paradigm) and Sam Sun (Paradigm) for their tireless support, Mikhail Vladimirov (ABDK) for his genius, Gustavo Grieco (Trail of Bits) for his diligence, Martin Lundfall (dAppHub) for his kind feedback, and Noah Zinsmeister (Uniswap) for his advice towards the frontend delivery. We wouldn't be here without them.
+We would like to thank Dan Robinson (Paradigm), Georgios Konstantopoulos (Paradigm), Sam Sun (Paradigm), Mikhail Vladimirov (ABDK), Gustavo Grieco (Trail of Bits), Martin Lundfall (dAppHub) and Noah Zinsmeister (Uniswap) for their feedback and advice. We wouldn't be here without them.
 
 ## License
 All files in this repository are released under the [GPLv3](https://github.com/yieldprotocol/fyDai/blob/master/LICENSE.md) license.
