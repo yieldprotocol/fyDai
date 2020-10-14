@@ -406,11 +406,12 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     /// @param to Wallet receiving the fyDai being bought
     /// @param daiIn Amount of dai being sold
     /// @param minFYDaiOut Minimum amount of fyDai being bought
-    function sellDai(address pool, address to, uint128 daiIn, uint128 minFYDaiOut)
+    function sellDai(IPool pool, address to, uint128 daiIn, uint128 minFYDaiOut)
         external
         returns(uint256)
     {
-        uint256 fyDaiOut = IPool(pool).sellDai(msg.sender, to, daiIn);
+        require(poolsMap[address(pool)], "YieldProxy: Unknown pool");
+        uint256 fyDaiOut = pool.sellDai(msg.sender, to, daiIn);
         require(
             fyDaiOut >= minFYDaiOut,
             "YieldProxy: Limit not reached"
@@ -422,11 +423,12 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     /// @param to Wallet receiving the dai being bought
     /// @param daiOut Amount of dai being bought
     /// @param maxFYDaiIn Maximum amount of fyDai being sold
-    function buyDai(address pool, address to, uint128 daiOut, uint128 maxFYDaiIn)
+    function buyDai(IPool pool, address to, uint128 daiOut, uint128 maxFYDaiIn)
         public
         returns(uint256)
     {
-        uint256 fyDaiIn = IPool(pool).buyDai(msg.sender, to, daiOut);
+        require(poolsMap[address(pool)], "YieldProxy: Unknown pool");
+        uint256 fyDaiIn = pool.buyDai(msg.sender, to, daiOut);
         require(
             maxFYDaiIn >= fyDaiIn,
             "YieldProxy: Limit exceeded"
@@ -439,12 +441,13 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     /// @param daiOut Amount of dai being bought
     /// @param maxFYDaiIn Maximum amount of fyDai being sold
     /// @param signature The `permit` call's signature
-    function buyDaiWithSignature(address pool, address to, uint128 daiOut, uint128 maxFYDaiIn, bytes memory signature)
+    function buyDaiWithSignature(IPool pool, address to, uint128 daiOut, uint128 maxFYDaiIn, bytes memory signature)
         external
         returns(uint256)
     {
+        require(poolsMap[address(pool)], "YieldProxy: Unknown pool");
         (bytes32 r, bytes32 s, uint8 v) = unpack(signature);
-        IPool(pool).fyDai().permit(msg.sender, address(pool), uint(-1), uint(-1), v, r, s);
+        pool.fyDai().permit(msg.sender, address(pool), uint(-1), uint(-1), v, r, s);
 
         return buyDai(pool, to, daiOut, maxFYDaiIn);
     }
@@ -453,11 +456,12 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     /// @param to Wallet receiving the dai being bought
     /// @param fyDaiIn Amount of fyDai being sold
     /// @param minDaiOut Minimum amount of dai being bought
-    function sellFYDai(address pool, address to, uint128 fyDaiIn, uint128 minDaiOut)
+    function sellFYDai(IPool pool, address to, uint128 fyDaiIn, uint128 minDaiOut)
         public
         returns(uint256)
     {
-        uint256 daiOut = IPool(pool).sellFYDai(msg.sender, to, fyDaiIn);
+        require(poolsMap[address(pool)], "YieldProxy: Unknown pool");
+        uint256 daiOut = pool.sellFYDai(msg.sender, to, fyDaiIn);
         require(
             daiOut >= minDaiOut,
             "YieldProxy: Limit not reached"
@@ -470,12 +474,13 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     /// @param fyDaiIn Amount of fyDai being sold
     /// @param minDaiOut Minimum amount of dai being bought
     /// @param signature The `permit` call's signature
-    function sellFYDaiWithSignature(address pool, address to, uint128 fyDaiIn, uint128 minDaiOut, bytes memory signature)
+    function sellFYDaiWithSignature(IPool pool, address to, uint128 fyDaiIn, uint128 minDaiOut, bytes memory signature)
         external
         returns(uint256)
     {
+        require(poolsMap[address(pool)], "YieldProxy: Unknown pool");
         (bytes32 r, bytes32 s, uint8 v) = unpack(signature);
-        IPool(pool).fyDai().permit(msg.sender, address(pool), uint(-1), uint(-1), v, r, s);
+        pool.fyDai().permit(msg.sender, address(pool), uint(-1), uint(-1), v, r, s);
 
         return sellFYDai(pool, to, fyDaiIn, minDaiOut);
     }
@@ -484,11 +489,12 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     /// @param to Wallet receiving the fyDai being bought
     /// @param fyDaiOut Amount of fyDai being bought
     /// @param maxDaiIn Maximum amount of dai being sold
-    function buyFYDai(address pool, address to, uint128 fyDaiOut, uint128 maxDaiIn)
+    function buyFYDai(IPool pool, address to, uint128 fyDaiOut, uint128 maxDaiIn)
         external
         returns(uint256)
     {
-        uint256 daiIn = IPool(pool).buyFYDai(msg.sender, to, fyDaiOut);
+        require(poolsMap[address(pool)], "YieldProxy: Unknown pool");
+        uint256 daiIn = pool.buyFYDai(msg.sender, to, fyDaiOut);
         require(
             maxDaiIn >= daiIn,
             "YieldProxy: Limit exceeded"
@@ -525,7 +531,8 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     /// @param wethAmount weth to move from MakerDAO to Yield. Needs to be high enough to collateralize the dai debt in Yield,
     /// and low enough to make sure that debt left in MakerDAO is also collateralized.
     /// @param daiAmount dai debt to move from MakerDAO to Yield. Denominated in Dai (= art * rate)
-    function makerToYield(address pool, address user, uint256 wethAmount, uint256 daiAmount) public {
+    function makerToYield(IPool pool, address user, uint256 wethAmount, uint256 daiAmount) public {
+        require(poolsMap[address(pool)], "YieldProxy: Unknown pool");
         // The user specifies the fyDai he wants to mint to cover his maker debt, the weth to be passed on as collateral, and the dai debt to move
         (uint256 ink, uint256 art) = vat.urns(WETH, user);
         (, uint256 rate,,,) = vat.ilks("ETH-A");
@@ -538,7 +545,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
             "YieldProxy: Not enough collateral in Maker"
         );
         // Flash mint the fyDai
-        IFYDai fyDai = IPool(pool).fyDai();
+        IFYDai fyDai = pool.fyDai();
         fyDai.flashMint(
             fyDaiForDai(pool, daiAmount),
             abi.encode(MTY, pool, user, wethAmount, daiAmount)
@@ -553,8 +560,9 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     /// @param wethAmount weth to move from Yield to MakerDAO. Needs to be high enough to collateralize the dai debt in MakerDAO,
     /// and low enough to make sure that debt left in Yield is also collateralized.
     /// @param fyDaiAmount fyDai debt to move from Yield to MakerDAO.
-    function yieldToMaker(address pool, address user, uint256 wethAmount, uint256 fyDaiAmount) public {
-        IFYDai fyDai = IPool(pool).fyDai();
+    function yieldToMaker(IPool pool, address user, uint256 wethAmount, uint256 fyDaiAmount) public {
+        require(poolsMap[address(pool)], "YieldProxy: Unknown pool");
+        IFYDai fyDai = pool.fyDai();
 
         // The user specifies the fyDai he wants to move, and the weth to be passed on as collateral
         require(
@@ -574,9 +582,10 @@ contract YieldProxy is DecimalMath, IFlashMinter {
 
     /// @dev Callback from `FYDai.flashMint()`
     function executeOnFlashMint(uint256 fyDaiAmount, bytes calldata data) external override {
-        (bool direction, address pool, address user, uint256 wethAmount, uint256 daiAmount) = 
-            abi.decode(data, (bool, address, address, uint256, uint256));
+        (bool direction, IPool pool, address user, uint256 wethAmount, uint256 daiAmount) = 
+            abi.decode(data, (bool, IPool, address, uint256, uint256));
         require(msg.sender == address(IPool(pool).fyDai()), "YieldProxy: Restricted callback");
+        require(poolsMap[address(pool)], "YieldProxy: Unknown pool");
 
         if(direction == MTY) _makerToYield(pool, user, wethAmount, daiAmount);
         if(direction == YTM) _yieldToMaker(pool, user, wethAmount, fyDaiAmount);
@@ -595,13 +604,15 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     }
 
     /// @dev Amount of fyDai debt that will result from migrating Dai debt from MakerDAO to Yield
-    function fyDaiForDai(address pool, uint256 daiAmount) public view returns (uint256) {
-        return IPool(pool).buyDaiPreview(daiAmount.toUint128());
+    function fyDaiForDai(IPool pool, uint256 daiAmount) public view returns (uint256) {
+        require(poolsMap[address(pool)], "YieldProxy: Unknown pool");
+        return pool.buyDaiPreview(daiAmount.toUint128());
     }
 
     /// @dev Amount of dai debt that will result from migrating fyDai debt from Yield to MakerDAO
-    function daiForFYDai(address pool, uint256 fyDaiAmount) public view returns (uint256) {
-        return IPool(pool).buyFYDaiPreview(fyDaiAmount.toUint128());
+    function daiForFYDai(IPool pool, uint256 fyDaiAmount) public view returns (uint256) {
+        require(poolsMap[address(pool)], "YieldProxy: Unknown pool");
+        return pool.buyFYDaiPreview(fyDaiAmount.toUint128());
     }
 
     /// @dev Internal function to transfer debt and collateral from MakerDAO to Yield
@@ -612,12 +623,12 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     /// @param daiAmount dai debt to move from MakerDAO to Yield. Denominated in Dai (= art * rate)
     /// Needs vat.hope(splitter.address, { from: user });
     /// Needs controller.addDelegate(splitter.address, { from: user });
-    function _makerToYield(address pool, address user, uint256 wethAmount, uint256 daiAmount) internal {
-        IPool _pool = IPool(pool);
-        IFYDai fyDai = IFYDai(_pool.fyDai());
+    function _makerToYield(IPool pool, address user, uint256 wethAmount, uint256 daiAmount) internal {
+        require(poolsMap[address(pool)], "YieldProxy: Unknown pool");
+        IFYDai fyDai = IFYDai(pool.fyDai());
 
         // Pool should take exactly all fyDai flash minted. YieldProxy will hold the dai temporarily
-        uint256 fyDaiSold = _pool.buyDai(address(this), address(this), daiAmount.toUint128());
+        uint256 fyDaiSold = pool.buyDai(address(this), address(this), daiAmount.toUint128());
 
         daiJoin.join(user, daiAmount);      // Put the Dai in Maker
         (, uint256 rate,,,) = vat.ilks("ETH-A");
@@ -645,9 +656,9 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     /// @param wethAmount weth to move from Yield to MakerDAO. Needs to be high enough to collateralize the dai debt in MakerDAO,
     /// and low enough to make sure that debt left in Yield is also collateralized.
     /// @param fyDaiAmount fyDai debt to move from Yield to MakerDAO.
-    function _yieldToMaker(address pool, address user, uint256 wethAmount, uint256 fyDaiAmount) internal {
-        IPool _pool = IPool(pool);
-        IFYDai fyDai = IFYDai(_pool.fyDai());
+    function _yieldToMaker(IPool pool, address user, uint256 wethAmount, uint256 fyDaiAmount) internal {
+        require(poolsMap[address(pool)], "YieldProxy: Unknown pool");
+        IFYDai fyDai = IFYDai(pool.fyDai());
 
         // Pay the Yield debt - YieldProxy pays FYDai to remove the debt of `user`
         // Controller should take exactly all fyDai flash minted.
@@ -660,7 +671,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         wethJoin.join(user, wethAmount);
 
         // We are going to need to buy the FYDai back with Dai borrowed from Maker
-        uint256 daiAmount = _pool.buyFYDaiPreview(fyDaiAmount.toUint128());
+        uint256 daiAmount = pool.buyFYDaiPreview(fyDaiAmount.toUint128());
 
         // Borrow the Dai from Maker
         (, uint256 rate,,,) = vat.ilks("ETH-A"); // Retrieve the MakerDAO stability fee for Weth
@@ -676,6 +687,6 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         daiJoin.exit(address(this), daiAmount);             // YieldProxy will hold the dai temporarily
 
         // Sell the Dai for FYDai at Pool - It should make up for what was taken with repayYdai
-        _pool.buyFYDai(address(this), address(this), fyDaiAmount.toUint128());
+        pool.buyFYDai(address(this), address(this), fyDaiAmount.toUint128());
     }
 }
