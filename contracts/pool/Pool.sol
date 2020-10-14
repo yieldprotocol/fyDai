@@ -120,8 +120,8 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         uint256 tokensMinted = supply.mul(daiOffered).div(daiReserves);
         uint256 fyDaiRequired = fyDaiReserves.mul(tokensMinted).div(supply);
 
-        require(daiReserves.add(daiOffered) <=type(uint128).max); // fyDaiReserves can't go over type(uint128).max
-        require(supply.add(fyDaiReserves.add(fyDaiRequired)) <=type(uint128).max); // fyDaiReserves can't go over type(uint128).max
+        require(daiReserves.add(daiOffered) <= type(uint128).max); // fyDaiReserves can't go over type(uint128).max
+        require(supply.add(fyDaiReserves.add(fyDaiRequired)) <= type(uint128).max); // fyDaiReserves can't go over type(uint128).max
 
         require(dai.transferFrom(from, address(this), daiOffered));
         require(fyDai.transferFrom(from, address(this), fyDaiRequired));
