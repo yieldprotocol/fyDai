@@ -80,14 +80,14 @@ contract('YieldProxy - Splitter', async (accounts) => {
   it('does not allow to move debt using unregistered pools', async () => {
     const pool2 = await Pool.new(dai.address, fyDai1.address, 'Name', 'Symbol', { from: owner })
     await expectRevert(
-      splitter1.makerToYield(pool2.address, user, wethTokens1, bnify(daiTokens1).mul(10), { from: user }),
+      splitter1.makerToYield(pool2.address, wethTokens1, bnify(daiTokens1).mul(10), { from: user }),
       'YieldProxy: Unknown pool'
     )
   })
 
   it('does not allow to move more debt than existing in maker', async () => {
     await expectRevert(
-      splitter1.makerToYield(pool1.address, user, wethTokens1, bnify(daiTokens1).mul(10), { from: user }),
+      splitter1.makerToYield(pool1.address, wethTokens1, bnify(daiTokens1).mul(10), { from: user }),
       'YieldProxy: Not enough debt in Maker'
     )
   })
@@ -96,7 +96,7 @@ contract('YieldProxy - Splitter', async (accounts) => {
     await env.maker.getDai(user, daiTokens1, rate1)
 
     await expectRevert(
-      splitter1.makerToYield(pool1.address, user, bnify(wethTokens1).mul(10), daiTokens1, { from: user }),
+      splitter1.makerToYield(pool1.address, bnify(wethTokens1).mul(10), daiTokens1, { from: user }),
       'YieldProxy: Not enough collateral in Maker'
     )
   })
@@ -127,7 +127,7 @@ contract('YieldProxy - Splitter', async (accounts) => {
     assert.equal((await controller.posted(WETH, user)).toString(), extraWethNeeded.toString())
     assert.equal((await controller.debtFYDai(WETH, maturity1, user)).toString(), 0)
 
-    await splitter1.makerToYield(pool1.address, user, wethTokens1, daiDebt, { from: user })
+    await splitter1.makerToYield(pool1.address, wethTokens1, daiDebt, { from: user })
 
     assert.equal(await fyDai1.balanceOf(splitter1.address), 0)
     assert.equal(await dai.balanceOf(splitter1.address), 0)
@@ -142,7 +142,7 @@ contract('YieldProxy - Splitter', async (accounts) => {
 
   it('does not allow to move more debt than existing in env', async () => {
     await expectRevert(
-      splitter1.yieldToMaker(pool1.address, user, wethTokens1, fyDaiTokens1, { from: user }),
+      splitter1.yieldToMaker(pool1.address, wethTokens1, fyDaiTokens1, { from: user }),
       'YieldProxy: Not enough debt in Yield'
     )
   })
@@ -153,7 +153,7 @@ contract('YieldProxy - Splitter', async (accounts) => {
     await controller.borrow(WETH, maturity1, user, user, toBorrow, { from: user })
 
     await expectRevert(
-      splitter1.yieldToMaker(pool1.address, user, bnify(wethTokens1).mul(2), toBorrow, { from: user }),
+      splitter1.yieldToMaker(pool1.address, bnify(wethTokens1).mul(2), toBorrow, { from: user }),
       'YieldProxy: Not enough collateral in Yield'
     )
   })
@@ -176,7 +176,7 @@ contract('YieldProxy - Splitter', async (accounts) => {
     // Will need this one for testing. As time passes, even for one block, the resulting dai debt will be higher than this value
     const makerDebtEstimate = new BN(await splitter1.daiForFYDai(pool1.address, toBorrow))
 
-    await splitter1.yieldToMaker(pool1.address, user, wethTokens1, toBorrow, { from: user })
+    await splitter1.yieldToMaker(pool1.address, wethTokens1, toBorrow, { from: user })
 
     assert.equal(await fyDai1.balanceOf(splitter1.address), 0)
     assert.equal(await dai.balanceOf(splitter1.address), 0)

@@ -526,14 +526,13 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     /// Needs vat.hope(splitter.address, { from: user });
     /// Needs controller.addDelegate(splitter.address, { from: user });
     /// @param pool The pool to trade in (and therefore fyDai series to borrow)
-    /// @param user Vault to migrate.
     /// @param wethAmount weth to move from MakerDAO to Yield. Needs to be high enough to collateralize the dai debt in Yield,
     /// and low enough to make sure that debt left in MakerDAO is also collateralized.
     /// @param daiAmount dai debt to move from MakerDAO to Yield. Denominated in Dai (= art * rate)
-    function makerToYield(IPool pool, address user, uint256 wethAmount, uint256 daiAmount) public {
+    function makerToYield(IPool pool, uint256 wethAmount, uint256 daiAmount) public {
         onlyKnownPool(pool);
         // The user specifies the fyDai he wants to mint to cover his maker debt, the weth to be passed on as collateral, and the dai debt to move
-        (uint256 ink, uint256 art) = vat.urns(WETH, user);
+        (uint256 ink, uint256 art) = vat.urns(WETH, msg.sender);
         (, uint256 rate,,,) = vat.ilks("ETH-A");
         require(
             daiAmount <= muld(art, rate),
@@ -547,7 +546,7 @@ contract YieldProxy is DecimalMath, IFlashMinter {
         IFYDai fyDai = pool.fyDai();
         fyDai.flashMint(
             fyDaiForDai(pool, daiAmount),
-            abi.encode(MTY, pool, user, wethAmount, daiAmount)
+            abi.encode(MTY, pool, msg.sender, wethAmount, daiAmount)
         );
     }
 
@@ -555,27 +554,26 @@ contract YieldProxy is DecimalMath, IFlashMinter {
     /// Needs vat.hope(splitter.address, { from: user });
     /// Needs controller.addDelegate(splitter.address, { from: user });
     /// @param pool The pool to trade in (and therefore fyDai series to migrate)
-    /// @param user Vault to migrate.
     /// @param wethAmount weth to move from Yield to MakerDAO. Needs to be high enough to collateralize the dai debt in MakerDAO,
     /// and low enough to make sure that debt left in Yield is also collateralized.
     /// @param fyDaiAmount fyDai debt to move from Yield to MakerDAO.
-    function yieldToMaker(IPool pool, address user, uint256 wethAmount, uint256 fyDaiAmount) public {
+    function yieldToMaker(IPool pool, uint256 wethAmount, uint256 fyDaiAmount) public {
         onlyKnownPool(pool);
         IFYDai fyDai = pool.fyDai();
 
         // The user specifies the fyDai he wants to move, and the weth to be passed on as collateral
         require(
-            fyDaiAmount <= controller.debtFYDai(WETH, fyDai.maturity(), user),
+            fyDaiAmount <= controller.debtFYDai(WETH, fyDai.maturity(), msg.sender),
             "YieldProxy: Not enough debt in Yield"
         );
         require(
-            wethAmount <= controller.posted(WETH, user),
+            wethAmount <= controller.posted(WETH, msg.sender),
             "YieldProxy: Not enough collateral in Yield"
         );
         // Flash mint the fyDai
         fyDai.flashMint(
             fyDaiAmount,
-            abi.encode(YTM, pool, user, wethAmount, 0)
+            abi.encode(YTM, pool, msg.sender, wethAmount, 0)
         ); // The daiAmount encoded is ignored
     }
 
