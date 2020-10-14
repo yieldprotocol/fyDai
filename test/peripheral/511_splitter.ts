@@ -77,6 +77,14 @@ contract('YieldProxy - Splitter', async (accounts) => {
     await expectRevert(splitter1.executeOnFlashMint(1, data, { from: user }), 'YieldProxy: Restricted callback')
   })
 
+  it('does not allow to move debt using unregistered pools', async () => {
+    const pool2 = await Pool.new(dai.address, fyDai1.address, 'Name', 'Symbol', { from: owner })
+    await expectRevert(
+      splitter1.makerToYield(pool2.address, user, wethTokens1, bnify(daiTokens1).mul(10), { from: user }),
+      'YieldProxy: Unknown pool'
+    )
+  })
+
   it('does not allow to move more debt than existing in maker', async () => {
     await expectRevert(
       splitter1.makerToYield(pool1.address, user, wethTokens1, bnify(daiTokens1).mul(10), { from: user }),
