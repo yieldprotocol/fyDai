@@ -84,7 +84,7 @@ $ npx truffle migrate --network mainnet-ganache
 ## Math
 In developing fyDai we have used two different libraries for fixed point arithmetic.
  - For general use we have forked and refined [DecimalMath.sol](https://github.com/HQ20/contracts/tree/master/contracts/math), trading off performance for clarity.
- - For heavy-duty use in the YieldSpace formula, we have relicensed [ABDKMath](https://github.com/abdk-consulting/abdk-libraries-solidity) as GPLv3, trading off clarity for performance.
+ - For heavy-duty use in the YieldSpace formula, we have used [ABDKMath](https://github.com/abdk-consulting/abdk-libraries-solidity) as GPLv3, trading off clarity for performance.
 
 ## Security
 In developing the code in this repository we have set the highest bar possible for security. We have been fully audited by [Trail of Bits](https://www.trailofbits.com/), with the [results](http://www.yield.is) publicly available. We have also pioneered the use of fuzzing tests for the Pool and YieldMath contracts, allowing us to find edge cases and vulnerabilities that we would have missed otherwise.
