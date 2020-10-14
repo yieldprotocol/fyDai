@@ -36,6 +36,9 @@ contract StatefulInvariant {
         dai = IERC20(new TestERC20(type(uint256).max));
         fyDai = IERC20(new TestFYDai(type(uint256).max, maturity));
         pool = new Pool(address(dai), address(fyDai), "name", "symbol");
+
+        dai.approve(address(pool), type(uint256).max);
+        fyDai.approve(address(pool), type(uint256).max);
     }
     
     /// @dev Overflow-protected addition, from OpenZeppelin
@@ -51,6 +54,38 @@ contract StatefulInvariant {
         require(b <= a, "Pool: fyDai reserves too low");
         uint128 c = a - b;
         return c;
+    }
+
+    /// @dev Ensures that reserves grow with any buyDai trade.
+    function buyDai(uint128 daiOut)
+        public returns (bool)
+    {
+        uint128 daiReserves = pool.getDaiReserves();
+        uint128 fyDaiReserves = pool.getFYDaiReserves();
+        uint128 timeTillMaturity = uint128(maturity - block.timestamp);
+
+        uint128 whitepaperInvariant_0 = _whitepaperInvariant(daiReserves, fyDaiReserves, timeTillMaturity);
+        uint128 fyDaiIn = pool.buyDai(address(this), address(this), daiOut);
+        require(add(fyDaiReserves, fyDaiIn) >= sub(daiReserves, daiOut));
+        uint128 whitepaperInvariant_1 = _whitepaperInvariant(sub(daiReserves, daiOut), add(fyDaiReserves, fyDaiIn), sub(timeTillMaturity, 1));
+        assert(whitepaperInvariant_0 < whitepaperInvariant_1);
+        return whitepaperInvariant_0 < whitepaperInvariant_1;
+    }
+
+    /// @dev Ensures that reserves grow with any sellDai trade.
+    function sellDai(uint128 daiIn)
+        public returns (bool)
+    {
+        uint128 daiReserves = pool.getDaiReserves();
+        uint128 fyDaiReserves = pool.getFYDaiReserves();
+        uint128 timeTillMaturity = uint128(maturity - block.timestamp);
+
+        uint128 whitepaperInvariant_0 = _whitepaperInvariant(daiReserves, fyDaiReserves, timeTillMaturity);
+        uint128 fyDaiOut = pool.sellDai(address(this), address(this), daiIn);
+        require(sub(fyDaiReserves, fyDaiOut) >= add(daiReserves, daiIn));
+        uint128 whitepaperInvariant_1 = _whitepaperInvariant(add(daiReserves, daiIn), sub(fyDaiReserves, fyDaiOut), sub(timeTillMaturity, 1));
+        assert(whitepaperInvariant_0 < whitepaperInvariant_1);
+        return whitepaperInvariant_0 < whitepaperInvariant_1;
     }
 
     /**
