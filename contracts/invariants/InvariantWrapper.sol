@@ -2,6 +2,7 @@
 pragma solidity ^0.6.10;
 import "./TradeReversalInvariant.sol";
 import "./WhitepaperInvariant.sol";
+import "./StatefulInvariant.sol";
 
 
 contract TradeReversalInvariantWrapper is TradeReversalInvariant {
@@ -41,5 +42,26 @@ contract WhitepaperInvariantWrapper is WhitepaperInvariant {
         public pure returns (uint128)
     {
         return _whitepaperInvariant(daiReserves, fyDaiReserves, timeTillMaturity);
+    }
+}
+
+contract StatefulInvariantWrapper is StatefulInvariant {
+    /// @dev Calculates the value of the reserves
+    function whitepaperInvariant()
+        public view returns (uint128)
+    {
+        return _whitepaperInvariant();
+    }
+
+    function getPool() public returns (address) {
+        return address(pool);
+    }
+
+    function getDai() public returns (address) {
+        return address(dai);
+    }
+
+    function getFYDai() public returns (address) {
+        return address(fyDai);
     }
 }
