@@ -53,15 +53,15 @@ contract StatefulInvariantWrapper is StatefulInvariant {
         return _whitepaperInvariant();
     }
 
-    function getPool() public returns (address) {
+    function getPool() public view returns (address) {
         return address(pool);
     }
 
-    function getDai() public returns (address) {
+    function getDai() public view returns (address) {
         return address(dai);
     }
 
-    function getFYDai() public returns (address) {
+    function getFYDai() public view returns (address) {
         return address(fyDai);
     }
 }
