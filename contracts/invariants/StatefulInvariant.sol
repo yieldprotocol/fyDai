@@ -12,9 +12,9 @@ import "@nomiclabs/buidler/console.sol";
 
 
 contract StatefulInvariant {
-    IERC20 public dai;
-    IERC20 public fyDai;
-    Pool public pool;
+    IERC20 internal dai;
+    IERC20 internal fyDai;
+    Pool internal pool;
 
     uint128 constant internal precision = 1e12;
     int128 constant internal k = int128(uint256((1 << 64)) / 126144000); // 1 / Seconds in 4 years, in 64.64
@@ -39,6 +39,8 @@ contract StatefulInvariant {
 
         dai.approve(address(pool), type(uint256).max);
         fyDai.approve(address(pool), type(uint256).max);
+
+        pool.mint(address(this), address(this), 1e18); // Init the pools
     }
     
     /// @dev Overflow-protected addition, from OpenZeppelin
@@ -56,50 +58,82 @@ contract StatefulInvariant {
         return c;
     }
 
+    /// @dev Return the absolute difference between two numbers
+    function diff(uint128 a, uint128 b) internal pure returns (uint128) {
+        return (a > b) ? a - b : b - a;
+    }
+
+    /// @dev Try to mess up with reserves. Only uint112 so that it can be done a number of times.
+    function donateDai(uint112 daiIn)
+        public returns (bool)
+    {
+        dai.transfer(address(pool), daiIn);
+    }
+
+
+    /// @dev Try to mess up with reserves. Only uint112 so that it can be done a number of times.
+    function donateFYDai(uint112 fyDaiIn)
+        public returns (bool)
+    {
+        fyDai.transfer(address(pool), fyDaiIn);
+    }
+
+    /// @dev Ensure that the invariant changes when minting no more than `precision` 
+    function mint(uint128 daiIn)
+        public returns (bool)
+    {
+        uint128 whitepaperInvariant_0 = _whitepaperInvariant();
+        uint256 lpOut = pool.mint(address(this), address(this), daiIn);
+        uint128 whitepaperInvariant_1 = _whitepaperInvariant();
+
+        assert(diff(whitepaperInvariant_0, whitepaperInvariant_1) <= precision);
+        return diff(whitepaperInvariant_0, whitepaperInvariant_1) <= precision;
+    }
+
+    /// @dev Ensure that the invariant changes when burning no more than `precision` 
+    function burn(uint128 lpIn)
+        public returns (bool)
+    {
+        uint128 whitepaperInvariant_0 = _whitepaperInvariant();
+        (uint256 daiOut, uint256 fyDaiOut) = pool.burn(address(this), address(this), lpIn % pool.balanceOf(address(this)));
+        uint128 whitepaperInvariant_1 = _whitepaperInvariant();
+
+        assert(diff(whitepaperInvariant_0, whitepaperInvariant_1) <= precision);
+        return diff(whitepaperInvariant_0, whitepaperInvariant_1) <= precision;
+    }
+
     /// @dev Ensures that reserves grow with any buyDai trade.
     function buyDai(uint128 daiOut)
         public returns (bool)
     {
-        uint128 daiReserves = pool.getDaiReserves();
-        uint128 fyDaiReserves = pool.getFYDaiReserves();
-        uint128 timeTillMaturity = uint128(maturity - block.timestamp);
-
-        uint128 whitepaperInvariant_0 = _whitepaperInvariant(daiReserves, fyDaiReserves, timeTillMaturity);
+        uint128 whitepaperInvariant_0 = _whitepaperInvariant();
         uint128 fyDaiIn = pool.buyDai(address(this), address(this), daiOut);
-        require(add(fyDaiReserves, fyDaiIn) >= sub(daiReserves, daiOut));
-        uint128 whitepaperInvariant_1 = _whitepaperInvariant(sub(daiReserves, daiOut), add(fyDaiReserves, fyDaiIn), sub(timeTillMaturity, 1));
-        assert(whitepaperInvariant_0 < whitepaperInvariant_1);
-        return whitepaperInvariant_0 < whitepaperInvariant_1;
+        uint128 whitepaperInvariant_1 = _whitepaperInvariant();
+
+        assert(whitepaperInvariant_0 <= whitepaperInvariant_1);
+        return whitepaperInvariant_0 <= whitepaperInvariant_1;
     }
 
     /// @dev Ensures that reserves grow with any sellDai trade.
     function sellDai(uint128 daiIn)
         public returns (bool)
     {
+        uint128 whitepaperInvariant_0 = _whitepaperInvariant();
+        uint128 fyDaiOut = pool.sellDai(address(this), address(this), daiIn);
+        uint128 whitepaperInvariant_1 = _whitepaperInvariant();
+
+        assert(whitepaperInvariant_0 <= whitepaperInvariant_1);
+        return whitepaperInvariant_0 <= whitepaperInvariant_1;
+    }
+
+    /// @dev Estimate in DAI the value of reserves at protocol initialization time.
+    function _whitepaperInvariant ()
+        internal view returns (uint128)
+    {
         uint128 daiReserves = pool.getDaiReserves();
         uint128 fyDaiReserves = pool.getFYDaiReserves();
         uint128 timeTillMaturity = uint128(maturity - block.timestamp);
 
-        uint128 whitepaperInvariant_0 = _whitepaperInvariant(daiReserves, fyDaiReserves, timeTillMaturity);
-        uint128 fyDaiOut = pool.sellDai(address(this), address(this), daiIn);
-        require(sub(fyDaiReserves, fyDaiOut) >= add(daiReserves, daiIn));
-        uint128 whitepaperInvariant_1 = _whitepaperInvariant(add(daiReserves, daiIn), sub(fyDaiReserves, fyDaiOut), sub(timeTillMaturity, 1));
-        assert(whitepaperInvariant_0 < whitepaperInvariant_1);
-        return whitepaperInvariant_0 < whitepaperInvariant_1;
-    }
-
-    /**
-     * Estimate in DAI the value of reserves at protocol initialization time.
-     *
-     * @param daiReserves DAI reserves amount
-     * @param fyDaiReserves fyDai reserves amount
-     * @param timeTillMaturity time till maturity in seconds
-     * @return estimated value of reserves
-     */
-    function _whitepaperInvariant (
-        uint128 daiReserves, uint128 fyDaiReserves, uint128 timeTillMaturity)
-        internal pure returns (uint128)
-    {
         // a = (1 - k * timeTillMaturity)
         int128 a = Math64x64.sub (0x10000000000000000, Math64x64.mul (k, Math64x64.fromUInt (timeTillMaturity)));
         require (a > 0);
