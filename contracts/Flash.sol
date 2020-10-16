@@ -10,8 +10,8 @@ interface LiquidationLike {
 }
 
 interface PairLike {
-    function token0() external returns (address);
-    function token1() external returns (address);
+    function token0() external view returns (address);
+    function token1() external view returns (address);
     function getReserves() external view returns (uint112 _reserve0, uint112 _reserve1, uint32 _blockTimestampLast);
 }
 
