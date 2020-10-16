@@ -1,6 +1,6 @@
 // Script used to audit the permissions of Yield Protocol
 // Defaults to the mainnet deployment
-// This sript may take a while to run.
+// This script may take a while to run.
 //
 // Run as `node orchestration.js`. Requires having `ethers v5` installed.
 //
