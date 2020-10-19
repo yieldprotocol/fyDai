@@ -5,7 +5,8 @@
 //
 // Provide arguments as environment variables:
 // - ENDPOINT: The Ethereum node to connect to
-// - MIGRATIONS: The address of the smart contract registry
+// - CONTROLLER: The address of the controller contract
+// - ADDRESS: The address of the user you are inspecting
 // - START_BLOCK: The block to filter events from (default: 0).
 //   Do not set this to 0 if using with services like Infura
 const ethers = require('ethers')
