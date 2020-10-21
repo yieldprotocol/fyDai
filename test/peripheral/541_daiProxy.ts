@@ -3,7 +3,7 @@ const Pool = artifacts.require('Pool')
 import { WETH, rate1, daiTokens1, wethTokens1, toWad, subBN, bnify, MAX, chainId, name, ZERO } from '../shared/utils'
 import { MakerEnvironment, YieldEnvironmentLite, Contract } from '../shared/fixtures'
 import { getSignatureDigest, getPermitDigest, getDaiDigest, userPrivateKey, sign } from '../shared/signatures'
-import { setupProxy } from '../shared/proxies'
+import { setupProxy, upgradeToV2 } from '../shared/proxies'
 import { keccak256, toUtf8Bytes } from 'ethers/lib/utils'
 
 // @ts-ignore
@@ -181,6 +181,32 @@ contract('YieldProxy - DaiProxy', async (accounts) => {
 
       // Give some fyDai to user1
       await fyDai1.mint(user1, fyDaiTokens1, { from: owner })
+    })
+
+    describe('can be upgraded', async () => {
+        beforeEach(async () => {
+            daiProxy = await upgradeToV2(daiProxy)
+        })
+
+        it('can call new functions', async () => {
+            const ret = await daiProxy.get()
+            expect(ret.toString()).to.eq("123")
+        })
+
+        // this would call to weth which we did not explicitly
+        // store in the new dai proxy
+        it('can call old functions', async () => {
+            await daiProxy.post(user1, { from: user1, value: bnify(wethTokens1).mul(2).toString() })
+        })
+
+        it('maintains `onboard` permissions', async () => {
+            await daiProxy.post(user1, { from: user1, value: bnify(wethTokens1).mul(2).toString() })
+            // `onboard` must be called in order to borrow. even though we
+            // upgraded, we are still able to call the function without re-onboarding!
+            await daiProxy.borrowDaiForMaximumFYDai(pool.address, WETH, maturity1, user2, fyDaiTokens1, one, {
+                from: user1,
+            })
+        })
     })
 
     it('fails on unknown pools', async () => {
