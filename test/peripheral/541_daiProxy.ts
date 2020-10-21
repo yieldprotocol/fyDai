@@ -184,29 +184,29 @@ contract('YieldProxy - DaiProxy', async (accounts) => {
     })
 
     describe('can be upgraded', async () => {
-        beforeEach(async () => {
-            daiProxy = await upgradeToV2(daiProxy)
-        })
+      beforeEach(async () => {
+        daiProxy = await upgradeToV2(daiProxy)
+      })
 
-        it('can call new functions', async () => {
-            const ret = await daiProxy.get()
-            expect(ret.toString()).to.eq("123")
-        })
+      it('can call new functions', async () => {
+        const ret = await daiProxy.get()
+        expect(ret.toString()).to.eq('123')
+      })
 
-        // this would call to weth which we did not explicitly
-        // store in the new dai proxy
-        it('can call old functions', async () => {
-            await daiProxy.post(user1, { from: user1, value: bnify(wethTokens1).mul(2).toString() })
-        })
+      // this would call to weth which we did not explicitly
+      // store in the new dai proxy
+      it('can call old functions', async () => {
+        await daiProxy.post(user1, { from: user1, value: bnify(wethTokens1).mul(2).toString() })
+      })
 
-        it('maintains `onboard` permissions', async () => {
-            await daiProxy.post(user1, { from: user1, value: bnify(wethTokens1).mul(2).toString() })
-            // `onboard` must be called in order to borrow. even though we
-            // upgraded, we are still able to call the function without re-onboarding!
-            await daiProxy.borrowDaiForMaximumFYDai(pool.address, WETH, maturity1, user2, fyDaiTokens1, one, {
-                from: user1,
-            })
+      it('maintains `onboard` permissions', async () => {
+        await daiProxy.post(user1, { from: user1, value: bnify(wethTokens1).mul(2).toString() })
+        // `onboard` must be called in order to borrow. even though we
+        // upgraded, we are still able to call the function without re-onboarding!
+        await daiProxy.borrowDaiForMaximumFYDai(pool.address, WETH, maturity1, user2, fyDaiTokens1, one, {
+          from: user1,
         })
+      })
     })
 
     it('fails on unknown pools', async () => {
