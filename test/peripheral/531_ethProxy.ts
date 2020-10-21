@@ -1,12 +1,10 @@
-// Peripheral
-const EthProxy = artifacts.require('YieldProxy')
-
 // @ts-ignore
 import helper from 'ganache-time-traveler'
 // @ts-ignore
 import { balance } from '@openzeppelin/test-helpers'
 import { WETH, spot, daiTokens1, wethTokens1, mulRay } from '../shared/utils'
 import { Contract, YieldEnvironmentLite } from '../shared/fixtures'
+import { setupProxy } from '../shared/proxies'
 import { getSignatureDigest } from '../shared/signatures'
 import { keccak256, toUtf8Bytes } from 'ethers/lib/utils'
 import { ecsign } from 'ethereumjs-util'
@@ -51,8 +49,7 @@ contract('YieldProxy - EthProxy', async (accounts) => {
     vat = env.maker.vat
     weth = env.maker.weth
 
-    // Setup EthProxy
-    ethProxy = await EthProxy.new(env.controller.address, [])
+    ethProxy = await setupProxy(env.controller.address, [])
   })
 
   afterEach(async () => {

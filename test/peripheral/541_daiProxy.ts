@@ -1,9 +1,9 @@
 const Pool = artifacts.require('Pool')
-const DaiProxy = artifacts.require('YieldProxy')
 
 import { WETH, rate1, daiTokens1, wethTokens1, toWad, subBN, bnify, MAX, chainId, name, ZERO } from '../shared/utils'
 import { MakerEnvironment, YieldEnvironmentLite, Contract } from '../shared/fixtures'
 import { getSignatureDigest, getPermitDigest, getDaiDigest, userPrivateKey, sign } from '../shared/signatures'
+import { setupProxy } from '../shared/proxies'
 import { keccak256, toUtf8Bytes } from 'ethers/lib/utils'
 
 // @ts-ignore
@@ -43,7 +43,7 @@ contract('YieldProxy - DaiProxy', async (accounts) => {
     pool = await Pool.new(dai.address, fyDai1.address, 'Name', 'Symbol', { from: owner })
 
     // Setup DaiProxy
-    daiProxy = await DaiProxy.new(env.controller.address, [pool.address])
+    daiProxy = await setupProxy(env.controller.address, [pool.address])
 
     // Allow owner to mint fyDai the sneaky way, without recording a debt in controller
     await fyDai1.orchestrate(owner, keccak256(toUtf8Bytes('mint(address,uint256)')), { from: owner })
@@ -80,7 +80,9 @@ contract('YieldProxy - DaiProxy', async (accounts) => {
     let daiSig = sign(digest, userPrivateKey)
 
     // Send it! (note how it's not necessarily the user broadcasting it)
-    await daiProxy.onboard(user1, daiSig, controllerSig, { from: operator })
+    await daiProxy.onboard(env.maker.dai.address, env.controller.address, user1, daiSig, controllerSig, {
+      from: operator,
+    })
 
     // Authorize the proxy for the pool
     digest = getSignatureDigest(
@@ -126,7 +128,9 @@ contract('YieldProxy - DaiProxy', async (accounts) => {
     )
     const daiSig2 = sign(digest, userPrivateKey)
     // Send it!
-    await daiProxy.authorizePool(pool.address, user1, daiSig2, fyDaiSig, poolSig, { from: operator })
+    await daiProxy.authorizePool(pool.address, env.maker.dai.address, user1, daiSig2, fyDaiSig, poolSig, {
+      from: operator,
+    })
   })
 
   describe('on controller', () => {

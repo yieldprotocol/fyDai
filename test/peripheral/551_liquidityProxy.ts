@@ -1,5 +1,4 @@
 const Pool = artifacts.require('Pool')
-const LiquidityProxy = artifacts.require('YieldProxy')
 
 import { keccak256, toUtf8Bytes } from 'ethers/lib/utils'
 // @ts-ignore
@@ -18,6 +17,7 @@ import {
   ZERO,
 } from '../shared/utils'
 import { MakerEnvironment, YieldEnvironmentLite, Contract } from '../shared/fixtures'
+import { setupProxy } from '../shared/proxies'
 // @ts-ignore
 import { BN, expectRevert } from '@openzeppelin/test-helpers'
 import { assert, expect } from 'chai'
@@ -90,7 +90,7 @@ contract('YieldProxy - LiquidityProxy', async (accounts) => {
     await fyDai1.orchestrate(owner, keccak256(toUtf8Bytes('mint(address,uint256)')), { from: owner })
 
     // Setup LiquidityProxy
-    proxy = await LiquidityProxy.new(env.controller.address, [pool0.address, pool1.address])
+    proxy = await setupProxy(env.controller.address, [pool0.address, pool1.address])
 
     const MAX = bnify('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
     await env.maker.chai.approve(proxy.address, MAX, { from: user1 })

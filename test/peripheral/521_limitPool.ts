@@ -1,9 +1,9 @@
 const Pool = artifacts.require('Pool')
-const YieldProxy = artifacts.require('YieldProxy')
 
 import { keccak256, toUtf8Bytes } from 'ethers/lib/utils'
 import { toWad, toRay, mulRay, chainId, bnify, MAX, name } from '../shared/utils'
 import { getPermitDigest, sign, userPrivateKey } from '../shared/signatures'
+import { setupProxy } from '../shared/proxies'
 import { YieldEnvironmentLite, Contract } from '../shared/fixtures'
 // @ts-ignore
 import { BN, expectRevert } from '@openzeppelin/test-helpers'
@@ -37,7 +37,7 @@ contract('YieldProxy - LimitPool', async (accounts) => {
     pool = await Pool.new(dai.address, fyDai1.address, 'Name', 'Symbol', { from: owner })
 
     // Setup LimitPool
-    limitPool = await YieldProxy.new(env.controller.address, [pool.address], { from: owner })
+    limitPool = await setupProxy(env.controller.address, [pool.address])
 
     // Allow owner to mint fyDai the sneaky way, without recording a debt in controller
     await fyDai1.orchestrate(owner, keccak256(toUtf8Bytes('mint(address,uint256)')), { from: owner })
