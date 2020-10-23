@@ -207,6 +207,14 @@ contract('YieldProxy - DaiProxy', async (accounts) => {
           from: user1,
         })
       })
+
+      it('maintains `authorizePool` permissions', async () => {
+        // `authorizePool` must be called in order to borrow. even though we
+        // upgraded, we are still able to call the function without re-authorizing!
+        await daiProxy.borrowMinimumDaiForFYDai(pool.address, WETH, maturity1, user2, fyDaiTokens1, one, {
+          from: user1,
+        })
+      })
     })
 
     it('fails on unknown pools', async () => {
