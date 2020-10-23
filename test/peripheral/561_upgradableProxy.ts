@@ -151,7 +151,7 @@ contract('YieldProxy - DaiProxy', async (accounts) => {
 
       // Give some fyDai to user1
       await fyDai1.mint(user1, fyDaiTokens1, { from: owner })
-      
+
       proxy = await YieldProxy.at(daiProxy.address)
       daiProxy = await upgradeToV2(daiProxy)
     })
@@ -173,10 +173,7 @@ contract('YieldProxy - DaiProxy', async (accounts) => {
     })
 
     it('only admin can propose a new admin', async () => {
-      await expectRevert(
-        proxy.proposeAdmin(user1, { from: user1 }),
-        "YieldProxy: Restricted to admin"
-      )
+      await expectRevert(proxy.proposeAdmin(user1, { from: user1 }), 'YieldProxy: Restricted to admin')
     })
 
     it('can change admin', async () => {
@@ -188,10 +185,7 @@ contract('YieldProxy - DaiProxy', async (accounts) => {
 
     it('only proposed admin can change admin', async () => {
       await proxy.proposeAdmin(user2)
-      await expectRevert(
-        proxy.changeAdmin({ from: user1 }),
-        "YieldProxy: Restricted to proposed admin"
-      )
+      await expectRevert(proxy.changeAdmin({ from: user1 }), 'YieldProxy: Restricted to proposed admin')
     })
 
     it('can call new functions', async () => {
