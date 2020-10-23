@@ -92,6 +92,24 @@ contract YieldProxy is YieldAuth {
 	}
 
     /// @dev Get the identifier of the latest version from `VERSION_SLOT`.
+    function getAdmin() public view returns (address admin) {
+		bytes32 slot = ADMIN_SLOT;
+		// solhint-disable-next-line no-inline-assembly
+		assembly {
+			admin := sload(slot)
+		}
+	}
+
+    /// @dev Get the identifier of the latest version from `VERSION_SLOT`.
+    function getProposedAdmin() public view returns (address proposedAdmin) {
+		bytes32 slot = PROPOSED_ADMIN_SLOT;
+		// solhint-disable-next-line no-inline-assembly
+		assembly {
+			proposedAdmin := sload(slot)
+		}
+	}
+
+    /// @dev Get the identifier of the latest version from `VERSION_SLOT`.
     function getLatestVersion() public view returns (uint256 version) {
 		bytes32 slot = VERSION_SLOT;
 		// solhint-disable-next-line no-inline-assembly
