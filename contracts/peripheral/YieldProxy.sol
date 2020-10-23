@@ -58,7 +58,9 @@ contract YieldAuth {
 contract YieldProxy is YieldAuth {
     // EIP1967 storage slots to avoid conflicts
     bytes32 private constant ADMIN_SLOT = bytes32(uint256(keccak256("eip1967.proxy.admin")) - 1);
-    bytes32 private  constant IMPL_SLOT = bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1);
+    bytes32 private constant _VERSION_SLOT = bytes32(uint256(keccak256("eip1967.proxy.version")) - 1);
+    mapping(uint256 => address) public implementations;
+    mapping(address => uint256) public userChoices;
 
     constructor() public {
         address sender = msg.sender;
@@ -66,6 +68,32 @@ contract YieldProxy is YieldAuth {
         assembly {
             sstore(slot, sender)
         }
+    }
+
+    function _setVersion(uint256 version) internal {
+		bytes32 slot = _VERSION_SLOT;
+		// solhint-disable-next-line no-inline-assembly
+		assembly {
+			sstore(slot, version)
+		}
+	}
+
+    function getVersion() public view returns (uint256 version) {
+		bytes32 slot = _VERSION_SLOT;
+		// solhint-disable-next-line no-inline-assembly
+		assembly {
+			version := sload(slot)
+		}
+	}
+
+    function getImplementation() internal view returns (address) {
+        address choice = implementations[userChoices[msg.sender]];
+        return choice == address(0) ? implementations[getVersion()] : choice;
+    }
+
+    function chooseVersion(uint256 version) public {
+        require(version <= getVersion(), "Invalid version");
+        userChoices[msg.sender] = version;
     }
 
     function upgradeTo(address implementation, bytes calldata data) public {
@@ -80,10 +108,9 @@ contract YieldProxy is YieldAuth {
         require(msg.sender == admin);
 
         // change it
-        slot = IMPL_SLOT;
-        assembly {
-            sstore(slot, implementation)
-        }
+        uint256 version = getVersion();
+        implementations[version + 1] = implementation;
+        _setVersion(version + 1);
 
         (bool success,) = implementation.delegatecall(data);
         require(success);
@@ -107,11 +134,11 @@ contract YieldProxy is YieldAuth {
     }
 
     fallback() external payable {
-        bytes32 slot = IMPL_SLOT;
+        address target = getImplementation();
         assembly {
-            let _target := sload(slot)
+            //let target := sload(slot)
             calldatacopy(0, 0, calldatasize())
-            let result := delegatecall(gas(), _target, 0x0, calldatasize(), 0x0, 0)
+            let result := delegatecall(gas(), target, 0x0, calldatasize(), 0x0, 0)
             let retSize := returndatasize()
             returndatacopy(0x0, 0x0, retSize)
             switch result
