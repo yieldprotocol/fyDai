@@ -86,7 +86,7 @@ contract ProxyV1 is ProxyStorage, DecimalMath {
     /// @param daiUsed amount of Dai to use to mint liquidity. 
     /// @param maxFYDai maximum amount of fyDai to be borrowed to mint liquidity. 
     /// @return The amount of liquidity tokens minted.  
-    function addLiquidity(IPool pool, uint256 daiUsed, uint256 maxFYDai) external returns (uint256) {
+    function addLiquidity(IPool pool, uint256 daiUsed, uint256 maxFYDai) external virtual returns (uint256) {
         onlyKnownPool(pool);
         IFYDai fyDai = pool.fyDai();
         require(fyDai.isMature() != true, "YieldProxy: Only before maturity");

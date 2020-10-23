@@ -13,10 +13,14 @@ contract ProxyV2 is StorageV2, ProxyV1 {
             "foo already initialized to non zero value"
         );
         foo = _foo;
-
     }
 
     function get() external view returns (uint) {
         return foo;
+    }
+
+    /// @dev Overwrite a V1 function
+    function addLiquidity(IPool, uint256, uint256) external override returns (uint256) {
+        return 42;
     }
 }

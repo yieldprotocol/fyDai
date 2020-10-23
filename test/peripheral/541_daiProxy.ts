@@ -193,6 +193,11 @@ contract('YieldProxy - DaiProxy', async (accounts) => {
         expect(ret.toString()).to.eq('123')
       })
 
+      it('can call upgraded functions', async () => {
+        const ret = await daiProxy.addLiquidity.call(pool.address, 0, 0);
+        expect(ret.toString()).to.eq('42')
+      })
+
       // this would call to weth which we did not explicitly
       // store in the new dai proxy
       it('can call old functions', async () => {
