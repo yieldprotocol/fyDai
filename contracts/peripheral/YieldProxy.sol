@@ -58,9 +58,10 @@ contract YieldAuth {
 contract YieldProxy is YieldAuth {
     // EIP1967 storage slots to avoid conflicts
     bytes32 private constant ADMIN_SLOT = bytes32(uint256(keccak256("eip1967.proxy.admin")) - 1);
-    bytes32 private constant _VERSION_SLOT = bytes32(uint256(keccak256("eip1967.proxy.version")) - 1);
-    mapping(uint256 => address) public implementations;
-    mapping(address => uint256) public userChoices;
+    bytes32 private constant PROPOSED_ADMIN_SLOT = bytes32(uint256(keccak256("eip1967.proxy.proposedAdmin")) - 1);
+    bytes32 private constant VERSION_SLOT = bytes32(uint256(keccak256("eip1967.proxy.version")) - 1);
+    mapping(uint256 => address) public implementations; // Proxy version to implementation address
+    mapping(address => uint256) public userChoices;     // User address to proxy version
 
     constructor() public {
         address sender = msg.sender;
@@ -70,73 +71,90 @@ contract YieldProxy is YieldAuth {
         }
     }
 
-    function _setVersion(uint256 version) internal {
-		bytes32 slot = _VERSION_SLOT;
+    /// @dev Restricted to admin
+    modifier onlyAdmin() {
+        address admin;
+        bytes32 slot = ADMIN_SLOT;
+        assembly {
+            admin := sload(slot)
+        }
+        require(msg.sender == admin, "YieldProxy: Restricted to admin");
+        _;
+    }
+
+    /// @dev Store a `version` identifier in `VERSION_SLOT` as the latest version.
+    function _setLatestVersion(uint256 version) internal {
+		bytes32 slot = VERSION_SLOT;
 		// solhint-disable-next-line no-inline-assembly
 		assembly {
 			sstore(slot, version)
 		}
 	}
 
-    function getVersion() public view returns (uint256 version) {
-		bytes32 slot = _VERSION_SLOT;
+    /// @dev Get the identifier of the latest version from `VERSION_SLOT`.
+    function getLatestVersion() public view returns (uint256 version) {
+		bytes32 slot = VERSION_SLOT;
 		// solhint-disable-next-line no-inline-assembly
 		assembly {
 			version := sload(slot)
 		}
 	}
 
+    /// @dev Get the address of the proxy implementation chosen by the user,
+    /// or the address implementation of the latest version if none was chosen.
     function getImplementation() internal view returns (address) {
         address choice = implementations[userChoices[msg.sender]];
-        return choice == address(0) ? implementations[getVersion()] : choice;
+        return choice == address(0) ? implementations[getLatestVersion()] : choice;
     }
 
+    /// @dev Choose a proxy `version` to use for the caller, using the sequential identifier.
     function chooseVersion(uint256 version) public {
-        require(version <= getVersion(), "Invalid version");
+        require(version <= getLatestVersion(), "Invalid version");
         userChoices[msg.sender] = version;
     }
 
-    function upgradeTo(address implementation, bytes calldata data) public {
-        // load the admin
-        address admin;
-        bytes32 slot = ADMIN_SLOT;
-        assembly {
-            admin := sload(slot)
-        }
-
-        // check it
-        require(msg.sender == admin);
-
+    /// @dev Install a new proxy implementation, identified as the latest version.
+    function upgradeTo(address implementation, bytes calldata data) public onlyAdmin {
         // change it
-        uint256 version = getVersion();
+        uint256 version = getLatestVersion();
         implementations[version + 1] = implementation;
-        _setVersion(version + 1);
+        _setLatestVersion(version + 1);
 
         (bool success,) = implementation.delegatecall(data);
         require(success);
     }
 
-    function changeAdmin(address newAdmin) public {
-        // load the admin
-        address admin;
-        bytes32 slot = ADMIN_SLOT;
-        assembly {
-            admin := sload(slot)
-        }
-
-        // check it
-        require(msg.sender == admin);
-
-        // change it
+    /// @dev Propose an admin address change. Only available to admin.
+    function proposeAdmin(address newAdmin) public onlyAdmin {
+        bytes32 slot = PROPOSED_ADMIN_SLOT;
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             sstore(slot, newAdmin)
         }
     }
 
+    /// @dev Change the admin address. Only available to the proposed admin.
+    function changeAdmin() public {
+        bytes32 slot = PROPOSED_ADMIN_SLOT;
+        address proposedAdmin;
+        // solhint-disable-next-line no-inline-assembly
+		assembly {
+			proposedAdmin := sload(slot)
+		}
+        require(msg.sender == proposedAdmin, "YieldProxy: Restricted to proposed admin");
+
+        slot = ADMIN_SLOT;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            sstore(slot, proposedAdmin)
+        }
+    }
+
+    /// @dev Forward a call to the implementation address.
     fallback() external payable {
         address target = getImplementation();
+        // solhint-disable-next-line no-inline-assembly
         assembly {
-            //let target := sload(slot)
             calldatacopy(0, 0, calldatasize())
             let result := delegatecall(gas(), target, 0x0, calldatasize(), 0x0, 0)
             let retSize := returndatasize()
