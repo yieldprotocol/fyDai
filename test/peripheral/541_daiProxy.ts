@@ -3,7 +3,7 @@ const Pool = artifacts.require('Pool')
 import { WETH, rate1, daiTokens1, wethTokens1, toWad, subBN, bnify, MAX, chainId, name, ZERO } from '../shared/utils'
 import { MakerEnvironment, YieldEnvironmentLite, Contract } from '../shared/fixtures'
 import { getSignatureDigest, getPermitDigest, getDaiDigest, userPrivateKey, sign } from '../shared/signatures'
-import { setupProxy, upgradeToV2 } from '../shared/proxies'
+import { setupProxy } from '../shared/proxies'
 import { keccak256, toUtf8Bytes } from 'ethers/lib/utils'
 
 // @ts-ignore
@@ -181,71 +181,6 @@ contract('YieldProxy - DaiProxy', async (accounts) => {
 
       // Give some fyDai to user1
       await fyDai1.mint(user1, fyDaiTokens1, { from: owner })
-    })
-
-    describe('can be upgraded', async () => {
-      const YieldProxy = artifacts.require('YieldProxy')
-      let proxy : Contract
-      
-      beforeEach(async () => {
-        proxy = await YieldProxy.at(daiProxy.address)
-        daiProxy = await upgradeToV2(daiProxy)
-      })
-
-      it('returns the latest version', async () => {
-        const ret = await proxy.getLatestVersion()
-        expect(ret.toString()).to.eq('2')
-      })
-
-      it('can call new functions', async () => {
-        const ret = await daiProxy.get()
-        expect(ret.toString()).to.eq('123')
-      })
-
-      it('can call upgraded functions', async () => {
-        const ret = await daiProxy.addLiquidity.call(pool.address, 0, 0);
-        expect(ret.toString()).to.eq('42')
-      })
-
-      // this would call to weth which we did not explicitly
-      // store in the new dai proxy
-      it('can call old functions', async () => {
-        await daiProxy.post(user1, { from: user1, value: bnify(wethTokens1).mul(2).toString() })
-      })
-
-      it('maintains `onboard` permissions', async () => {
-        await daiProxy.post(user1, { from: user1, value: bnify(wethTokens1).mul(2).toString() })
-        // `onboard` must be called in order to borrow. even though we
-        // upgraded, we are still able to call the function without re-onboarding!
-        await daiProxy.borrowDaiForMaximumFYDai(pool.address, WETH, maturity1, user2, fyDaiTokens1, one, {
-          from: user1,
-        })
-      })
-
-      it('maintains `authorizePool` permissions', async () => {
-        // `authorizePool` must be called in order to borrow. even though we
-        // upgraded, we are still able to call the function without re-authorizing!
-        await daiProxy.borrowMinimumDaiForFYDai(pool.address, WETH, maturity1, user2, fyDaiTokens1, one, {
-          from: user1,
-        })
-      })
-
-      it('can choose old versions', async () => {
-        await proxy.chooseVersion(1, { from: user1 })
-        let ret = await daiProxy.addLiquidity.call(pool.address, 0, 0, { from: user1 });
-        expect(ret.toString()).to.eq('0')
-
-        await proxy.chooseVersion(2, { from: user1 })
-        ret = await daiProxy.addLiquidity.call(pool.address, 0, 0, { from: user1 });
-        expect(ret.toString()).to.eq('42')
-      })
-
-      it('cannot choose versions that have not been implemented yet', async () => {
-        await expectRevert(
-          proxy.chooseVersion(bnify(await proxy.getLatestVersion()).add(1).toString(), { from: user1 }),
-          "YieldProxy: Invalid version"
-        )
-      })
     })
 
     it('fails on unknown pools', async () => {
