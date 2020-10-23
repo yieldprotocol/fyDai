@@ -109,7 +109,7 @@ contract YieldProxy is YieldAuth {
 
     /// @dev Choose a proxy `version` to use for the caller, using the sequential identifier.
     function chooseVersion(uint256 version) public {
-        require(version <= getLatestVersion(), "Invalid version");
+        require(version <= getLatestVersion(), "YieldProxy: Invalid version");
         userChoices[msg.sender] = version;
     }
 

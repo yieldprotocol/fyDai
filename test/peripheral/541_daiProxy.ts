@@ -184,8 +184,17 @@ contract('YieldProxy - DaiProxy', async (accounts) => {
     })
 
     describe('can be upgraded', async () => {
+      const YieldProxy = artifacts.require('YieldProxy')
+      let proxy : Contract
+      
       beforeEach(async () => {
+        proxy = await YieldProxy.at(daiProxy.address)
         daiProxy = await upgradeToV2(daiProxy)
+      })
+
+      it('returns the latest version', async () => {
+        const ret = await proxy.getLatestVersion()
+        expect(ret.toString()).to.eq('2')
       })
 
       it('can call new functions', async () => {
@@ -219,6 +228,23 @@ contract('YieldProxy - DaiProxy', async (accounts) => {
         await daiProxy.borrowMinimumDaiForFYDai(pool.address, WETH, maturity1, user2, fyDaiTokens1, one, {
           from: user1,
         })
+      })
+
+      it('can choose old versions', async () => {
+        await proxy.chooseVersion(1, { from: user1 })
+        let ret = await daiProxy.addLiquidity.call(pool.address, 0, 0, { from: user1 });
+        expect(ret.toString()).to.eq('0')
+
+        await proxy.chooseVersion(2, { from: user1 })
+        ret = await daiProxy.addLiquidity.call(pool.address, 0, 0, { from: user1 });
+        expect(ret.toString()).to.eq('42')
+      })
+
+      it('cannot choose versions that have not been implemented yet', async () => {
+        await expectRevert(
+          proxy.chooseVersion(bnify(await proxy.getLatestVersion()).add(1).toString(), { from: user1 }),
+          "YieldProxy: Invalid version"
+        )
       })
     })
 
