@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.6.10;
 
-import "@openzeppelin/contracts/math/Math.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "./interfaces/IVat.sol";
-import "./interfaces/IPot.sol";
-import "./interfaces/ITreasury.sol";
-import "./interfaces/IController.sol";
-import "./interfaces/IFYDai.sol";
-import "./helpers/Delegable.sol";
-import "./helpers/DecimalMath.sol";
-import "./helpers/Orchestrated.sol";
-
+import '@openzeppelin/contracts/math/Math.sol';
+import '@openzeppelin/contracts/math/SafeMath.sol';
+import './interfaces/IVat.sol';
+import './interfaces/IPot.sol';
+import './interfaces/ITreasury.sol';
+import './interfaces/IController.sol';
+import './interfaces/IFYDai.sol';
+import './helpers/Delegable.sol';
+import './helpers/DecimalMath.sol';
+import './helpers/Orchestrated.sol';
 
 /**
  * @dev The Controller manages collateral and debt levels for all users, and it is a major user entry point for the Yield protocol.
@@ -25,34 +24,30 @@ import "./helpers/Orchestrated.sol";
  * Controller allows orchestrated contracts to erase any amount of debt or collateral for an user. This is to be used during liquidations or during unwind.
  * Users can delegate the control of their accounts in Controllers to any address.
  */
-contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
+contract Controller is IController, Orchestrated, Delegable, DecimalMath {
     using SafeMath for uint256;
 
     event Posted(bytes32 indexed collateral, address indexed user, int256 amount);
     event Borrowed(bytes32 indexed collateral, uint256 indexed maturity, address indexed user, int256 amount);
 
-    bytes32 public constant CHAI = "CHAI";
-    bytes32 public constant WETH = "ETH-A";
+    bytes32 public constant CHAI = 'CHAI';
+    bytes32 public constant WETH = 'ETH-A';
     uint256 public constant DUST = 50e15; // 0.05 ETH
 
     IVat public vat;
     IPot public pot;
     ITreasury public override treasury;
 
-    mapping(uint256 => IFYDai) public override series;                 // FYDai series, indexed by maturity
-    uint256[] public override seriesIterator;                         // We need to know all the series
+    mapping(uint256 => IFYDai) public override series; // FYDai series, indexed by maturity
+    uint256[] public override seriesIterator; // We need to know all the series
 
-    mapping(bytes32 => mapping(address => uint256)) public override posted;                        // Collateral posted by each user
-    mapping(bytes32 => mapping(uint256 => mapping(address => uint256))) public override debtFYDai;  // Debt owed by each user, by series
+    mapping(bytes32 => mapping(address => uint256)) public override posted; // Collateral posted by each user
+    mapping(bytes32 => mapping(uint256 => mapping(address => uint256))) public override debtFYDai; // Debt owed by each user, by series
 
     bool public live = true;
 
     /// @dev Set up addresses for vat, pot and Treasury.
-    constructor (
-        address treasury_,
-        address[] memory fyDais
-
-    ) public {
+    constructor(address treasury_, address[] memory fyDais) public {
         treasury = ITreasury(treasury_);
         vat = treasury.vat();
         pot = treasury.pot();
@@ -63,43 +58,31 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
 
     /// @dev Modified functions only callable while the Controller is not unwinding due to a MakerDAO shutdown.
     modifier onlyLive() {
-        require(live == true, "Controller: Not available during unwind");
+        require(live == true, 'Controller: Not available during unwind');
         _;
     }
 
     /// @dev Only valid collateral types are Weth and Chai.
     modifier validCollateral(bytes32 collateral) {
-        require(
-            collateral == WETH || collateral == CHAI,
-            "Controller: Unrecognized collateral"
-        );
+        require(collateral == WETH || collateral == CHAI, 'Controller: Unrecognized collateral');
         _;
     }
 
     /// @dev Only series added through `addSeries` are valid.
     modifier validSeries(uint256 maturity) {
-        require(
-            containsSeries(maturity),
-            "Controller: Unrecognized series"
-        );
+        require(containsSeries(maturity), 'Controller: Unrecognized series');
         _;
     }
 
     /// @dev Safe casting from uint256 to int256
-    function toInt256(uint256 x) internal pure returns(int256) {
-        require(
-            x <= uint256(type(int256).max),
-            "Controller: Cast overflow"
-        );
+    function toInt256(uint256 x) internal pure returns (int256) {
+        require(x <= uint256(type(int256).max), 'Controller: Cast overflow');
         return int256(x);
     }
 
     /// @dev Disables post, withdraw, borrow and repay. To be called only when Treasury shuts down.
     function shutdown() public override {
-        require(
-            treasury.live() == false,
-            "Controller: Treasury is live"
-        );
+        require(treasury.live() == false, 'Controller: Treasury is live');
         live = false;
     }
 
@@ -135,10 +118,7 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
     /// @param fyDaiContract Address of the fyDai series to add.
     function addSeries(address fyDaiContract) private {
         uint256 maturity = IFYDai(fyDaiContract).maturity();
-        require(
-            !containsSeries(maturity),
-            "Controller: Series already added"
-        );
+        require(!containsSeries(maturity), 'Controller: Series already added');
         series[maturity] = IFYDai(fyDaiContract);
         seriesIterator.push(maturity);
     }
@@ -149,14 +129,14 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
     /// @param maturity Maturity of an added series
     /// @param fyDaiAmount Amount of fyDai to convert.
     /// @return Dai equivalent of an fyDai amount.
-    function inDai(bytes32 collateral, uint256 maturity, uint256 fyDaiAmount)
-        public view override
-        validCollateral(collateral)
-        returns (uint256)
-    {
+    function inDai(
+        bytes32 collateral,
+        uint256 maturity,
+        uint256 fyDaiAmount
+    ) public view override validCollateral(collateral) returns (uint256) {
         IFYDai fyDai = series[maturity];
-        if (fyDai.isMature()){
-            if (collateral == WETH){
+        if (fyDai.isMature()) {
+            if (collateral == WETH) {
                 return muld(fyDaiAmount, fyDai.rateGrowth());
             } else if (collateral == CHAI) {
                 return muld(fyDaiAmount, fyDai.chiGrowth());
@@ -172,14 +152,14 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
     /// @param maturity Maturity of an added series
     /// @param daiAmount Amount of Dai to convert.
     /// @return fyDai equivalent of a Dai amount.
-    function inFYDai(bytes32 collateral, uint256 maturity, uint256 daiAmount)
-        public view override
-        validCollateral(collateral)
-        returns (uint256)
-    {
+    function inFYDai(
+        bytes32 collateral,
+        uint256 maturity,
+        uint256 daiAmount
+    ) public view override validCollateral(collateral) returns (uint256) {
         IFYDai fyDai = series[maturity];
-        if (fyDai.isMature()){
-            if (collateral == WETH){
+        if (fyDai.isMature()) {
+            if (collateral == WETH) {
                 return divd(daiAmount, fyDai.rateGrowth());
             } else if (collateral == CHAI) {
                 return divd(daiAmount, fyDai.chiGrowth());
@@ -200,7 +180,11 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
     // debt_now = debt_mat * ----------
     //                        rate_mat
     //
-    function debtDai(bytes32 collateral, uint256 maturity, address user) public view override returns (uint256) {
+    function debtDai(
+        bytes32 collateral,
+        uint256 maturity,
+        address user
+    ) public view override returns (uint256) {
         return inDai(collateral, maturity, debtFYDai[collateral][maturity][user]);
     }
 
@@ -230,14 +214,14 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
     //
     function powerOf(bytes32 collateral, address user) public view returns (uint256) {
         // dai = price * collateral
-        if (collateral == WETH){
-            (,, uint256 spot,,) = vat.ilks(WETH);  // Stability fee and collateralization ratio for Weth
+        if (collateral == WETH) {
+            (, , uint256 spot, , ) = vat.ilks(WETH); // Stability fee and collateralization ratio for Weth
             return muld(posted[collateral][user], spot);
         } else if (collateral == CHAI) {
             uint256 chi = pot.chi();
             return muld(posted[collateral][user], chi);
         } else {
-            revert("Controller: Invalid collateral type");
+            revert('Controller: Invalid collateral type');
         }
     }
 
@@ -245,12 +229,14 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
     /// @param collateral Valid collateral type.
     /// @param user Address of the user vault.
     function locked(bytes32 collateral, address user)
-        public view override
+        public
+        view
+        override
         validCollateral(collateral)
         returns (uint256)
     {
-        if (collateral == WETH){
-            (,, uint256 spot,,) = vat.ilks(WETH);  // Stability fee and collateralization ratio for Weth
+        if (collateral == WETH) {
+            (, , uint256 spot, , ) = vat.ilks(WETH); // Stability fee and collateralization ratio for Weth
             return divdrup(totalDebtDai(collateral, user), spot);
         } else if (collateral == CHAI) {
             return divdrup(totalDebtDai(collateral, user), pot.chi());
@@ -265,24 +251,27 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
     /// @param to Yield vault to put the collateral in.
     /// @param amount Amount of collateral to move.
     // from --- Token ---> us(to)
-    function post(bytes32 collateral, address from, address to, uint256 amount)
-        public override 
+    function post(
+        bytes32 collateral,
+        address from,
+        address to,
+        uint256 amount
+    )
+        public
+        override
         validCollateral(collateral)
-        onlyHolderOrDelegate(from, "Controller: Only Holder Or Delegate")
+        onlyHolderOrDelegate(from, 'Controller: Only Holder Or Delegate')
         onlyLive
     {
         posted[collateral][to] = posted[collateral][to].add(amount);
 
-        if (collateral == WETH){
-            require(
-                aboveDustOrZero(collateral, to),
-                "Controller: Below dust"
-            );
+        if (collateral == WETH) {
+            require(aboveDustOrZero(collateral, to), 'Controller: Below dust');
             treasury.pushWeth(from, amount);
         } else if (collateral == CHAI) {
             treasury.pushChai(from, amount);
         }
-        
+
         emit Posted(collateral, to, toInt256(amount));
     }
 
@@ -293,24 +282,24 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
     /// @param to Wallet to put the collateral in.
     /// @param amount Amount of collateral to move.
     // us(from) --- Token ---> to
-    function withdraw(bytes32 collateral, address from, address to, uint256 amount)
-        public override
+    function withdraw(
+        bytes32 collateral,
+        address from,
+        address to,
+        uint256 amount
+    )
+        public
+        override
         validCollateral(collateral)
-        onlyHolderOrDelegate(from, "Controller: Only Holder Or Delegate")
+        onlyHolderOrDelegate(from, 'Controller: Only Holder Or Delegate')
         onlyLive
     {
         posted[collateral][from] = posted[collateral][from].sub(amount); // Will revert if not enough posted
 
-        require(
-            isCollateralized(collateral, from),
-            "Controller: Too much debt"
-        );
+        require(isCollateralized(collateral, from), 'Controller: Too much debt');
 
-        if (collateral == WETH){
-            require(
-                aboveDustOrZero(collateral, from),
-                "Controller: Below dust"
-            );
+        if (collateral == WETH) {
+            require(aboveDustOrZero(collateral, from), 'Controller: Below dust');
             treasury.pullWeth(to, amount);
         } else if (collateral == CHAI) {
             treasury.pullChai(to, amount);
@@ -332,21 +321,25 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
     //
     // us(from) --- fyDai ---> to
     // debt++
-    function borrow(bytes32 collateral, uint256 maturity, address from, address to, uint256 fyDaiAmount)
-        public override
+    function borrow(
+        bytes32 collateral,
+        uint256 maturity,
+        address from,
+        address to,
+        uint256 fyDaiAmount
+    )
+        public
+        override
         validCollateral(collateral)
         validSeries(maturity)
-        onlyHolderOrDelegate(from, "Controller: Only Holder Or Delegate")
+        onlyHolderOrDelegate(from, 'Controller: Only Holder Or Delegate')
         onlyLive
     {
         IFYDai fyDai = series[maturity];
 
         debtFYDai[collateral][maturity][from] = debtFYDai[collateral][maturity][from].add(fyDaiAmount);
 
-        require(
-            isCollateralized(collateral, from),
-            "Controller: Too much debt"
-        );
+        require(isCollateralized(collateral, from), 'Controller: Too much debt');
 
         fyDai.mint(to, fyDaiAmount);
         emit Borrowed(collateral, maturity, from, toInt256(fyDaiAmount));
@@ -367,11 +360,18 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
     //
     // user(from) --- fyDai ---> us(to)
     // debt--
-    function repayFYDai(bytes32 collateral, uint256 maturity, address from, address to, uint256 fyDaiAmount)
-        public override
+    function repayFYDai(
+        bytes32 collateral,
+        uint256 maturity,
+        address from,
+        address to,
+        uint256 fyDaiAmount
+    )
+        public
+        override
         validCollateral(collateral)
         validSeries(maturity)
-        onlyHolderOrDelegate(from, "Controller: Only Holder Or Delegate")
+        onlyHolderOrDelegate(from, 'Controller: Only Holder Or Delegate')
         onlyLive
         returns (uint256)
     {
@@ -398,16 +398,23 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
     //
     // user --- dai ---> us
     // debt--
-    function repayDai(bytes32 collateral, uint256 maturity, address from, address to, uint256 daiAmount)
-        public override
+    function repayDai(
+        bytes32 collateral,
+        uint256 maturity,
+        address from,
+        address to,
+        uint256 daiAmount
+    )
+        public
+        override
         validCollateral(collateral)
         validSeries(maturity)
-        onlyHolderOrDelegate(from, "Controller: Only Holder Or Delegate")
+        onlyHolderOrDelegate(from, 'Controller: Only Holder Or Delegate')
         onlyLive
         returns (uint256)
     {
         uint256 toRepay = Math.min(daiAmount, debtDai(collateral, maturity, to));
-        treasury.pushDai(from, toRepay);                                      // Have Treasury process the dai
+        treasury.pushDai(from, toRepay); // Have Treasury process the dai
         _repay(collateral, maturity, to, inFYDai(collateral, maturity, toRepay));
         return toRepay;
     }
@@ -423,8 +430,13 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
     //                                                principal
     // principal_repayment = gross_repayment * ----------------------
     //                                          principal + interest
-    //    
-    function _repay(bytes32 collateral, uint256 maturity, address user, uint256 fyDaiAmount) internal {
+    //
+    function _repay(
+        bytes32 collateral,
+        uint256 maturity,
+        address user,
+        uint256 fyDaiAmount
+    ) internal {
         debtFYDai[collateral][maturity][user] = debtFYDai[collateral][maturity][user].sub(fyDaiAmount);
 
         emit Borrowed(collateral, maturity, user, -toInt256(fyDaiAmount));
@@ -436,9 +448,10 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
     /// @param user Address of the user vault
     /// @return The amounts of collateral and debt removed from Controller.
     function erase(bytes32 collateral, address user)
-        public override
+        public
+        override
         validCollateral(collateral)
-        onlyOrchestrated("Controller: Not Authorized")
+        onlyOrchestrated('Controller: Not Authorized')
         returns (uint256, uint256)
     {
         uint256 userCollateral = posted[collateral][user];

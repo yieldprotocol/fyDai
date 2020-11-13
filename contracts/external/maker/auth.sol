@@ -16,42 +16,38 @@ pragma solidity >=0.4.23;
 
 interface DSAuthority {
     function canCall(
-        address src, address dst, bytes4 sig
+        address src,
+        address dst,
+        bytes4 sig
     ) external view returns (bool);
 }
 
 contract DSAuthEvents {
-    event LogSetAuthority (address indexed authority);
-    event LogSetOwner     (address indexed owner);
+    event LogSetAuthority(address indexed authority);
+    event LogSetOwner(address indexed owner);
 }
 
 contract DSAuth is DSAuthEvents {
-    DSAuthority  public  authority;
-    address      public  owner;
+    DSAuthority public authority;
+    address public owner;
 
     constructor() public {
         owner = msg.sender;
         emit LogSetOwner(msg.sender);
     }
 
-    function setOwner(address owner_)
-        public
-        auth
-    {
+    function setOwner(address owner_) public auth {
         owner = owner_;
         emit LogSetOwner(owner);
     }
 
-    function setAuthority(DSAuthority authority_)
-        public
-        auth
-    {
+    function setAuthority(DSAuthority authority_) public auth {
         authority = authority_;
         emit LogSetAuthority(address(authority));
     }
 
     modifier auth {
-        require(isAuthorized(msg.sender, msg.sig), "ds-auth-unauthorized");
+        require(isAuthorized(msg.sender, msg.sig), 'ds-auth-unauthorized');
         _;
     }
 

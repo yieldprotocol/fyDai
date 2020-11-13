@@ -17,11 +17,11 @@ pragma solidity ^0.6.0;
 
 contract LibNote {
     event LogNote(
-        bytes4   indexed  sig,
-        address  indexed  usr,
-        bytes32  indexed  arg1,
-        bytes32  indexed  arg2,
-        bytes             data
+        bytes4 indexed sig,
+        address indexed usr,
+        bytes32 indexed arg1,
+        bytes32 indexed arg2,
+        bytes data
     ) anonymous;
 
     modifier note {

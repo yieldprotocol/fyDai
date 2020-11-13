@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.6.10;
 
-import "../interfaces/IWeth.sol";
-import "../interfaces/IDai.sol";
-import "../interfaces/IFYDai.sol";
-import "../interfaces/IController.sol";
-import "../interfaces/IPool.sol";
-import "../helpers/SafeCast.sol";
-import "../helpers/YieldAuth.sol";
-
+import '../interfaces/IWeth.sol';
+import '../interfaces/IDai.sol';
+import '../interfaces/IFYDai.sol';
+import '../interfaces/IController.sol';
+import '../interfaces/IPool.sol';
+import '../helpers/SafeCast.sol';
+import '../helpers/YieldAuth.sol';
 
 contract BorrowProxy {
     using SafeCast for uint256;
@@ -22,9 +21,14 @@ contract BorrowProxy {
     IController public immutable controller;
     address public immutable treasury;
 
-    bytes32 public constant WETH = "ETH-A";
+    bytes32 public constant WETH = 'ETH-A';
 
-    constructor(address weth_, address dai_, address treasury_, address controller_) public {
+    constructor(
+        address weth_,
+        address dai_,
+        address treasury_,
+        address controller_
+    ) public {
         controller = IController(controller_);
         treasury = treasury_;
 
@@ -33,16 +37,15 @@ contract BorrowProxy {
     }
 
     /// @dev The WETH9 contract will send ether to YieldProxy on `weth.withdraw` using this function.
-    receive() external payable { }
+    receive() external payable {}
 
     /// @dev Users use `post` in YieldProxy to post ETH to the Controller (amount = msg.value), which will be converted to Weth here.
     /// @param to Yield Vault to deposit collateral in.
-    function post(address to)
-        external payable {
+    function post(address to) external payable {
         // Approvals in the constructor don't work for contracts calling this via `addDelegatecall`
         if (weth.allowance(address(this), treasury) < type(uint256).max) weth.approve(treasury, type(uint256).max);
 
-        weth.deposit{ value: msg.value }();
+        weth.deposit{value: msg.value}();
         controller.post(WETH, address(this), to, msg.value);
     }
 
@@ -50,8 +53,7 @@ contract BorrowProxy {
     /// Users must have called `controller.addDelegate(yieldProxy.address)` to authorize YieldProxy to act in their behalf.
     /// @param to Wallet to send Eth to.
     /// @param amount Amount of weth to move.
-    function withdraw(address payable to, uint256 amount)
-        public {
+    function withdraw(address payable to, uint256 amount) public {
         controller.withdraw(WETH, msg.sender, address(this), amount);
         weth.withdraw(amount);
         to.transfer(amount);
@@ -71,15 +73,13 @@ contract BorrowProxy {
         address to,
         uint256 maximumFYDai,
         uint256 daiToBorrow
-    )
-        public
-        returns (uint256)
-    {
+    ) public returns (uint256) {
         uint256 fyDaiToBorrow = pool.buyDaiPreview(daiToBorrow.toUint128());
-        require (fyDaiToBorrow <= maximumFYDai, "YieldProxy: Too much fyDai required");
+        require(fyDaiToBorrow <= maximumFYDai, 'YieldProxy: Too much fyDai required');
 
         // allow the pool to pull FYDai/dai from us for LPing
-        if (pool.fyDai().allowance(address(this), address(pool)) < type(uint112).max) pool.fyDai().approve(address(pool), type(uint256).max);
+        if (pool.fyDai().allowance(address(this), address(pool)) < type(uint112).max)
+            pool.fyDai().approve(address(pool), type(uint256).max);
 
         // The collateral for this borrow needs to have been posted beforehand
         controller.borrow(collateral, maturity, msg.sender, address(this), fyDaiToBorrow);
@@ -92,15 +92,14 @@ contract BorrowProxy {
     /// @param to Wallet receiving the dai being bought
     /// @param fyDaiIn Amount of fyDai being sold
     /// @param minDaiOut Minimum amount of dai being bought
-    function sellFYDai(IPool pool, address to, uint128 fyDaiIn, uint128 minDaiOut)
-        public
-        returns(uint256)
-    {
+    function sellFYDai(
+        IPool pool,
+        address to,
+        uint128 fyDaiIn,
+        uint128 minDaiOut
+    ) public returns (uint256) {
         uint256 daiOut = pool.sellFYDai(msg.sender, to, fyDaiIn);
-        require(
-            daiOut >= minDaiOut,
-            "BorrowProxy: Limit not reached"
-        );
+        require(daiOut >= minDaiOut, 'BorrowProxy: Limit not reached');
         return daiOut;
     }
 
@@ -108,15 +107,14 @@ contract BorrowProxy {
     /// @param to Wallet receiving the fyDai being bought
     /// @param daiIn Amount of dai being sold
     /// @param minFYDaiOut Minimum amount of fyDai being bought
-    function sellDai(IPool pool, address to, uint128 daiIn, uint128 minFYDaiOut)
-        public
-        returns(uint256)
-    {
+    function sellDai(
+        IPool pool,
+        address to,
+        uint128 daiIn,
+        uint128 minFYDaiOut
+    ) public returns (uint256) {
         uint256 fyDaiOut = pool.sellDai(msg.sender, to, daiIn);
-        require(
-            fyDaiOut >= minFYDaiOut,
-            "BorrowProxy: Limit not reached"
-        );
+        require(fyDaiOut >= minFYDaiOut, 'BorrowProxy: Limit not reached');
         return fyDaiOut;
     }
 
@@ -128,8 +126,11 @@ contract BorrowProxy {
     /// @param to Wallet to send Eth to.
     /// @param amount Amount of weth to move.
     /// @param controllerSig packed signature for delegation of this proxy in the controller. Ignored if '0x'.
-    function withdrawWithSignature(address payable to, uint256 amount, bytes memory controllerSig)
-        public {
+    function withdrawWithSignature(
+        address payable to,
+        uint256 amount,
+        bytes memory controllerSig
+    ) public {
         if (controllerSig.length > 0) controller.addDelegatePacked(controllerSig);
         withdraw(to, amount);
     }
@@ -149,10 +150,7 @@ contract BorrowProxy {
         uint256 maximumFYDai,
         uint256 daiToBorrow,
         bytes memory controllerSig
-    )
-        public
-        returns (uint256)
-    {
+    ) public returns (uint256) {
         if (controllerSig.length > 0) controller.addDelegatePacked(controllerSig);
         return borrowDaiForMaximumFYDai(pool, collateral, maturity, to, maximumFYDai, daiToBorrow);
     }
@@ -167,10 +165,14 @@ contract BorrowProxy {
     /// @param daiAmount Amount of Dai to use for debt repayment.
     /// @param daiSig packed signature for permit of dai transfers to this proxy. Ignored if '0x'.
     /// @param controllerSig packed signature for delegation of this proxy in the controller. Ignored if '0x'.
-    function repayDaiWithSignature(bytes32 collateral, uint256 maturity, address to, uint256 daiAmount, bytes memory daiSig, bytes memory controllerSig)
-        external
-        returns(uint256)
-    {
+    function repayDaiWithSignature(
+        bytes32 collateral,
+        uint256 maturity,
+        address to,
+        uint256 daiAmount,
+        bytes memory daiSig,
+        bytes memory controllerSig
+    ) external returns (uint256) {
         if (controllerSig.length > 0) controller.addDelegatePacked(controllerSig);
         if (daiSig.length > 0) dai.permitPackedDai(treasury, daiSig);
         controller.repayDai(collateral, maturity, msg.sender, to, daiAmount);
@@ -182,10 +184,14 @@ contract BorrowProxy {
     /// @param minDaiOut Minimum amount of dai being bought
     /// @param fyDaiSig packed signature for approving fyDai transfers to a pool. Ignored if '0x'.
     /// @param poolSig packed signature for delegation of this proxy in a pool. Ignored if '0x'.
-    function sellFYDaiWithSignature(IPool pool, address to, uint128 fyDaiIn, uint128 minDaiOut, bytes memory fyDaiSig, bytes memory poolSig)
-        public
-        returns(uint256)
-    {
+    function sellFYDaiWithSignature(
+        IPool pool,
+        address to,
+        uint128 fyDaiIn,
+        uint128 minDaiOut,
+        bytes memory fyDaiSig,
+        bytes memory poolSig
+    ) public returns (uint256) {
         if (fyDaiSig.length > 0) pool.fyDai().permitPacked(address(pool), fyDaiSig);
         if (poolSig.length > 0) pool.addDelegatePacked(poolSig);
         return sellFYDai(pool, to, fyDaiIn, minDaiOut);
@@ -197,10 +203,14 @@ contract BorrowProxy {
     /// @param minFYDaiOut Minimum amount of fyDai being bought
     /// @param daiSig packed signature for approving Dai transfers to a pool. Ignored if '0x'.
     /// @param poolSig packed signature for delegation of this proxy in a pool. Ignored if '0x'.
-    function sellDaiWithSignature(IPool pool, address to, uint128 daiIn, uint128 minFYDaiOut, bytes memory daiSig, bytes memory poolSig)
-        external
-        returns(uint256)
-    {
+    function sellDaiWithSignature(
+        IPool pool,
+        address to,
+        uint128 daiIn,
+        uint128 minFYDaiOut,
+        bytes memory daiSig,
+        bytes memory poolSig
+    ) external returns (uint256) {
         if (daiSig.length > 0) dai.permitPackedDai(address(pool), daiSig);
         if (poolSig.length > 0) pool.addDelegatePacked(poolSig);
         return sellDai(pool, to, daiIn, minFYDaiOut);

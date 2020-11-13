@@ -18,8 +18,8 @@
 
 pragma solidity ^0.6.0;
 
-import "./auth.sol";
-import "./note.sol";
+import './auth.sol';
+import './note.sol';
 
 // DSProxy
 // Allows code execution using a persistant identity This can be very
@@ -27,14 +27,13 @@ import "./note.sol";
 // the proxy can be changed, this allows for dynamic ownership models
 // i.e. a multisig
 contract DSProxy is DSAuth, DSNote {
-    DSProxyCache public cache;  // global cache for contracts
+    DSProxyCache public cache; // global cache for contracts
 
     constructor(address _cacheAddr) public {
         setCache(_cacheAddr);
     }
 
-    receive() external payable {
-    }
+    receive() external payable {}
 
     // use the proxy to execute calldata _data on contract _code
     function execute(bytes memory _code, bytes memory _data)
@@ -51,14 +50,8 @@ contract DSProxy is DSAuth, DSNote {
         response = execute(target, _data);
     }
 
-    function execute(address _target, bytes memory _data)
-        public
-        auth
-        note
-        payable
-        returns (bytes memory response)
-    {
-        require(_target != address(0), "ds-proxy-target-address-required");
+    function execute(address _target, bytes memory _data) public payable auth note returns (bytes memory response) {
+        require(_target != address(0), 'ds-proxy-target-address-required');
 
         // call contract in current context
         assembly {
@@ -71,22 +64,17 @@ contract DSProxy is DSAuth, DSNote {
             returndatacopy(add(response, 0x20), 0, size)
 
             switch iszero(succeeded)
-            case 1 {
-                // throw if delegatecall failed
-                revert(add(response, 0x20), size)
-            }
+                case 1 {
+                    // throw if delegatecall failed
+                    revert(add(response, 0x20), size)
+                }
         }
     }
 
     //set new cache
-    function setCache(address _cacheAddr)
-        public
-        auth
-        note
-        returns (bool)
-    {
-        require(_cacheAddr != address(0), "ds-proxy-cache-address-required");
-        cache = DSProxyCache(_cacheAddr);  // overwrite cache
+    function setCache(address _cacheAddr) public auth note returns (bool) {
+        require(_cacheAddr != address(0), 'ds-proxy-cache-address-required');
+        cache = DSProxyCache(_cacheAddr); // overwrite cache
         return true;
     }
 }
@@ -96,7 +84,7 @@ contract DSProxy is DSAuth, DSNote {
 // Deployed proxy addresses are logged
 contract DSProxyFactory {
     event Created(address indexed sender, address indexed owner, address proxy, address cache);
-    mapping(address=>bool) public isProxy;
+    mapping(address => bool) public isProxy;
     DSProxyCache public cache;
 
     constructor() public {
@@ -140,10 +128,10 @@ contract DSProxyCache {
         assembly {
             target := create(0, add(_code, 0x20), mload(_code))
             switch iszero(extcodesize(target))
-            case 1 {
-                // throw if contract failed to deploy
-                revert(0, 0)
-            }
+                case 1 {
+                    // throw if contract failed to deploy
+                    revert(0, 0)
+                }
         }
         bytes32 hash = keccak256(_code);
         cache[hash] = target;

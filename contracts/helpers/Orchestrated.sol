@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.6.10;
-import "@openzeppelin/contracts/access/Ownable.sol";
-
+import '@openzeppelin/contracts/access/Ownable.sol';
 
 /**
  * @dev Orchestrated allows to define static access control between multiple contracts.
@@ -14,12 +13,12 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract Orchestrated is Ownable {
     event GrantedAccess(address access, bytes4 signature);
 
-    mapping(address => mapping (bytes4 => bool)) public orchestration;
+    mapping(address => mapping(bytes4 => bool)) public orchestration;
 
-    constructor () public Ownable() {}
+    constructor() public Ownable() {}
 
     /// @dev Restrict usage to authorized users
-    /// @param err The error to display if the validation fails 
+    /// @param err The error to display if the validation fails
     modifier onlyOrchestrated(string memory err) {
         require(orchestration[msg.sender][msg.sig], err);
         _;

@@ -4,261 +4,463 @@
  */
 pragma solidity ^0.6.0;
 
-import "../pool/Math64x64.sol";
+import '../pool/Math64x64.sol';
 
 /**
  * Ethereum smart contract library implementing Yield Math model.
  */
 library YieldMath48 {
-  /**
-   * Calculate the amount of fyDai a user would get for given amount of Dai.
-   *
-   * @param daiReserves Dai reserves amount
-   * @param fyDaiReserves fyDai reserves amount
-   * @param daiAmount Dai amount to be traded
-   * @param timeTillMaturity time till maturity in seconds
-   * @param k time till maturity coefficient, multiplied by 2^64
-   * @param g fee coefficient, multiplied by 2^64
-   * @return the amount of fyDai a user would get for given amount of Dai
-   */
-  function fyDaiOutForDaiIn (
-    uint128 daiReserves, uint128 fyDaiReserves, uint128 daiAmount,
-    uint128 timeTillMaturity, int128 k, int128 g)
-  internal pure returns (uint128) {
-    // t = k * timeTillMaturity
-    int128 t = Math64x64.mul (k, Math64x64.fromUInt (timeTillMaturity));
+    /**
+     * Calculate the amount of fyDai a user would get for given amount of Dai.
+     *
+     * @param daiReserves Dai reserves amount
+     * @param fyDaiReserves fyDai reserves amount
+     * @param daiAmount Dai amount to be traded
+     * @param timeTillMaturity time till maturity in seconds
+     * @param k time till maturity coefficient, multiplied by 2^64
+     * @param g fee coefficient, multiplied by 2^64
+     * @return the amount of fyDai a user would get for given amount of Dai
+     */
+    function fyDaiOutForDaiIn(
+        uint128 daiReserves,
+        uint128 fyDaiReserves,
+        uint128 daiAmount,
+        uint128 timeTillMaturity,
+        int128 k,
+        int128 g
+    ) internal pure returns (uint128) {
+        // t = k * timeTillMaturity
+        int128 t = Math64x64.mul(k, Math64x64.fromUInt(timeTillMaturity));
 
-    // a = (1 - gt)
-    int128 a = Math64x64.sub (0x10000000000000000, Math64x64.mul (g, t));
-    require (a > 0, "YieldMath: Too far from maturity");
+        // a = (1 - gt)
+        int128 a = Math64x64.sub(0x10000000000000000, Math64x64.mul(g, t));
+        require(a > 0, 'YieldMath: Too far from maturity');
 
-    // xdx = daiReserves + daiAmount
-    uint256 xdx = uint256 (daiReserves) + uint256 (daiAmount);
-    require (xdx < 0x100000000000000000000000000000000, "YieldMath: Too much Dai in");
+        // xdx = daiReserves + daiAmount
+        uint256 xdx = uint256(daiReserves) + uint256(daiAmount);
+        require(xdx < 0x100000000000000000000000000000000, 'YieldMath: Too much Dai in');
 
-    uint256 sum =
-      uint256 (pow (daiReserves, uint128 (a), 0x10000000000000000)) +
-      uint256 (pow (fyDaiReserves, uint128 (a), 0x10000000000000000)) -
-      uint256 (pow (uint128(xdx), uint128 (a), 0x10000000000000000));
-    require (sum < 0x100000000000000000000000000000000, "YieldMath: Insufficient fyDai reserves");
+        uint256 sum =
+            uint256(pow(daiReserves, uint128(a), 0x10000000000000000)) +
+                uint256(pow(fyDaiReserves, uint128(a), 0x10000000000000000)) -
+                uint256(pow(uint128(xdx), uint128(a), 0x10000000000000000));
+        require(sum < 0x100000000000000000000000000000000, 'YieldMath: Insufficient fyDai reserves');
 
-    uint256 result = fyDaiReserves - pow (uint128 (sum), 0x10000000000000000, uint128 (a));
-    require (result < 0x100000000000000000000000000000000, "YieldMath: Rounding induced error");
-    result > 1e12 ? result = result - 1e12 : result = 0; // Substract error guard, flooring the result at zero
+        uint256 result = fyDaiReserves - pow(uint128(sum), 0x10000000000000000, uint128(a));
+        require(result < 0x100000000000000000000000000000000, 'YieldMath: Rounding induced error');
+        result > 1e12 ? result = result - 1e12 : result = 0; // Substract error guard, flooring the result at zero
 
-    return uint128 (result);
-  }
-
-  /**
-   * Calculate the amount of Dai a user would get for certain amount of fyDai.
-   *
-   * @param daiReserves Dai reserves amount
-   * @param fyDaiReserves fyDai reserves amount
-   * @param fyDaiAmount fyDai amount to be traded
-   * @param timeTillMaturity time till maturity in seconds
-   * @param k time till maturity coefficient, multiplied by 2^64
-   * @param g fee coefficient, multiplied by 2^64
-   * @return the amount of Dai a user would get for given amount of fyDai
-   */
-  function daiOutForFYDaiIn (
-    uint128 daiReserves, uint128 fyDaiReserves, uint128 fyDaiAmount,
-    uint128 timeTillMaturity, int128 k, int128 g)
-  internal pure returns (uint128) {
-    // t = k * timeTillMaturity
-    int128 t = Math64x64.mul (k, Math64x64.fromUInt (timeTillMaturity));
-
-    // a = (1 - gt)
-    int128 a = Math64x64.sub (0x10000000000000000, Math64x64.mul (g, t));
-    require (a > 0, "YieldMath: Too far from maturity");
-
-    // ydy = fyDaiReserves + fyDaiAmount;
-    uint256 ydy = uint256 (fyDaiReserves) + uint256 (fyDaiAmount);
-    require (ydy < 0x100000000000000000000000000000000, "YieldMath: Too much fyDai in");
-
-    uint256 sum =
-      uint256 (pow (uint128 (daiReserves), uint128 (a), 0x10000000000000000)) -
-      uint256 (pow (uint128 (ydy), uint128 (a), 0x10000000000000000)) +
-      uint256 (pow (fyDaiReserves, uint128 (a), 0x10000000000000000));
-    require (sum < 0x100000000000000000000000000000000, "YieldMath: Insufficient Dai reserves");
-
-    uint256 result =
-      daiReserves -
-      pow (uint128 (sum), 0x10000000000000000, uint128 (a));
-    require (result < 0x100000000000000000000000000000000, "YieldMath: Rounding induced error");
-    result > 1e12 ? result = result - 1e12 : result = 0; // Substract error guard, flooring the result at zero
-
-    return uint128 (result);
-  }
-
-  /**
-   * Calculate the amount of fyDai a user could sell for given amount of Dai.
-   *
-   * @param daiReserves Dai reserves amount
-   * @param fyDaiReserves fyDai reserves amount
-   * @param daiAmount Dai amount to be traded
-   * @param timeTillMaturity time till maturity in seconds
-   * @param k time till maturity coefficient, multiplied by 2^64
-   * @param g fee coefficient, multiplied by 2^64
-   * @return the amount of fyDai a user could sell for given amount of Dai
-   */
-  function fyDaiInForDaiOut (
-    uint128 daiReserves, uint128 fyDaiReserves, uint128 daiAmount,
-    uint128 timeTillMaturity, int128 k, int128 g)
-  internal pure returns (uint128) {
-    // t = k * timeTillMaturity
-    int128 t = Math64x64.mul (k, Math64x64.fromUInt (timeTillMaturity));
-
-    // a = (1 - gt)
-    int128 a = Math64x64.sub (0x10000000000000000, Math64x64.mul (g, t));
-    require (a > 0, "YieldMath: Too far from maturity");
-
-    // xdx = daiReserves - daiAmount
-    uint256 xdx = uint256 (daiReserves) - uint256 (daiAmount);
-    require (xdx < 0x100000000000000000000000000000000, "YieldMath: Too much Dai out");
-
-    uint256 sum =
-      uint256 (pow (uint128 (daiReserves), uint128 (a), 0x10000000000000000)) +
-      uint256 (pow (fyDaiReserves, uint128 (a), 0x10000000000000000)) -
-      uint256 (pow (uint128 (xdx), uint128 (a), 0x10000000000000000));
-    require (sum < 0x100000000000000000000000000000000, "YieldMath: Resulting fyDai reserves too high");
-
-    uint256 result = pow (uint128 (sum), 0x10000000000000000, uint128 (a)) - fyDaiReserves;
-    require (result < 0x100000000000000000000000000000000, "YieldMath: Rounding induced error");
-    result < type(uint256).max - 1e12 ? result = result + 1e12 : result = type(uint256).max; // Add error guard, ceiling the result at max
-
-    return uint128 (result);
-  }
-
-  /**
-   * Calculate the amount of Dai a user would have to pay for certain amount of
-   * fyDai.
-   *
-   * @param daiReserves Dai reserves amount
-   * @param fyDaiReserves fyDai reserves amount
-   * @param fyDaiAmount fyDai amount to be traded
-   * @param timeTillMaturity time till maturity in seconds
-   * @param k time till maturity coefficient, multiplied by 2^64
-   * @param g fee coefficient, multiplied by 2^64
-   * @return the amount of Dai a user would have to pay for given amount of
-   *         fyDai
-   */
-  function daiInForFYDaiOut (
-    uint128 daiReserves, uint128 fyDaiReserves, uint128 fyDaiAmount,
-    uint128 timeTillMaturity, int128 k, int128 g)
-  internal pure returns (uint128) {
-    // a = (1 - g * k * timeTillMaturity)
-    int128 a = Math64x64.sub (0x10000000000000000, Math64x64.mul (g, Math64x64.mul (k, Math64x64.fromUInt (timeTillMaturity))));
-    require (a > 0, "YieldMath: Too far from maturity");
-
-    // ydy = fyDaiReserves - fyDaiAmount;
-    uint256 ydy = uint256 (fyDaiReserves) - uint256 (fyDaiAmount);
-    require (ydy < 0x100000000000000000000000000000000, "YieldMath: Too much fyDai out");
-
-    uint256 sum =
-      uint256 (pow (daiReserves, uint128 (a), 0x10000000000000000)) +
-      uint256 (pow (fyDaiReserves, uint128 (a), 0x10000000000000000)) -
-      uint256 (pow (uint128 (ydy), uint128 (a), 0x10000000000000000));
-    require (sum < 0x100000000000000000000000000000000, "YieldMath: Resulting Dai reserves too high");
-
-    uint256 result =
-      pow (uint128 (sum), 0x10000000000000000, uint128 (a)) -
-      daiReserves;
-    require (result < 0x100000000000000000000000000000000, "YieldMath: Rounding induced error");
-    result < type(uint256).max - 1e12 ? result = result + 1e12 : result = type(uint256).max; // Add error guard, ceiling the result at max
-
-    return uint128 (result);
-  }
-
-  /**
-   * Raise given number x into power specified as a simple fraction y/z and then
-   * multiply the result by the normalization factor 2^(128 * (1 - y/z)).
-   * Revert if z is zero, or if both x and y are zeros.
-   *
-   * @param x number to raise into given power y/z
-   * @param y numerator of the power to raise x into
-   * @param z denominator of the power to raise x into
-   * @return x raised into power y/z and then multiplied by 2^(128 * (1 - y/z))
-   */
-  function pow (uint128 x, uint128 y, uint128 z)
-  internal pure returns (uint128) {
-    require (z != 0);
-
-    if (x == 0) {
-      require (y != 0);
-      return 0;
-    } else {
-      uint256 l =
-        uint256 (0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF - log_2 (x)) * y / z;
-      if (l > 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) return 0;
-      else return pow_2 (uint128 (0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF - l));
+        return uint128(result);
     }
-  }
 
-  /**
-   * Calculate base 2 logarithm of an unsigned 128-bit integer number.  Revert
-   * in case x is zero.
-   *
-   * @param x number to calculate base 2 logarithm of
-   * @return base 2 logarithm of x, multiplied by 2^121
-   */
-  function log_2 (uint128 x)
-  internal pure returns (uint128) {
-    require (x != 0);
+    /**
+     * Calculate the amount of Dai a user would get for certain amount of fyDai.
+     *
+     * @param daiReserves Dai reserves amount
+     * @param fyDaiReserves fyDai reserves amount
+     * @param fyDaiAmount fyDai amount to be traded
+     * @param timeTillMaturity time till maturity in seconds
+     * @param k time till maturity coefficient, multiplied by 2^64
+     * @param g fee coefficient, multiplied by 2^64
+     * @return the amount of Dai a user would get for given amount of fyDai
+     */
+    function daiOutForFYDaiIn(
+        uint128 daiReserves,
+        uint128 fyDaiReserves,
+        uint128 fyDaiAmount,
+        uint128 timeTillMaturity,
+        int128 k,
+        int128 g
+    ) internal pure returns (uint128) {
+        // t = k * timeTillMaturity
+        int128 t = Math64x64.mul(k, Math64x64.fromUInt(timeTillMaturity));
 
-    uint b = x;
+        // a = (1 - gt)
+        int128 a = Math64x64.sub(0x10000000000000000, Math64x64.mul(g, t));
+        require(a > 0, 'YieldMath: Too far from maturity');
 
-    uint l = 0xFE000000000000000000000000000000;
+        // ydy = fyDaiReserves + fyDaiAmount;
+        uint256 ydy = uint256(fyDaiReserves) + uint256(fyDaiAmount);
+        require(ydy < 0x100000000000000000000000000000000, 'YieldMath: Too much fyDai in');
 
-    if (b < 0x10000000000000000) {l -= 0x80000000000000000000000000000000; b <<= 64;}
-    if (b < 0x1000000000000000000000000) {l -= 0x40000000000000000000000000000000; b <<= 32;}
-    if (b < 0x10000000000000000000000000000) {l -= 0x20000000000000000000000000000000; b <<= 16;}
-    if (b < 0x1000000000000000000000000000000) {l -= 0x10000000000000000000000000000000; b <<= 8;}
-    if (b < 0x10000000000000000000000000000000) {l -= 0x8000000000000000000000000000000; b <<= 4;}
-    if (b < 0x40000000000000000000000000000000) {l -= 0x4000000000000000000000000000000; b <<= 2;}
-    if (b < 0x80000000000000000000000000000000) {l -= 0x2000000000000000000000000000000; b <<= 1;}
+        uint256 sum =
+            uint256(pow(uint128(daiReserves), uint128(a), 0x10000000000000000)) -
+                uint256(pow(uint128(ydy), uint128(a), 0x10000000000000000)) +
+                uint256(pow(fyDaiReserves, uint128(a), 0x10000000000000000));
+        require(sum < 0x100000000000000000000000000000000, 'YieldMath: Insufficient Dai reserves');
 
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x1000000000000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x800000000000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x400000000000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x200000000000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x100000000000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x80000000000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x40000000000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x20000000000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x10000000000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x8000000000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x4000000000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x2000000000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x1000000000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x800000000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x400000000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x200000000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x100000000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x80000000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x40000000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x20000000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x10000000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x8000000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x4000000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x2000000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x1000000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x800000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x400000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x200000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x100000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x80000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x40000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x20000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x10000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x8000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x4000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x2000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x1000000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x800000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x400000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x200000000000000000000;}
-    b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x100000000000000000000;}
-    /* Precision reduced to 64 bits
+        uint256 result = daiReserves - pow(uint128(sum), 0x10000000000000000, uint128(a));
+        require(result < 0x100000000000000000000000000000000, 'YieldMath: Rounding induced error');
+        result > 1e12 ? result = result - 1e12 : result = 0; // Substract error guard, flooring the result at zero
+
+        return uint128(result);
+    }
+
+    /**
+     * Calculate the amount of fyDai a user could sell for given amount of Dai.
+     *
+     * @param daiReserves Dai reserves amount
+     * @param fyDaiReserves fyDai reserves amount
+     * @param daiAmount Dai amount to be traded
+     * @param timeTillMaturity time till maturity in seconds
+     * @param k time till maturity coefficient, multiplied by 2^64
+     * @param g fee coefficient, multiplied by 2^64
+     * @return the amount of fyDai a user could sell for given amount of Dai
+     */
+    function fyDaiInForDaiOut(
+        uint128 daiReserves,
+        uint128 fyDaiReserves,
+        uint128 daiAmount,
+        uint128 timeTillMaturity,
+        int128 k,
+        int128 g
+    ) internal pure returns (uint128) {
+        // t = k * timeTillMaturity
+        int128 t = Math64x64.mul(k, Math64x64.fromUInt(timeTillMaturity));
+
+        // a = (1 - gt)
+        int128 a = Math64x64.sub(0x10000000000000000, Math64x64.mul(g, t));
+        require(a > 0, 'YieldMath: Too far from maturity');
+
+        // xdx = daiReserves - daiAmount
+        uint256 xdx = uint256(daiReserves) - uint256(daiAmount);
+        require(xdx < 0x100000000000000000000000000000000, 'YieldMath: Too much Dai out');
+
+        uint256 sum =
+            uint256(pow(uint128(daiReserves), uint128(a), 0x10000000000000000)) +
+                uint256(pow(fyDaiReserves, uint128(a), 0x10000000000000000)) -
+                uint256(pow(uint128(xdx), uint128(a), 0x10000000000000000));
+        require(sum < 0x100000000000000000000000000000000, 'YieldMath: Resulting fyDai reserves too high');
+
+        uint256 result = pow(uint128(sum), 0x10000000000000000, uint128(a)) - fyDaiReserves;
+        require(result < 0x100000000000000000000000000000000, 'YieldMath: Rounding induced error');
+        result < type(uint256).max - 1e12 ? result = result + 1e12 : result = type(uint256).max; // Add error guard, ceiling the result at max
+
+        return uint128(result);
+    }
+
+    /**
+     * Calculate the amount of Dai a user would have to pay for certain amount of
+     * fyDai.
+     *
+     * @param daiReserves Dai reserves amount
+     * @param fyDaiReserves fyDai reserves amount
+     * @param fyDaiAmount fyDai amount to be traded
+     * @param timeTillMaturity time till maturity in seconds
+     * @param k time till maturity coefficient, multiplied by 2^64
+     * @param g fee coefficient, multiplied by 2^64
+     * @return the amount of Dai a user would have to pay for given amount of
+     *         fyDai
+     */
+    function daiInForFYDaiOut(
+        uint128 daiReserves,
+        uint128 fyDaiReserves,
+        uint128 fyDaiAmount,
+        uint128 timeTillMaturity,
+        int128 k,
+        int128 g
+    ) internal pure returns (uint128) {
+        // a = (1 - g * k * timeTillMaturity)
+        int128 a =
+            Math64x64.sub(
+                0x10000000000000000,
+                Math64x64.mul(g, Math64x64.mul(k, Math64x64.fromUInt(timeTillMaturity)))
+            );
+        require(a > 0, 'YieldMath: Too far from maturity');
+
+        // ydy = fyDaiReserves - fyDaiAmount;
+        uint256 ydy = uint256(fyDaiReserves) - uint256(fyDaiAmount);
+        require(ydy < 0x100000000000000000000000000000000, 'YieldMath: Too much fyDai out');
+
+        uint256 sum =
+            uint256(pow(daiReserves, uint128(a), 0x10000000000000000)) +
+                uint256(pow(fyDaiReserves, uint128(a), 0x10000000000000000)) -
+                uint256(pow(uint128(ydy), uint128(a), 0x10000000000000000));
+        require(sum < 0x100000000000000000000000000000000, 'YieldMath: Resulting Dai reserves too high');
+
+        uint256 result = pow(uint128(sum), 0x10000000000000000, uint128(a)) - daiReserves;
+        require(result < 0x100000000000000000000000000000000, 'YieldMath: Rounding induced error');
+        result < type(uint256).max - 1e12 ? result = result + 1e12 : result = type(uint256).max; // Add error guard, ceiling the result at max
+
+        return uint128(result);
+    }
+
+    /**
+     * Raise given number x into power specified as a simple fraction y/z and then
+     * multiply the result by the normalization factor 2^(128 * (1 - y/z)).
+     * Revert if z is zero, or if both x and y are zeros.
+     *
+     * @param x number to raise into given power y/z
+     * @param y numerator of the power to raise x into
+     * @param z denominator of the power to raise x into
+     * @return x raised into power y/z and then multiplied by 2^(128 * (1 - y/z))
+     */
+    function pow(
+        uint128 x,
+        uint128 y,
+        uint128 z
+    ) internal pure returns (uint128) {
+        require(z != 0);
+
+        if (x == 0) {
+            require(y != 0);
+            return 0;
+        } else {
+            uint256 l = (uint256(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF - log_2(x)) * y) / z;
+            if (l > 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) return 0;
+            else return pow_2(uint128(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF - l));
+        }
+    }
+
+    /**
+     * Calculate base 2 logarithm of an unsigned 128-bit integer number.  Revert
+     * in case x is zero.
+     *
+     * @param x number to calculate base 2 logarithm of
+     * @return base 2 logarithm of x, multiplied by 2^121
+     */
+    function log_2(uint128 x) internal pure returns (uint128) {
+        require(x != 0);
+
+        uint256 b = x;
+
+        uint256 l = 0xFE000000000000000000000000000000;
+
+        if (b < 0x10000000000000000) {
+            l -= 0x80000000000000000000000000000000;
+            b <<= 64;
+        }
+        if (b < 0x1000000000000000000000000) {
+            l -= 0x40000000000000000000000000000000;
+            b <<= 32;
+        }
+        if (b < 0x10000000000000000000000000000) {
+            l -= 0x20000000000000000000000000000000;
+            b <<= 16;
+        }
+        if (b < 0x1000000000000000000000000000000) {
+            l -= 0x10000000000000000000000000000000;
+            b <<= 8;
+        }
+        if (b < 0x10000000000000000000000000000000) {
+            l -= 0x8000000000000000000000000000000;
+            b <<= 4;
+        }
+        if (b < 0x40000000000000000000000000000000) {
+            l -= 0x4000000000000000000000000000000;
+            b <<= 2;
+        }
+        if (b < 0x80000000000000000000000000000000) {
+            l -= 0x2000000000000000000000000000000;
+            b <<= 1;
+        }
+
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x1000000000000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x800000000000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x400000000000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x200000000000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x100000000000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x80000000000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x40000000000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x20000000000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x10000000000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x8000000000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x4000000000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x2000000000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x1000000000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x800000000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x400000000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x200000000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x100000000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x80000000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x40000000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x20000000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x10000000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x8000000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x4000000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x2000000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x1000000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x800000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x400000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x200000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x100000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x80000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x40000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x20000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x10000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x8000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x4000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x2000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x1000000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x800000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x400000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x200000000000000000000;
+        }
+        b = (b * b) >> 127;
+        if (b >= 0x100000000000000000000000000000000) {
+            b >>= 1;
+            l |= 0x100000000000000000000;
+        }
+        /* Precision reduced to 64 bits
     b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x80000000000000000000;}
     b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x40000000000000000000;}
     b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) {b >>= 1; l |= 0x20000000000000000000;}
@@ -341,60 +543,59 @@ library YieldMath48 {
     b = b * b >> 127; if (b >= 0x100000000000000000000000000000000) l |= 0x1;
     */
 
-    return uint128 (l);
-  }
+        return uint128(l);
+    }
 
-  /**
-   * Calculate 2 raised into given power.
-   *
-   * @param x power to raise 2 into, multiplied by 2^121
-   * @return 2 raised into given power
-   */
-  function pow_2 (uint128 x)
-  internal pure returns (uint128) {
-    uint r = 0x80000000000000000000000000000000;
-    if (x & 0x1000000000000000000000000000000 > 0) r = r * 0xb504f333f9de6484597d89b3754abe9f >> 127;
-    if (x & 0x800000000000000000000000000000 > 0) r = r * 0x9837f0518db8a96f46ad23182e42f6f6 >> 127;
-    if (x & 0x400000000000000000000000000000 > 0) r = r * 0x8b95c1e3ea8bd6e6fbe4628758a53c90 >> 127;
-    if (x & 0x200000000000000000000000000000 > 0) r = r * 0x85aac367cc487b14c5c95b8c2154c1b2 >> 127;
-    if (x & 0x100000000000000000000000000000 > 0) r = r * 0x82cd8698ac2ba1d73e2a475b46520bff >> 127;
-    if (x & 0x80000000000000000000000000000 > 0) r = r * 0x8164d1f3bc0307737be56527bd14def4 >> 127;
-    if (x & 0x40000000000000000000000000000 > 0) r = r * 0x80b1ed4fd999ab6c25335719b6e6fd20 >> 127;
-    if (x & 0x20000000000000000000000000000 > 0) r = r * 0x8058d7d2d5e5f6b094d589f608ee4aa2 >> 127;
-    if (x & 0x10000000000000000000000000000 > 0) r = r * 0x802c6436d0e04f50ff8ce94a6797b3ce >> 127;
-    if (x & 0x8000000000000000000000000000 > 0) r = r * 0x8016302f174676283690dfe44d11d008 >> 127;
-    if (x & 0x4000000000000000000000000000 > 0) r = r * 0x800b179c82028fd0945e54e2ae18f2f0 >> 127;
-    if (x & 0x2000000000000000000000000000 > 0) r = r * 0x80058baf7fee3b5d1c718b38e549cb93 >> 127;
-    if (x & 0x1000000000000000000000000000 > 0) r = r * 0x8002c5d00fdcfcb6b6566a58c048be1f >> 127;
-    if (x & 0x800000000000000000000000000 > 0) r = r * 0x800162e61bed4a48e84c2e1a463473d9 >> 127;
-    if (x & 0x400000000000000000000000000 > 0) r = r * 0x8000b17292f702a3aa22beacca949013 >> 127;
-    if (x & 0x200000000000000000000000000 > 0) r = r * 0x800058b92abbae02030c5fa5256f41fe >> 127;
-    if (x & 0x100000000000000000000000000 > 0) r = r * 0x80002c5c8dade4d71776c0f4dbea67d6 >> 127;
-    if (x & 0x80000000000000000000000000 > 0) r = r * 0x8000162e44eaf636526be456600bdbe4 >> 127;
-    if (x & 0x40000000000000000000000000 > 0) r = r * 0x80000b1721fa7c188307016c1cd4e8b6 >> 127;
-    if (x & 0x20000000000000000000000000 > 0) r = r * 0x8000058b90de7e4cecfc487503488bb1 >> 127;
-    if (x & 0x10000000000000000000000000 > 0) r = r * 0x800002c5c8678f36cbfce50a6de60b14 >> 127;
-    if (x & 0x8000000000000000000000000 > 0) r = r * 0x80000162e431db9f80b2347b5d62e516 >> 127;
-    if (x & 0x4000000000000000000000000 > 0) r = r * 0x800000b1721872d0c7b08cf1e0114152 >> 127;
-    if (x & 0x2000000000000000000000000 > 0) r = r * 0x80000058b90c1aa8a5c3736cb77e8dff >> 127;
-    if (x & 0x1000000000000000000000000 > 0) r = r * 0x8000002c5c8605a4635f2efc2362d978 >> 127;
-    if (x & 0x800000000000000000000000 > 0) r = r * 0x800000162e4300e635cf4a109e3939bd >> 127;
-    if (x & 0x400000000000000000000000 > 0) r = r * 0x8000000b17217ff81bef9c551590cf83 >> 127;
-    if (x & 0x200000000000000000000000 > 0) r = r * 0x800000058b90bfdd4e39cd52c0cfa27c >> 127;
-    if (x & 0x100000000000000000000000 > 0) r = r * 0x80000002c5c85fe6f72d669e0e76e411 >> 127;
-    if (x & 0x80000000000000000000000 > 0) r = r * 0x8000000162e42ff18f9ad35186d0df28 >> 127;
-    if (x & 0x40000000000000000000000 > 0) r = r * 0x80000000b17217f84cce71aa0dcfffe7 >> 127;
-    if (x & 0x20000000000000000000000 > 0) r = r * 0x8000000058b90bfc07a77ad56ed22aaa >> 127;
-    if (x & 0x10000000000000000000000 > 0) r = r * 0x800000002c5c85fdfc23cdead40da8d6 >> 127;
-    if (x & 0x8000000000000000000000 > 0) r = r * 0x80000000162e42fefc25eb1571853a66 >> 127;
-    if (x & 0x4000000000000000000000 > 0) r = r * 0x800000000b17217f7d97f692baacded5 >> 127;
-    if (x & 0x2000000000000000000000 > 0) r = r * 0x80000000058b90bfbead3b8b5dd254d7 >> 127;
-    if (x & 0x1000000000000000000000 > 0) r = r * 0x8000000002c5c85fdf4eedd62f084e67 >> 127;
-    if (x & 0x800000000000000000000 > 0) r = r * 0x800000000162e42fefa58aef378bf586 >> 127;
-    if (x & 0x400000000000000000000 > 0) r = r * 0x8000000000b17217f7d24a78a3c7ef02 >> 127;
-    if (x & 0x200000000000000000000 > 0) r = r * 0x800000000058b90bfbe9067c93e474a6 >> 127;
-    if (x & 0x100000000000000000000 > 0) r = r * 0x80000000002c5c85fdf47b8e5a72599f >> 127;
-    /* Precision reduced to 48 bits
+    /**
+     * Calculate 2 raised into given power.
+     *
+     * @param x power to raise 2 into, multiplied by 2^121
+     * @return 2 raised into given power
+     */
+    function pow_2(uint128 x) internal pure returns (uint128) {
+        uint256 r = 0x80000000000000000000000000000000;
+        if (x & 0x1000000000000000000000000000000 > 0) r = (r * 0xb504f333f9de6484597d89b3754abe9f) >> 127;
+        if (x & 0x800000000000000000000000000000 > 0) r = (r * 0x9837f0518db8a96f46ad23182e42f6f6) >> 127;
+        if (x & 0x400000000000000000000000000000 > 0) r = (r * 0x8b95c1e3ea8bd6e6fbe4628758a53c90) >> 127;
+        if (x & 0x200000000000000000000000000000 > 0) r = (r * 0x85aac367cc487b14c5c95b8c2154c1b2) >> 127;
+        if (x & 0x100000000000000000000000000000 > 0) r = (r * 0x82cd8698ac2ba1d73e2a475b46520bff) >> 127;
+        if (x & 0x80000000000000000000000000000 > 0) r = (r * 0x8164d1f3bc0307737be56527bd14def4) >> 127;
+        if (x & 0x40000000000000000000000000000 > 0) r = (r * 0x80b1ed4fd999ab6c25335719b6e6fd20) >> 127;
+        if (x & 0x20000000000000000000000000000 > 0) r = (r * 0x8058d7d2d5e5f6b094d589f608ee4aa2) >> 127;
+        if (x & 0x10000000000000000000000000000 > 0) r = (r * 0x802c6436d0e04f50ff8ce94a6797b3ce) >> 127;
+        if (x & 0x8000000000000000000000000000 > 0) r = (r * 0x8016302f174676283690dfe44d11d008) >> 127;
+        if (x & 0x4000000000000000000000000000 > 0) r = (r * 0x800b179c82028fd0945e54e2ae18f2f0) >> 127;
+        if (x & 0x2000000000000000000000000000 > 0) r = (r * 0x80058baf7fee3b5d1c718b38e549cb93) >> 127;
+        if (x & 0x1000000000000000000000000000 > 0) r = (r * 0x8002c5d00fdcfcb6b6566a58c048be1f) >> 127;
+        if (x & 0x800000000000000000000000000 > 0) r = (r * 0x800162e61bed4a48e84c2e1a463473d9) >> 127;
+        if (x & 0x400000000000000000000000000 > 0) r = (r * 0x8000b17292f702a3aa22beacca949013) >> 127;
+        if (x & 0x200000000000000000000000000 > 0) r = (r * 0x800058b92abbae02030c5fa5256f41fe) >> 127;
+        if (x & 0x100000000000000000000000000 > 0) r = (r * 0x80002c5c8dade4d71776c0f4dbea67d6) >> 127;
+        if (x & 0x80000000000000000000000000 > 0) r = (r * 0x8000162e44eaf636526be456600bdbe4) >> 127;
+        if (x & 0x40000000000000000000000000 > 0) r = (r * 0x80000b1721fa7c188307016c1cd4e8b6) >> 127;
+        if (x & 0x20000000000000000000000000 > 0) r = (r * 0x8000058b90de7e4cecfc487503488bb1) >> 127;
+        if (x & 0x10000000000000000000000000 > 0) r = (r * 0x800002c5c8678f36cbfce50a6de60b14) >> 127;
+        if (x & 0x8000000000000000000000000 > 0) r = (r * 0x80000162e431db9f80b2347b5d62e516) >> 127;
+        if (x & 0x4000000000000000000000000 > 0) r = (r * 0x800000b1721872d0c7b08cf1e0114152) >> 127;
+        if (x & 0x2000000000000000000000000 > 0) r = (r * 0x80000058b90c1aa8a5c3736cb77e8dff) >> 127;
+        if (x & 0x1000000000000000000000000 > 0) r = (r * 0x8000002c5c8605a4635f2efc2362d978) >> 127;
+        if (x & 0x800000000000000000000000 > 0) r = (r * 0x800000162e4300e635cf4a109e3939bd) >> 127;
+        if (x & 0x400000000000000000000000 > 0) r = (r * 0x8000000b17217ff81bef9c551590cf83) >> 127;
+        if (x & 0x200000000000000000000000 > 0) r = (r * 0x800000058b90bfdd4e39cd52c0cfa27c) >> 127;
+        if (x & 0x100000000000000000000000 > 0) r = (r * 0x80000002c5c85fe6f72d669e0e76e411) >> 127;
+        if (x & 0x80000000000000000000000 > 0) r = (r * 0x8000000162e42ff18f9ad35186d0df28) >> 127;
+        if (x & 0x40000000000000000000000 > 0) r = (r * 0x80000000b17217f84cce71aa0dcfffe7) >> 127;
+        if (x & 0x20000000000000000000000 > 0) r = (r * 0x8000000058b90bfc07a77ad56ed22aaa) >> 127;
+        if (x & 0x10000000000000000000000 > 0) r = (r * 0x800000002c5c85fdfc23cdead40da8d6) >> 127;
+        if (x & 0x8000000000000000000000 > 0) r = (r * 0x80000000162e42fefc25eb1571853a66) >> 127;
+        if (x & 0x4000000000000000000000 > 0) r = (r * 0x800000000b17217f7d97f692baacded5) >> 127;
+        if (x & 0x2000000000000000000000 > 0) r = (r * 0x80000000058b90bfbead3b8b5dd254d7) >> 127;
+        if (x & 0x1000000000000000000000 > 0) r = (r * 0x8000000002c5c85fdf4eedd62f084e67) >> 127;
+        if (x & 0x800000000000000000000 > 0) r = (r * 0x800000000162e42fefa58aef378bf586) >> 127;
+        if (x & 0x400000000000000000000 > 0) r = (r * 0x8000000000b17217f7d24a78a3c7ef02) >> 127;
+        if (x & 0x200000000000000000000 > 0) r = (r * 0x800000000058b90bfbe9067c93e474a6) >> 127;
+        if (x & 0x100000000000000000000 > 0) r = (r * 0x80000000002c5c85fdf47b8e5a72599f) >> 127;
+        /* Precision reduced to 48 bits
     if (x & 0x80000000000000000000 > 0) r = r * 0x8000000000162e42fefa3bdb315934a2 >> 127;
     if (x & 0x40000000000000000000 > 0) r = r * 0x80000000000b17217f7d1d7299b49c46 >> 127;
     if (x & 0x20000000000000000000 > 0) r = r * 0x8000000000058b90bfbe8e9a8d1c4ea0 >> 127;
@@ -477,8 +678,8 @@ library YieldMath48 {
     if (x & 0x1 > 0) r = r * 0x8000000000000000000000000000002c >> 127;
     */
 
-    r >>= 127 - (x >> 121);
+        r >>= 127 - (x >> 121);
 
-    return uint128 (r);
-  }
+        return uint128(r);
+    }
 }

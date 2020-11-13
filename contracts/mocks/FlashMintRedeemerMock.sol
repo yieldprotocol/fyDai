@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.6.10;
 
-import "../interfaces/IFlashMinter.sol";
-import "../interfaces/IFYDai.sol";
-
+import '../interfaces/IFlashMinter.sol';
+import '../interfaces/IFYDai.sol';
 
 contract FlashMintRedeemerMock is IFlashMinter {
-
     event Parameters(uint256 amount, bytes data);
 
     uint256 public flashBalance;
@@ -17,7 +15,11 @@ contract FlashMintRedeemerMock is IFlashMinter {
         emit Parameters(fyDaiAmount, data);
     }
 
-    function flashMint(address fyDai, uint256 amount, bytes calldata data) public {
+    function flashMint(
+        address fyDai,
+        uint256 amount,
+        bytes calldata data
+    ) public {
         IFYDai(fyDai).flashMint(amount, data);
     }
 }

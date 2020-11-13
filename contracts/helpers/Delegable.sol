@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.6.10;
 
-import "../interfaces/IDelegable.sol";
-
+import '../interfaces/IDelegable.sol';
 
 /// @dev Delegable enables users to delegate their account management to other users.
 /// Delegable implements addDelegateBySignature, to add delegates using a signature instead of a separate transaction.
@@ -12,11 +11,11 @@ contract Delegable is IDelegable {
     // keccak256("Signature(address user,address delegate,uint256 nonce,uint256 deadline)");
     bytes32 public immutable SIGNATURE_TYPEHASH = 0x0d077601844dd17f704bafff948229d27f33b57445915754dfe3d095fda2beb7;
     bytes32 public immutable DELEGABLE_DOMAIN;
-    mapping(address => uint) public signatureCount;
+    mapping(address => uint256) public signatureCount;
 
     mapping(address => mapping(address => bool)) public override delegated;
 
-    constructor () public {
+    constructor() public {
         uint256 chainId;
         assembly {
             chainId := chainid()
@@ -35,10 +34,7 @@ contract Delegable is IDelegable {
 
     /// @dev Require that msg.sender is the account holder or a delegate
     modifier onlyHolderOrDelegate(address holder, string memory errorMessage) {
-        require(
-            msg.sender == holder || delegated[holder][msg.sender],
-            errorMessage
-        );
+        require(msg.sender == holder || delegated[holder][msg.sender], errorMessage);
         _;
     }
 
@@ -53,45 +49,36 @@ contract Delegable is IDelegable {
     }
 
     /// @dev Add a delegate through an encoded signature
-    function addDelegateBySignature(address user, address delegate, uint deadline, uint8 v, bytes32 r, bytes32 s) public override {
+    function addDelegateBySignature(
+        address user,
+        address delegate,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public override {
         require(deadline >= block.timestamp, 'Delegable: Signature expired');
 
-        bytes32 hashStruct = keccak256(
-            abi.encode(
-                SIGNATURE_TYPEHASH,
-                user,
-                delegate,
-                signatureCount[user]++,
-                deadline
-            )
-        );
+        bytes32 hashStruct =
+            keccak256(abi.encode(SIGNATURE_TYPEHASH, user, delegate, signatureCount[user]++, deadline));
 
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                '\x19\x01',
-                DELEGABLE_DOMAIN,
-                hashStruct
-            )
-        );
+        bytes32 digest = keccak256(abi.encodePacked('\x19\x01', DELEGABLE_DOMAIN, hashStruct));
         address signer = ecrecover(digest, v, r, s);
-        require(
-            signer != address(0) && signer == user,
-            'Delegable: Invalid signature'
-        );
+        require(signer != address(0) && signer == user, 'Delegable: Invalid signature');
 
         _addDelegate(user, delegate);
     }
 
     /// @dev Enable a delegate to act on the behalf of an user
     function _addDelegate(address user, address delegate) internal {
-        require(!delegated[user][delegate], "Delegable: Already delegated");
+        require(!delegated[user][delegate], 'Delegable: Already delegated');
         delegated[user][delegate] = true;
         emit Delegate(user, delegate, true);
     }
 
     /// @dev Stop a delegate from acting on the behalf of an user
     function _revokeDelegate(address user, address delegate) internal {
-        require(delegated[user][delegate], "Delegable: Already undelegated");
+        require(delegated[user][delegate], 'Delegable: Already undelegated');
         delegated[user][delegate] = false;
         emit Delegate(user, delegate, false);
     }

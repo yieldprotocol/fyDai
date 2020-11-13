@@ -18,7 +18,7 @@
 
 pragma solidity ^0.6.0;
 
-import "./lib.sol";
+import './lib.sol';
 
 /*
    "Savings Dai" is obtained when Dai is deposited into
@@ -35,32 +35,48 @@ import "./lib.sol";
 */
 
 interface VatLike {
-    function move(address,address,uint256) external;
-    function suck(address,address,uint256) external;
+    function move(
+        address,
+        address,
+        uint256
+    ) external;
+
+    function suck(
+        address,
+        address,
+        uint256
+    ) external;
 }
 
 contract Pot is LibNote {
     // --- Auth ---
-    mapping (address => uint) public wards;
-    function rely(address guy) external note auth { wards[guy] = 1; }
-    function deny(address guy) external note auth { wards[guy] = 0; }
+    mapping(address => uint256) public wards;
+
+    function rely(address guy) external note auth {
+        wards[guy] = 1;
+    }
+
+    function deny(address guy) external note auth {
+        wards[guy] = 0;
+    }
+
     modifier auth {
-        require(wards[msg.sender] == 1, "Pot/not-authorized");
+        require(wards[msg.sender] == 1, 'Pot/not-authorized');
         _;
     }
 
     // --- Data ---
-    mapping (address => uint256) public pie;  // user Savings Dai
+    mapping(address => uint256) public pie; // user Savings Dai
 
-    uint256 public Pie;  // total Savings Dai
-    uint256 public dsr;  // the Dai Savings Rate
-    uint256 public chi;  // the Rate Accumulator
+    uint256 public Pie; // total Savings Dai
+    uint256 public dsr; // the Dai Savings Rate
+    uint256 public chi; // the Rate Accumulator
 
-    VatLike public vat;  // CDP engine
-    address public vow;  // debt engine
-    uint256 public rho;  // time of last drip
+    VatLike public vat; // CDP engine
+    address public vow; // debt engine
+    uint256 public rho; // time of last drip
 
-    uint256 public live;  // Access Flag
+    uint256 public live; // Access Flag
 
     // --- Init ---
     constructor(address vat_) public {
@@ -74,63 +90,95 @@ contract Pot is LibNote {
 
     // --- Test ---
     /// @dev The dsr can be left at ONE so that calling `drip` doesn't change chi
-    function setChi(uint chi_) public {
+    function setChi(uint256 chi_) public {
         chi = chi_;
     }
 
     // --- Math ---
-    uint256 constant ONE = 10 ** 27;
-    function rpow(uint x, uint n, uint base) internal pure returns (uint z) {
+    uint256 constant ONE = 10**27;
+
+    function rpow(
+        uint256 x,
+        uint256 n,
+        uint256 base
+    ) internal pure returns (uint256 z) {
         assembly {
-            switch x case 0 {switch n case 0 {z := base} default {z := 0}}
-            default {
-                switch mod(n, 2) case 0 { z := base } default { z := x }
-                let half := div(base, 2)  // for rounding.
-                for { n := div(n, 2) } n { n := div(n,2) } {
-                    let xx := mul(x, x)
-                    if iszero(eq(div(xx, x), x)) { revert(0,0) }
-                    let xxRound := add(xx, half)
-                    if lt(xxRound, xx) { revert(0,0) }
-                    x := div(xxRound, base)
-                    if mod(n,2) {
-                        let zx := mul(z, x)
-                        if and(iszero(iszero(x)), iszero(eq(div(zx, x), z))) { revert(0,0) }
-                        let zxRound := add(zx, half)
-                        if lt(zxRound, zx) { revert(0,0) }
-                        z := div(zxRound, base)
+            switch x
+                case 0 {
+                    switch n
+                        case 0 {
+                            z := base
+                        }
+                        default {
+                            z := 0
+                        }
+                }
+                default {
+                    switch mod(n, 2)
+                        case 0 {
+                            z := base
+                        }
+                        default {
+                            z := x
+                        }
+                    let half := div(base, 2) // for rounding.
+                    for {
+                        n := div(n, 2)
+                    } n {
+                        n := div(n, 2)
+                    } {
+                        let xx := mul(x, x)
+                        if iszero(eq(div(xx, x), x)) {
+                            revert(0, 0)
+                        }
+                        let xxRound := add(xx, half)
+                        if lt(xxRound, xx) {
+                            revert(0, 0)
+                        }
+                        x := div(xxRound, base)
+                        if mod(n, 2) {
+                            let zx := mul(z, x)
+                            if and(iszero(iszero(x)), iszero(eq(div(zx, x), z))) {
+                                revert(0, 0)
+                            }
+                            let zxRound := add(zx, half)
+                            if lt(zxRound, zx) {
+                                revert(0, 0)
+                            }
+                            z := div(zxRound, base)
+                        }
                     }
                 }
-            }
         }
     }
 
-    function rmul(uint x, uint y) internal pure returns (uint z) {
+    function rmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         z = mul_(x, y) / ONE;
     }
 
-    function add_(uint x, uint y) internal pure returns (uint z) {
+    function add_(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x + y) >= x);
     }
 
-    function sub_(uint x, uint y) internal pure returns (uint z) {
+    function sub_(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x - y) <= x);
     }
 
-    function mul_(uint x, uint y) internal pure returns (uint z) {
+    function mul_(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require(y == 0 || (z = x * y) / y == x);
     }
 
     // --- Administration ---
     function file(bytes32 what, uint256 data) external note auth {
-        require(live == 1, "Pot/not-live");
-        require(now == rho, "Pot/rho-not-updated");
-        if (what == "dsr") dsr = data;
-        else revert("Pot/file-unrecognized-param");
+        require(live == 1, 'Pot/not-live');
+        require(now == rho, 'Pot/rho-not-updated');
+        if (what == 'dsr') dsr = data;
+        else revert('Pot/file-unrecognized-param');
     }
 
     function file(bytes32 what, address addr) external note auth {
-        if (what == "vow") vow = addr;
-        else revert("Pot/file-unrecognized-param");
+        if (what == 'vow') vow = addr;
+        else revert('Pot/file-unrecognized-param');
     }
 
     function cage() external note auth {
@@ -139,34 +187,34 @@ contract Pot is LibNote {
     }
 
     // --- Savings Rate Accumulation ---
-    function drip() external note returns (uint tmp) {
-        require(now >= rho, "Pot/invalid-now");
+    function drip() external note returns (uint256 tmp) {
+        require(now >= rho, 'Pot/invalid-now');
         tmp = rmul(rpow(dsr, now - rho, ONE), chi);
-        uint chi_ = sub_(tmp, chi);
+        uint256 chi_ = sub_(tmp, chi);
         chi = tmp;
         rho = now;
         vat.suck(address(vow), address(this), mul_(Pie, chi_));
     }
 
     // --- Savings Dai Management ---
-    function join(uint wad) external note {
-        require(now == rho, "Pot/rho-not-updated");
+    function join(uint256 wad) external note {
+        require(now == rho, 'Pot/rho-not-updated');
         pie[msg.sender] = add_(pie[msg.sender], wad);
-        Pie             = add_(Pie,             wad);
+        Pie = add_(Pie, wad);
         vat.move(msg.sender, address(this), mul_(chi, wad));
     }
 
     // --- Savings Dai Management ---
-    function mockJoin(uint wad) external note {
+    function mockJoin(uint256 wad) external note {
         // require(now == rho, "Pot/rho-not-updated");
         pie[msg.sender] = add_(pie[msg.sender], wad);
-        Pie             = add_(Pie,             wad);
+        Pie = add_(Pie, wad);
         vat.move(msg.sender, address(this), mul_(chi, wad));
     }
 
-    function exit(uint wad) external note {
+    function exit(uint256 wad) external note {
         pie[msg.sender] = sub_(pie[msg.sender], wad);
-        Pie             = sub_(Pie,             wad);
+        Pie = sub_(Pie, wad);
         vat.move(address(this), msg.sender, mul_(chi, wad));
     }
 }

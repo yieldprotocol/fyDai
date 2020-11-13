@@ -1,18 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.6.10;
 
-import "@openzeppelin/contracts/math/Math.sol";
-import "./interfaces/IVat.sol";
-import "./interfaces/IPot.sol";
-import "./interfaces/ITreasury.sol";
-import "./interfaces/IFYDai.sol";
-import "./interfaces/IFlashMinter.sol";
-import "./helpers/Delegable.sol";
-import "./helpers/DecimalMath.sol";
-import "./helpers/Orchestrated.sol";
-import "./helpers/ERC20Permit.sol";
-
-
+import '@openzeppelin/contracts/math/Math.sol';
+import './interfaces/IVat.sol';
+import './interfaces/IPot.sol';
+import './interfaces/ITreasury.sol';
+import './interfaces/IFYDai.sol';
+import './interfaces/IFlashMinter.sol';
+import './helpers/Delegable.sol';
+import './helpers/DecimalMath.sol';
+import './helpers/Orchestrated.sol';
+import './helpers/ERC20Permit.sol';
 
 /**
  * @dev fyDai is an fyToken targeting Chai.
@@ -23,14 +21,13 @@ import "./helpers/ERC20Permit.sol";
  * Minting and burning of fyDai is restricted to orchestrated contracts. Redeeming and flash-minting is allowed to anyone.
  */
 
-contract FYDai is IFYDai, Orchestrated(), Delegable(), DecimalMath, ERC20Permit  {
-
+contract FYDai is IFYDai, Orchestrated, Delegable, DecimalMath, ERC20Permit {
     event Redeemed(address indexed from, address indexed to, uint256 fyDaiIn, uint256 daiOut);
     event Matured(uint256 rate, uint256 chi);
 
-    bytes32 public constant WETH = "ETH-A";
+    bytes32 public constant WETH = 'ETH-A';
 
-    uint256 constant internal MAX_TIME_TO_MATURITY = 126144000; // seconds in four years
+    uint256 internal constant MAX_TIME_TO_MATURITY = 126144000; // seconds in four years
 
     IVat public vat;
     IPot public pot;
@@ -38,17 +35,17 @@ contract FYDai is IFYDai, Orchestrated(), Delegable(), DecimalMath, ERC20Permit 
 
     bool public override isMature;
     uint256 public override maturity;
-    uint256 public override chi0;      // Chi at maturity
-    uint256 public override rate0;     // Rate at maturity
+    uint256 public override chi0; // Chi at maturity
+    uint256 public override rate0; // Rate at maturity
 
-    uint public override unlocked = 1;
+    uint256 public override unlocked = 1;
     modifier lock() {
         require(unlocked == 1, 'FYDai: Locked');
         unlocked = 0;
         _;
         unlocked = 1;
     }
-    
+
     /// @dev The constructor:
     /// Sets the name and symbol for the fyDai token.
     /// Connects to Vat, Jug, Pot and Treasury.
@@ -61,7 +58,7 @@ contract FYDai is IFYDai, Orchestrated(), Delegable(), DecimalMath, ERC20Permit 
         string memory symbol
     ) public ERC20Permit(name, symbol) {
         // solium-disable-next-line security/no-block-members
-        require(maturity_ > now && maturity_ < now + MAX_TIME_TO_MATURITY, "FYDai: Invalid maturity");
+        require(maturity_ > now && maturity_ < now + MAX_TIME_TO_MATURITY, 'FYDai: Invalid maturity');
         treasury = ITreasury(treasury_);
         vat = treasury.vat();
         pot = treasury.pot();
@@ -77,7 +74,7 @@ contract FYDai is IFYDai, Orchestrated(), Delegable(), DecimalMath, ERC20Permit 
     // chi() = ---------
     //          chi_mat
     //
-    function chiGrowth() public view override returns(uint256){
+    function chiGrowth() public view override returns (uint256) {
         if (isMature != true) return chi0;
         return Math.min(rateGrowth(), divd(pot.chi(), chi0)); // Rounding in favour of the protocol
     }
@@ -89,9 +86,9 @@ contract FYDai is IFYDai, Orchestrated(), Delegable(), DecimalMath, ERC20Permit 
     // rateGrowth() = ----------
     //                 rate_mat
     //
-    function rateGrowth() public view override returns(uint256){
+    function rateGrowth() public view override returns (uint256) {
         if (isMature != true) return rate0;
-        (, uint256 rate,,,) = vat.ilks(WETH);
+        (, uint256 rate, , , ) = vat.ilks(WETH);
         return Math.max(UNIT, divdrup(rate, rate0)); // Rounding in favour of the protocol
     }
 
@@ -100,13 +97,10 @@ contract FYDai is IFYDai, Orchestrated(), Delegable(), DecimalMath, ERC20Permit 
         require(
             // solium-disable-next-line security/no-block-members
             now > maturity,
-            "FYDai: Too early to mature"
+            'FYDai: Too early to mature'
         );
-        require(
-            isMature != true,
-            "FYDai: Already matured"
-        );
-        (, rate0,,,) = vat.ilks(WETH); // Retrieve the MakerDAO Vat
+        require(isMature != true, 'FYDai: Already matured');
+        (, rate0, , , ) = vat.ilks(WETH); // Retrieve the MakerDAO Vat
         rate0 = Math.max(rate0, UNIT); // Floor it at 1.0
         chi0 = pot.chi();
         isMature = true;
@@ -123,17 +117,15 @@ contract FYDai is IFYDai, Orchestrated(), Delegable(), DecimalMath, ERC20Permit 
     /// @param fyDaiAmount Amount of fyDai to burn.
     // from --- fyDai ---> us
     // us   --- Dai  ---> to
-    function redeem(address from, address to, uint256 fyDaiAmount)
-        public onlyHolderOrDelegate(from, "FYDai: Only Holder Or Delegate") lock override 
-        returns (uint256)
-    {
-        require(
-            isMature == true,
-            "FYDai: fyDai is not mature"
-        );
-        _burn(from, fyDaiAmount);                              // Burn fyDai from `from`
-        uint256 daiAmount = muld(fyDaiAmount, chiGrowth());    // User gets interest for holding after maturity
-        treasury.pullDai(to, daiAmount);                     // Give dai to `to`, from Treasury
+    function redeem(
+        address from,
+        address to,
+        uint256 fyDaiAmount
+    ) public override onlyHolderOrDelegate(from, 'FYDai: Only Holder Or Delegate') lock returns (uint256) {
+        require(isMature == true, 'FYDai: fyDai is not mature');
+        _burn(from, fyDaiAmount); // Burn fyDai from `from`
+        uint256 daiAmount = muld(fyDaiAmount, chiGrowth()); // User gets interest for holding after maturity
+        treasury.pullDai(to, daiAmount); // Give dai to `to`, from Treasury
         emit Redeemed(from, to, fyDaiAmount, daiAmount);
         return daiAmount;
     }
@@ -141,7 +133,7 @@ contract FYDai is IFYDai, Orchestrated(), Delegable(), DecimalMath, ERC20Permit 
     /// @dev Flash-mint fyDai. Calls back on `IFlashMinter.executeOnFlashMint()`
     /// @param fyDaiAmount Amount of fyDai to mint.
     /// @param data User-defined data to pass on to `executeOnFlashMint()`
-    function flashMint(uint256 fyDaiAmount, bytes calldata data) external lock override {
+    function flashMint(uint256 fyDaiAmount, bytes calldata data) external override lock {
         _mint(msg.sender, fyDaiAmount);
         IFlashMinter(msg.sender).executeOnFlashMint(fyDaiAmount, data);
         _burn(msg.sender, fyDaiAmount);
@@ -151,7 +143,7 @@ contract FYDai is IFYDai, Orchestrated(), Delegable(), DecimalMath, ERC20Permit 
     /// This function can only be called by other Yield contracts, not users directly.
     /// @param to Wallet to mint the fyDai in.
     /// @param fyDaiAmount Amount of fyDai to mint.
-    function mint(address to, uint256 fyDaiAmount) public override onlyOrchestrated("FYDai: Not Authorized") {
+    function mint(address to, uint256 fyDaiAmount) public override onlyOrchestrated('FYDai: Not Authorized') {
         _mint(to, fyDaiAmount);
     }
 
@@ -159,7 +151,7 @@ contract FYDai is IFYDai, Orchestrated(), Delegable(), DecimalMath, ERC20Permit 
     /// This function can only be called by other Yield contracts, not users directly.
     /// @param from Wallet to burn the fyDai from.
     /// @param fyDaiAmount Amount of fyDai to burn.
-    function burn(address from, uint256 fyDaiAmount) public override onlyOrchestrated("FYDai: Not Authorized") {
+    function burn(address from, uint256 fyDaiAmount) public override onlyOrchestrated('FYDai: Not Authorized') {
         _burn(from, fyDaiAmount);
     }
 
@@ -168,6 +160,6 @@ contract FYDai is IFYDai, Orchestrated(), Delegable(), DecimalMath, ERC20Permit 
     /// @param fyDaiAmount Amount of fyDai to mint.
     function _mint(address to, uint256 fyDaiAmount) internal override {
         super._mint(to, fyDaiAmount);
-        require(totalSupply() <= 5192296858534827628530496329220096, "FYDai: Total supply limit exceeded"); // 2**112
+        require(totalSupply() <= 5192296858534827628530496329220096, 'FYDai: Total supply limit exceeded'); // 2**112
     }
 }

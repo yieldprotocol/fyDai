@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.6.10;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/math/Math.sol";
-import "./interfaces/IController.sol";
-import "./interfaces/ILiquidations.sol";
-import "./interfaces/ITreasury.sol";
-import "./helpers/DecimalMath.sol";
-import "./helpers/Delegable.sol";
-import "./helpers/Orchestrated.sol";
-
+import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import '@openzeppelin/contracts/math/Math.sol';
+import './interfaces/IController.sol';
+import './interfaces/ILiquidations.sol';
+import './interfaces/ITreasury.sol';
+import './helpers/DecimalMath.sol';
+import './helpers/Delegable.sol';
+import './helpers/Orchestrated.sol';
 
 /**
  * @dev The Liquidations contract allows to liquidate undercollateralized weth vaults in a reverse Dutch auction.
@@ -18,11 +17,10 @@ import "./helpers/Orchestrated.sol";
  * Collateral from vaults can be bought with Dai using `buy`.
  * Dai taken in payment will be handed over to Treasury, and collateral assets bought will be taken from Treasury as well.
  */
-contract Liquidations is ILiquidations, Orchestrated(), Delegable(), DecimalMath {
-
+contract Liquidations is ILiquidations, Orchestrated, Delegable, DecimalMath {
     event Liquidation(address indexed user, uint256 started, uint256 collateral, uint256 debt);
 
-    bytes32 public constant WETH = "ETH-A";
+    bytes32 public constant WETH = 'ETH-A';
     uint256 public constant AUCTION_TIME = 3600;
     uint256 public constant DUST = 25e15; // 0.025 ETH
 
@@ -41,55 +39,44 @@ contract Liquidations is ILiquidations, Orchestrated(), Delegable(), DecimalMath
     bool public live = true;
 
     /// @dev The Liquidations constructor links it to the Treasury and Controller contracts.
-    constructor (
-        address controller_
-    ) public {
+    constructor(address controller_) public {
         controller = IController(controller_);
         treasury = controller.treasury();
     }
 
     /// @dev Only while Liquidations is not unwinding due to a MakerDAO shutdown.
     modifier onlyLive() {
-        require(live == true, "Controller: Not available during unwind");
+        require(live == true, 'Controller: Not available during unwind');
         _;
     }
 
     /// @dev Overflow-protected addition, from OpenZeppelin
-    function add(uint128 a, uint128 b)
-        internal pure returns (uint128)
-    {
+    function add(uint128 a, uint128 b) internal pure returns (uint128) {
         uint128 c = a + b;
-        require(c >= a, "Liquidations: Addition overflow");
+        require(c >= a, 'Liquidations: Addition overflow');
 
         return c;
     }
 
     /// @dev Overflow-protected substraction, from OpenZeppelin
     function sub(uint128 a, uint128 b) internal pure returns (uint128) {
-        require(b <= a, "Liquidations: Substraction overflow");
+        require(b <= a, 'Liquidations: Substraction overflow');
         uint128 c = a - b;
 
         return c;
     }
 
     /// @dev Safe casting from uint256 to uint128
-    function toUint128(uint256 x) internal pure returns(uint128) {
-        require(
-            x <= type(uint128).max,
-            "Liquidations: Cast overflow"
-        );
+    function toUint128(uint256 x) internal pure returns (uint128) {
+        require(x <= type(uint128).max, 'Liquidations: Cast overflow');
         return uint128(x);
     }
 
     /// @dev Disables buying at liquidations. To be called only when Treasury shuts down.
     function shutdown() public override {
-        require(
-            treasury.live() == false,
-            "Liquidations: Treasury is live"
-        );
+        require(treasury.live() == false, 'Liquidations: Treasury is live');
         live = false;
     }
-
 
     /// @dev Return if the debt of an user is between zero and the dust level
     /// @param user Address of the user vault
@@ -100,13 +87,8 @@ contract Liquidations is ILiquidations, Orchestrated(), Delegable(), DecimalMath
 
     /// @dev Starts a liquidation process for an undercollateralized vault.
     /// @param user Address of the user vault to liquidate.
-    function liquidate(address user)
-        public onlyLive
-    {
-        require(
-            !controller.isCollateralized(WETH, user),
-            "Liquidations: Vault is not undercollateralized"
-        );
+    function liquidate(address user) public onlyLive {
+        require(!controller.isCollateralized(WETH, user), 'Liquidations: Vault is not undercollateralized');
         // A user in liquidation can be liquidated again, but doesn't restart the auction clock
         // solium-disable-next-line security/no-block-members
         if (liquidations[user] == 0) liquidations[user] = now;
@@ -117,10 +99,11 @@ contract Liquidations is ILiquidations, Orchestrated(), Delegable(), DecimalMath
             debt: add(totals.debt, toUint128(userDebt))
         });
 
-        Vault memory vault = Vault({ // TODO: Test a user that is liquidated twice
-            collateral: add(vaults[user].collateral, toUint128(userCollateral)),
-            debt: add(vaults[user].debt, toUint128(userDebt))
-        });
+        Vault memory vault =
+            Vault({ // TODO: Test a user that is liquidated twice
+                collateral: add(vaults[user].collateral, toUint128(userCollateral)),
+                debt: add(vaults[user].debt, toUint128(userDebt))
+            });
         vaults[user] = vault;
 
         emit Liquidation(user, now, userCollateral, userDebt);
@@ -134,15 +117,13 @@ contract Liquidations is ILiquidations, Orchestrated(), Delegable(), DecimalMath
     /// @param to Address of the wallet to send the obtained collateral to.
     /// @param daiAmount Amount of Dai to give in exchange for liquidated collateral.
     /// @return The amount of collateral obtained.
-    function buy(address from, address to, address liquidated, uint256 daiAmount)
-        public onlyLive
-        onlyHolderOrDelegate(from, "Controller: Only Holder Or Delegate")
-        returns (uint256)
-    {
-        require(
-            vaults[liquidated].debt > 0,
-            "Liquidations: Vault is not in liquidation"
-        );
+    function buy(
+        address from,
+        address to,
+        address liquidated,
+        uint256 daiAmount
+    ) public onlyLive onlyHolderOrDelegate(from, 'Controller: Only Holder Or Delegate') returns (uint256) {
+        require(vaults[liquidated].debt > 0, 'Liquidations: Vault is not in liquidation');
         treasury.pushDai(from, daiAmount);
 
         // calculate collateral to grab. Using divdrup stops rounding from leaving 1 stray wei in vaults.
@@ -153,20 +134,18 @@ contract Liquidations is ILiquidations, Orchestrated(), Delegable(), DecimalMath
             debt: sub(totals.debt, toUint128(daiAmount))
         });
 
-        Vault memory vault = Vault({
-            collateral: sub(vaults[liquidated].collateral, toUint128(tokenAmount)),
-            debt: sub(vaults[liquidated].debt, toUint128(daiAmount))
-        });
+        Vault memory vault =
+            Vault({
+                collateral: sub(vaults[liquidated].collateral, toUint128(tokenAmount)),
+                debt: sub(vaults[liquidated].debt, toUint128(daiAmount))
+            });
         vaults[liquidated] = vault;
 
         if (vaults[liquidated].debt == 0) delete liquidations[liquidated];
 
         treasury.pullWeth(to, tokenAmount);
 
-        require(
-            aboveDustOrZero(liquidated),
-            "Liquidations: Below dust"
-        );
+        require(aboveDustOrZero(liquidated), 'Liquidations: Below dust');
 
         return tokenAmount;
     }
@@ -177,15 +156,13 @@ contract Liquidations is ILiquidations, Orchestrated(), Delegable(), DecimalMath
     /// @param from Address of the liquidations user vault to withdraw weth from.
     /// @param to Address of the wallet receiving the withdrawn weth.
     /// @param tokenAmount Amount of Weth to withdraw.
-    function withdraw(address from, address to, uint256 tokenAmount)
-        public onlyLive
-        onlyHolderOrDelegate(from, "Controller: Only Holder Or Delegate")
-    {
+    function withdraw(
+        address from,
+        address to,
+        uint256 tokenAmount
+    ) public onlyLive onlyHolderOrDelegate(from, 'Controller: Only Holder Or Delegate') {
         Vault storage vault = vaults[from];
-        require(
-            vault.debt == 0,
-            "Liquidations: User still in liquidation"
-        );
+        require(vault.debt == 0, 'Liquidations: User still in liquidation');
 
         totals.collateral = sub(totals.collateral, toUint128(tokenAmount));
         vault.collateral = sub(vault.collateral, toUint128(tokenAmount));
@@ -198,18 +175,16 @@ contract Liquidations is ILiquidations, Orchestrated(), Delegable(), DecimalMath
     /// @param user Address of the user vault
     /// @return The amounts of collateral and debt removed from Liquidations.
     function erase(address user)
-        public override
-        onlyOrchestrated("Liquidations: Not Authorized")
+        public
+        override
+        onlyOrchestrated('Liquidations: Not Authorized')
         returns (uint128, uint128)
     {
         Vault storage vault = vaults[user];
         uint128 collateral = vault.collateral;
         uint128 debt = vault.debt;
 
-        totals = Vault({
-            collateral: sub(totals.collateral, collateral),
-            debt: sub(totals.debt, debt)
-        });
+        totals = Vault({collateral: sub(totals.collateral, collateral), debt: sub(totals.debt, debt)});
         delete vaults[user];
 
         return (collateral, debt);
@@ -223,10 +198,7 @@ contract Liquidations is ILiquidations, Orchestrated(), Delegable(), DecimalMath
     // price = 1 / (------------- * (--- + -----------------------))
     //                   debt         2       2 * auction
     function price(address user) public view returns (uint256) {
-        require(
-            liquidations[user] > 0,
-            "Liquidations: Vault is not targeted"
-        );
+        require(liquidations[user] > 0, 'Liquidations: Vault is not targeted');
         uint256 dividend1 = uint256(vaults[user].collateral);
         uint256 divisor1 = uint256(vaults[user].debt);
         uint256 term1 = dividend1.mul(UNIT).div(divisor1);

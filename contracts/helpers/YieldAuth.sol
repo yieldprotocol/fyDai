@@ -1,15 +1,22 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.6.10;
 
-import "../interfaces/IERC2612.sol";
-import "../interfaces/IDai.sol";
-import "../interfaces/IDelegable.sol";
+import '../interfaces/IERC2612.sol';
+import '../interfaces/IDai.sol';
+import '../interfaces/IDelegable.sol';
 
 /// @dev This library encapsulates methods obtain authorizations using packed signatures
 library YieldAuth {
-
     /// @dev Unpack r, s and v from a `bytes` signature
-    function unpack(bytes memory signature) internal pure returns (bytes32 r, bytes32 s, uint8 v) {
+    function unpack(bytes memory signature)
+        internal
+        pure
+        returns (
+            bytes32 r,
+            bytes32 s,
+            uint8 v
+        )
+    {
         assembly {
             r := mload(add(signature, 0x20))
             s := mload(add(signature, 0x40))
@@ -28,7 +35,11 @@ library YieldAuth {
     }
 
     /// @dev Use a packed `signature` to approve `spender` on the `dai` contract for the maximum amount.
-    function permitPackedDai(IDai dai, address spender, bytes memory signature) internal {
+    function permitPackedDai(
+        IDai dai,
+        address spender,
+        bytes memory signature
+    ) internal {
         bytes32 r;
         bytes32 s;
         uint8 v;
@@ -38,7 +49,11 @@ library YieldAuth {
     }
 
     /// @dev Use a packed `signature` to approve `spender` on the target IERC2612 `token` contract for the maximum amount.
-    function permitPacked(IERC2612 token, address spender, bytes memory signature) internal {
+    function permitPacked(
+        IERC2612 token,
+        address spender,
+        bytes memory signature
+    ) internal {
         bytes32 r;
         bytes32 s;
         uint8 v;

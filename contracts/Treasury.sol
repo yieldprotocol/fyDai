@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.6.10;
 
-import "@openzeppelin/contracts/math/Math.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./interfaces/IVat.sol";
-import "./interfaces/IDaiJoin.sol";
-import "./interfaces/IGemJoin.sol";
-import "./interfaces/IPot.sol";
-import "./interfaces/IChai.sol";
-import "./interfaces/ITreasury.sol";
-import "./helpers/DecimalMath.sol";
-import "./helpers/Orchestrated.sol";
-
+import '@openzeppelin/contracts/math/Math.sol';
+import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import './interfaces/IVat.sol';
+import './interfaces/IDaiJoin.sol';
+import './interfaces/IGemJoin.sol';
+import './interfaces/IPot.sol';
+import './interfaces/IChai.sol';
+import './interfaces/ITreasury.sol';
+import './helpers/DecimalMath.sol';
+import './helpers/Orchestrated.sol';
 
 /**
  * @dev Treasury manages asset transfers between all contracts in the Yield Protocol and other external contracts such as Chai and MakerDAO.
@@ -21,8 +20,8 @@ import "./helpers/Orchestrated.sol";
  * Treasury will use all Dai to pay off system debt in MakerDAO first, and if there is no system debt the surplus Dai will be wrapped as Chai.
  * Treasury will use any Chai it holds when requested to provide Dai. If there isn't enough Chai, it will borrow Dai from MakerDAO.
  */
-contract Treasury is ITreasury, Orchestrated(), DecimalMath {
-    bytes32 constant WETH = "ETH-A";
+contract Treasury is ITreasury, Orchestrated, DecimalMath {
+    bytes32 constant WETH = 'ETH-A';
 
     IVat public override vat;
     IWeth public override weth;
@@ -38,7 +37,7 @@ contract Treasury is ITreasury, Orchestrated(), DecimalMath {
     /// @dev As part of the constructor:
     /// Treasury allows the `chai` and `wethJoin` contracts to take as many tokens as wanted.
     /// Treasury approves the `daiJoin` and `wethJoin` contracts to move assets in MakerDAO.
-    constructor (
+    constructor(
         address vat_,
         address weth_,
         address dai_,
@@ -58,46 +57,40 @@ contract Treasury is ITreasury, Orchestrated(), DecimalMath {
         vat.hope(wethJoin_);
         vat.hope(daiJoin_);
 
-        dai.approve(address(chai), uint256(-1));      // Chai will never cheat on us
-        dai.approve(address(daiJoin), uint256(-1));   // DaiJoin will never cheat on us
+        dai.approve(address(chai), uint256(-1)); // Chai will never cheat on us
+        dai.approve(address(daiJoin), uint256(-1)); // DaiJoin will never cheat on us
         weth.approve(address(wethJoin), uint256(-1)); // WethJoin will never cheat on us
     }
 
     /// @dev Only while the Treasury is not unwinding due to a MakerDAO shutdown.
     modifier onlyLive() {
-        require(live == true, "Treasury: Not available during unwind");
+        require(live == true, 'Treasury: Not available during unwind');
         _;
     }
 
     /// @dev Safe casting from uint256 to int256
-    function toInt(uint256 x) internal pure returns(int256) {
-        require(
-            x <= uint256(type(int256).max),
-            "Treasury: Cast overflow"
-        );
+    function toInt(uint256 x) internal pure returns (int256) {
+        require(x <= uint256(type(int256).max), 'Treasury: Cast overflow');
         return int256(x);
     }
 
     /// @dev Disables pulling and pushing. Can only be called if MakerDAO shuts down.
     function shutdown() public override {
-        require(
-            vat.live() == 0,
-            "Treasury: MakerDAO is live"
-        );
+        require(vat.live() == 0, 'Treasury: MakerDAO is live');
         live = false;
     }
 
     /// @dev Returns the Treasury debt towards MakerDAO, in Dai.
     /// We have borrowed (rate * art)
     /// Borrowing limit (rate * art) <= (ink * spot)
-    function debt() public view override returns(uint256) {
-        (, uint256 rate,,,) = vat.ilks(WETH);            // Retrieve the MakerDAO stability fee for Weth
+    function debt() public view override returns (uint256) {
+        (, uint256 rate, , , ) = vat.ilks(WETH); // Retrieve the MakerDAO stability fee for Weth
         (, uint256 art) = vat.urns(WETH, address(this)); // Retrieve the Treasury debt in MakerDAO
         return muld(art, rate);
     }
 
     /// @dev Returns the amount of chai in this contract, converted to Dai.
-    function savings() public view override returns(uint256){
+    function savings() public view override returns (uint256) {
         return muld(chai.balanceOf(address(this)), pot.chi());
     }
 
@@ -107,11 +100,12 @@ contract Treasury is ITreasury, Orchestrated(), DecimalMath {
     /// @param from Wallet to take Dai from.
     /// @param daiAmount Dai quantity to take.
     function pushDai(address from, uint256 daiAmount)
-        public override
-        onlyOrchestrated("Treasury: Not Authorized")
+        public
+        override
+        onlyOrchestrated('Treasury: Not Authorized')
         onlyLive
     {
-        require(dai.transferFrom(from, address(this), daiAmount));  // Take dai from user to Treasury
+        require(dai.transferFrom(from, address(this), daiAmount)); // Take dai from user to Treasury
 
         // Due to the DSR being mostly lower than the SF, it is better for us to
         // immediately pay back as much as possible from the current debt to
@@ -122,20 +116,20 @@ contract Treasury is ITreasury, Orchestrated(), DecimalMath {
         if (toRepay > 0) {
             daiJoin.join(address(this), toRepay);
             // Remove debt from vault using frob
-            (, uint256 rate,,,) = vat.ilks(WETH); // Retrieve the MakerDAO stability fee
+            (, uint256 rate, , , ) = vat.ilks(WETH); // Retrieve the MakerDAO stability fee
             vat.frob(
                 WETH,
                 address(this),
                 address(this),
                 address(this),
-                0,                           // Weth collateral to add
-                -toInt(divd(toRepay, rate))  // Dai debt to remove
+                0, // Weth collateral to add
+                -toInt(divd(toRepay, rate)) // Dai debt to remove
             );
         }
 
-        uint256 toSave = daiAmount - toRepay;         // toRepay can't be greater than dai
+        uint256 toSave = daiAmount - toRepay; // toRepay can't be greater than dai
         if (toSave > 0) {
-            chai.join(address(this), toSave);    // Give dai to Chai, take chai back
+            chai.join(address(this), toSave); // Give dai to Chai, take chai back
         }
     }
 
@@ -145,8 +139,9 @@ contract Treasury is ITreasury, Orchestrated(), DecimalMath {
     /// @param from Wallet to take Chai from.
     /// @param chaiAmount Chai quantity to take.
     function pushChai(address from, uint256 chaiAmount)
-        public override
-        onlyOrchestrated("Treasury: Not Authorized")
+        public
+        override
+        onlyOrchestrated('Treasury: Not Authorized')
         onlyLive
     {
         require(chai.transferFrom(from, address(this), chaiAmount));
@@ -154,17 +149,17 @@ contract Treasury is ITreasury, Orchestrated(), DecimalMath {
 
         uint256 toRepay = Math.min(debt(), daiAmount);
         if (toRepay > 0) {
-            chai.draw(address(this), toRepay);     // Grab dai from Chai, converted from chai
+            chai.draw(address(this), toRepay); // Grab dai from Chai, converted from chai
             daiJoin.join(address(this), toRepay);
             // Remove debt from vault using frob
-            (, uint256 rate,,,) = vat.ilks(WETH); // Retrieve the MakerDAO stability fee
+            (, uint256 rate, , , ) = vat.ilks(WETH); // Retrieve the MakerDAO stability fee
             vat.frob(
                 WETH,
                 address(this),
                 address(this),
                 address(this),
-                0,                           // Weth collateral to add
-                -toInt(divd(toRepay, rate))  // Dai debt to remove
+                0, // Weth collateral to add
+                -toInt(divd(toRepay, rate)) // Dai debt to remove
             );
         }
         // Anything that is left from repaying, is chai savings
@@ -176,8 +171,9 @@ contract Treasury is ITreasury, Orchestrated(), DecimalMath {
     /// @param from Wallet to take Weth from.
     /// @param wethAmount Weth quantity to take.
     function pushWeth(address from, uint256 wethAmount)
-        public override
-        onlyOrchestrated("Treasury: Not Authorized")
+        public
+        override
+        onlyOrchestrated('Treasury: Not Authorized')
         onlyLive
     {
         require(weth.transferFrom(from, address(this), wethAmount));
@@ -199,18 +195,19 @@ contract Treasury is ITreasury, Orchestrated(), DecimalMath {
     /// @param to Wallet to send Dai to.
     /// @param daiAmount Dai quantity to send.
     function pullDai(address to, uint256 daiAmount)
-        public override
-        onlyOrchestrated("Treasury: Not Authorized")
+        public
+        override
+        onlyOrchestrated('Treasury: Not Authorized')
         onlyLive
     {
         uint256 toRelease = Math.min(savings(), daiAmount);
         if (toRelease > 0) {
-            chai.draw(address(this), toRelease);     // Grab dai from Chai, converted from chai
+            chai.draw(address(this), toRelease); // Grab dai from Chai, converted from chai
         }
 
-        uint256 toBorrow = daiAmount - toRelease;    // toRelease can't be greater than dai
+        uint256 toBorrow = daiAmount - toRelease; // toRelease can't be greater than dai
         if (toBorrow > 0) {
-            (, uint256 rate,,,) = vat.ilks(WETH); // Retrieve the MakerDAO stability fee
+            (, uint256 rate, , , ) = vat.ilks(WETH); // Retrieve the MakerDAO stability fee
             // Increase the dai debt by the dai to receive divided by the stability fee
             // `frob` deals with "normalized debt", instead of DAI.
             // "normalized debt" is used to account for the fact that debt grows
@@ -226,12 +223,12 @@ contract Treasury is ITreasury, Orchestrated(), DecimalMath {
                 address(this),
                 address(this),
                 0,
-                toInt(divdrup(toBorrow, rate))      // We need to round up, otherwise we won't exit toBorrow
+                toInt(divdrup(toBorrow, rate)) // We need to round up, otherwise we won't exit toBorrow
             );
             daiJoin.exit(address(this), toBorrow); // `daiJoin` reverts on failures
         }
 
-        require(dai.transfer(to, daiAmount));                            // Give dai to user
+        require(dai.transfer(to, daiAmount)); // Give dai to user
     }
 
     /// @dev Returns chai using chai savings as much as possible, and borrowing the rest.
@@ -239,18 +236,19 @@ contract Treasury is ITreasury, Orchestrated(), DecimalMath {
     /// @param to Wallet to send Chai to.
     /// @param chaiAmount Chai quantity to send.
     function pullChai(address to, uint256 chaiAmount)
-        public override
-        onlyOrchestrated("Treasury: Not Authorized")
+        public
+        override
+        onlyOrchestrated('Treasury: Not Authorized')
         onlyLive
     {
         uint256 chi = pot.chi();
-        uint256 daiAmount = muldrup(chaiAmount, chi);   // dai = price * chai, we round up, otherwise we won't borrow enough dai
+        uint256 daiAmount = muldrup(chaiAmount, chi); // dai = price * chai, we round up, otherwise we won't borrow enough dai
         uint256 toRelease = Math.min(savings(), daiAmount);
         // As much chai as the Treasury has, can be used, we borrow dai and convert it to chai for the rest
 
-        uint256 toBorrow = daiAmount - toRelease;    // toRelease can't be greater than daiAmount
+        uint256 toBorrow = daiAmount - toRelease; // toRelease can't be greater than daiAmount
         if (toBorrow > 0) {
-            (, uint256 rate,,,) = vat.ilks(WETH); // Retrieve the MakerDAO stability fee
+            (, uint256 rate, , , ) = vat.ilks(WETH); // Retrieve the MakerDAO stability fee
             // Increase the dai debt by the dai to receive divided by the stability fee
             vat.frob(
                 WETH,
@@ -258,13 +256,13 @@ contract Treasury is ITreasury, Orchestrated(), DecimalMath {
                 address(this),
                 address(this),
                 0,
-                toInt(divdrup(toBorrow, rate))       // We need to round up, otherwise we won't exit toBorrow
+                toInt(divdrup(toBorrow, rate)) // We need to round up, otherwise we won't exit toBorrow
             ); // `vat.frob` reverts on failure
-            daiJoin.exit(address(this), toBorrow);  // `daiJoin` reverts on failures
-            chai.join(address(this), toBorrow);     // Grab chai from Chai, converted from dai
+            daiJoin.exit(address(this), toBorrow); // `daiJoin` reverts on failures
+            chai.join(address(this), toBorrow); // Grab chai from Chai, converted from dai
         }
 
-        require(chai.transfer(to, chaiAmount));                            // Give dai to user
+        require(chai.transfer(to, chaiAmount)); // Give dai to user
     }
 
     /// @dev Moves Weth collateral from Treasury controlled Maker Eth vault to `to` address.
@@ -272,8 +270,9 @@ contract Treasury is ITreasury, Orchestrated(), DecimalMath {
     /// @param to Wallet to send Weth to.
     /// @param wethAmount Weth quantity to send.
     function pullWeth(address to, uint256 wethAmount)
-        public override
-        onlyOrchestrated("Treasury: Not Authorized")
+        public
+        override
+        onlyOrchestrated('Treasury: Not Authorized')
         onlyLive
     {
         // Remove collateral from vault using frob
@@ -283,7 +282,7 @@ contract Treasury is ITreasury, Orchestrated(), DecimalMath {
             address(this),
             address(this),
             -toInt(wethAmount), // Weth collateral to remove - WAD
-            0              // Dai debt to add - WAD
+            0 // Dai debt to add - WAD
         );
         wethJoin.exit(to, wethAmount); // `GemJoin` reverts on failures
     }
@@ -292,16 +291,10 @@ contract Treasury is ITreasury, Orchestrated(), DecimalMath {
     /// This function can only be called by the contract owner, which should only be possible during deployment.
     /// This function allows Unwind to take all the Chai savings and operate with the Treasury MakerDAO vault.
     /// @param unwind_ The address of the Unwild.sol contract.
-    function registerUnwind(address unwind_)
-        public
-        onlyOwner
-    {
-        require(
-            unwind == address(0),
-            "Treasury: Unwind already set"
-        );
+    function registerUnwind(address unwind_) public onlyOwner {
+        require(unwind == address(0), 'Treasury: Unwind already set');
         unwind = unwind_;
         chai.approve(address(unwind), uint256(-1)); // Unwind will never cheat on us
-        vat.hope(address(unwind));                  // Unwind will never cheat on us
+        vat.hope(address(unwind)); // Unwind will never cheat on us
     }
 }
