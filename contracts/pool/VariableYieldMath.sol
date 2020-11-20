@@ -339,7 +339,7 @@ library VariableYieldMath {
    * @param g fee coefficient, multiplied by 2^64
    * @return the amount of fyDai a user would get for given amount of VYDai
    */
-  function fyDaiOutForDaiIn(
+  function fyDaiOutForVYDaiIn(
     uint128 vyDaiReserves, uint128 fyDaiReserves, uint128 vyDaiAmount,
     uint128 timeTillMaturity, int128 k, int128 c, int128 g)
   internal pure returns(uint128) {
@@ -431,7 +431,7 @@ library VariableYieldMath {
    * @param g fee coefficient, multiplied by 2^64
    * @return the amount of fyDai a user could sell for given amount of VYDai
    */
-  function fyDaiInForDaiOut(
+  function fyDaiInForVYDaiOut(
     uint128 vyDaiReserves, uint128 fyDaiReserves, uint128 vyDaiAmount,
     uint128 timeTillMaturity, int128 k, int128 c, int128 g)
   internal pure returns(uint128) {
@@ -528,7 +528,7 @@ library VariableYieldMath {
    *        initialization time, multiplied by 2^64
    * @return the amount of fyDai a user would get for given amount of VYDai
    */
-  function fyDaiOutForDaiInNormalized(
+  function fyDaiOutForVYDaiInNormalized(
     uint128 vyDaiReserves, uint128 fyDaiReserves, uint128 vyDaiAmount,
     uint128 timeTillMaturity, int128 k, int128 c, int128 g, int128 c0)
   internal pure returns(uint128) {
@@ -538,7 +538,7 @@ library VariableYieldMath {
     uint256 normalizedDaiAmount = c0.mulu(vyDaiAmount);
     require(normalizedDaiAmount <= MAX);
 
-    return fyDaiOutForDaiIn(
+    return fyDaiOutForVYDaiIn(
       uint128(normalizedDaiReserves),
       fyDaiReserves,
       uint128(normalizedDaiAmount),
@@ -597,7 +597,7 @@ library VariableYieldMath {
    *        initialization time, multiplied by 2^64
    * @return the amount of fyDai a user could sell for given amount of VYDai
    */
-  function fyDaiInForDaiOutNormalized(
+  function fyDaiInForVYDaiOutNormalized(
     uint128 vyDaiReserves, uint128 fyDaiReserves, uint128 vyDaiAmount,
     uint128 timeTillMaturity, int128 k, int128 c, int128 g, int128 c0)
   internal pure returns(uint128) {
@@ -607,7 +607,7 @@ library VariableYieldMath {
     uint256 normalizedDaiAmount = c0.mulu(vyDaiAmount);
     require(normalizedDaiAmount <= MAX);
 
-    return fyDaiInForDaiOut(
+    return fyDaiInForVYDaiOut(
       uint128(normalizedDaiReserves),
       fyDaiReserves,
       uint128(normalizedDaiAmount),
@@ -686,3 +686,15 @@ library VariableYieldMath {
     return uint128(result);
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
