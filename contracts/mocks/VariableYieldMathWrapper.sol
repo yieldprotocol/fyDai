@@ -4,7 +4,7 @@ pragma solidity ^0.5.0 || ^0.6.0;
 import "../pool/VariableYieldMath.sol";
 
 /**
- * Wrapper for the Variable Yield Math Smart Contract Library, with return values for reverts.
+ * Wrapper for the Variable Yield Math Smart Contract Library.
  */
 contract VariableYieldMathWrapper {
   /**
@@ -22,11 +22,10 @@ contract VariableYieldMathWrapper {
   function fyDaiOutForVYDaiIn(
     uint128 vyDaiReserves, uint128 fyDaiReserves, uint128 vyDaiAmount,
     uint128 timeTillMaturity, int128 k, int128 g, int128 c)
-  public pure returns(bool, uint128) {
-    return(
-      true,
-      VariableYieldMath.fyDaiOutForVYDaiIn(
-        vyDaiReserves, fyDaiReserves, vyDaiAmount, timeTillMaturity, k, g, c));
+  public pure returns(uint128) {
+    return VariableYieldMath.fyDaiOutForVYDaiIn(
+      vyDaiReserves, fyDaiReserves, vyDaiAmount, timeTillMaturity, k, g, c
+    );
   }
 
   /**
@@ -44,11 +43,10 @@ contract VariableYieldMathWrapper {
   function vyDaiOutForFYDaiIn(
     uint128 vyDaiReserves, uint128 fyDaiReserves, uint128 fyDaiAmount,
     uint128 timeTillMaturity, int128 k, int128 g, int128 c)
-  public pure returns(bool, uint128) {
-    return(
-      true,
-      VariableYieldMath.vyDaiOutForFYDaiIn(
-        vyDaiReserves, fyDaiReserves, fyDaiAmount, timeTillMaturity, k, g, c));
+  public pure returns(uint128) {
+    return VariableYieldMath.vyDaiOutForFYDaiIn(
+      vyDaiReserves, fyDaiReserves, fyDaiAmount, timeTillMaturity, k, g, c
+    );
   }
 
   /**
@@ -66,11 +64,10 @@ contract VariableYieldMathWrapper {
   function fyDaiInForVYDaiOut(
     uint128 vyDaiReserves, uint128 fyDaiReserves, uint128 vyDaiAmount,
     uint128 timeTillMaturity, int128 k, int128 g, int128 c)
-  public pure returns(bool, uint128) {
-    return(
-      true,
-      VariableYieldMath.fyDaiInForVYDaiOut(
-        vyDaiReserves, fyDaiReserves, vyDaiAmount, timeTillMaturity, k, g, c));
+  public pure returns(uint128) {
+    return VariableYieldMath.fyDaiInForVYDaiOut(
+      vyDaiReserves, fyDaiReserves, vyDaiAmount, timeTillMaturity, k, g, c
+    );
   }
 
   /**
@@ -90,11 +87,10 @@ contract VariableYieldMathWrapper {
   function vyDaiInForFYDaiOut(
     uint128 vyDaiReserves, uint128 fyDaiReserves, uint128 fyDaiAmount,
     uint128 timeTillMaturity, int128 k, int128 g, int128 c)
-  public pure returns(bool, uint128) {
-    return(
-      true,
-      VariableYieldMath.vyDaiInForFYDaiOut(
-        vyDaiReserves, fyDaiReserves, fyDaiAmount, timeTillMaturity, k, g, c));
+  public pure returns(uint128) {
+    return VariableYieldMath.vyDaiInForFYDaiOut(
+      vyDaiReserves, fyDaiReserves, fyDaiAmount, timeTillMaturity, k, g, c
+    );
   }
 
   /**
