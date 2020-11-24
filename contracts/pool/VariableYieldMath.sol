@@ -329,7 +329,7 @@ library VariableYieldMath {
 
   /**
    * Calculate the amount of fyDai a user would get for given amount of VYDai.
-   *
+   * https://www.desmos.com/calculator/ducvqay9yl
    * @param vyDaiReserves VYDai reserves amount
    * @param fyDaiReserves fyDai reserves amount
    * @param vyDaiAmount VYDai amount to be traded
@@ -379,7 +379,7 @@ library VariableYieldMath {
 
   /**
    * Calculate the amount of VYDai a user would get for certain amount of fyDai.
-   *
+   * https://www.desmos.com/calculator/gsw593jzbr
    * @param vyDaiReserves VYDai reserves amount
    * @param fyDaiReserves fyDai reserves amount
    * @param fyDaiAmount fyDai amount to be traded
@@ -433,7 +433,7 @@ library VariableYieldMath {
 
   /**
    * Calculate the amount of fyDai a user could sell for given amount of VYDai.
-   *
+   * https://www.desmos.com/calculator/pr5opcr0w3
    * @param vyDaiReserves VYDai reserves amount
    * @param fyDaiReserves fyDai reserves amount
    * @param vyDaiAmount VYDai amount to be traded
@@ -482,9 +482,8 @@ library VariableYieldMath {
   }
 
   /**
-   * Calculate the amount of VYDai a user would have to pay for certain amount of
-   * fyDai.
-   *
+   * Calculate the amount of VYDai a user would have to pay for certain amount of fyDai.
+   * https://www.desmos.com/calculator/poicbg2qiw
    * @param vyDaiReserves VYDai reserves amount
    * @param fyDaiReserves fyDai reserves amount
    * @param fyDaiAmount fyDai amount to be traded
@@ -536,7 +535,7 @@ library VariableYieldMath {
 
   /**
    * Calculate the amount of fyDai a user would get for given amount of VYDai.
-   *
+   * https://www.desmos.com/calculator/uwni55gct3
    * @param vyDaiReserves VYDai reserves amount
    * @param fyDaiReserves fyDai reserves amount
    * @param vyDaiAmount VYDai amount to be traded
@@ -605,7 +604,7 @@ library VariableYieldMath {
 
   /**
    * Calculate the amount of fyDai a user could sell for given amount of VYDai.
-   *
+   * 
    * @param vyDaiReserves VYDai reserves amount
    * @param fyDaiReserves fyDai reserves amount
    * @param vyDaiAmount VYDai amount to be traded
