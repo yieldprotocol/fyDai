@@ -37,7 +37,7 @@ contract('VariableYieldMath - Curve', async (accounts) => {
   const g1 = new BN('950').mul(b).div(new BN('1000')) // Sell Dai to the pool
   const g2 = new BN('1000').mul(b).div(new BN('950')) // Sell fyDai to the pool
 
-  const ONE64 = new BN('18446744073709551616')                  // In 64.64 format
+  const ONE64 = new BN('18446744073709551616') // In 64.64 format
 
   const values = [
     ['10000000000000000000000', '1000000000000000000000', '10000000000000000000', '1000000'],
@@ -78,7 +78,15 @@ contract('VariableYieldMath - Curve', async (accounts) => {
         var previousResult = new BN('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = new BN(g[j][0]).mul(b).div(new BN(g[j][1]))
-          var result = await yieldMath.fyDaiOutForVYDaiIn(daiReserves, fyDaiReserves, daiAmount, timeTillMaturity, k, g_, ONE64)
+          var result = await yieldMath.fyDaiOutForVYDaiIn(
+            daiReserves,
+            fyDaiReserves,
+            daiAmount,
+            timeTillMaturity,
+            k,
+            g_,
+            ONE64
+          )
         }
 
         expect(result).to.be.bignumber.gt(previousResult.toString())
@@ -139,7 +147,15 @@ contract('VariableYieldMath - Curve', async (accounts) => {
         var previousResult = new BN('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = new BN(g[j][0]).mul(b).div(new BN(g[j][1]))
-          var result = await yieldMath.vyDaiOutForFYDaiIn(daiReserves, fyDaiReserves, daiAmount, timeTillMaturity, k, g_, ONE64)
+          var result = await yieldMath.vyDaiOutForFYDaiIn(
+            daiReserves,
+            fyDaiReserves,
+            daiAmount,
+            timeTillMaturity,
+            k,
+            g_,
+            ONE64
+          )
         }
 
         expect(result).to.be.bignumber.gt(previousResult.toString())
@@ -199,7 +215,15 @@ contract('VariableYieldMath - Curve', async (accounts) => {
         var previousResult = new BN('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = new BN(g[j][0]).mul(b).div(new BN(g[j][1]))
-          var result = await yieldMath.fyDaiInForVYDaiOut(daiReserves, fyDaiReserves, daiAmount, timeTillMaturity, k, g_, ONE64)
+          var result = await yieldMath.fyDaiInForVYDaiOut(
+            daiReserves,
+            fyDaiReserves,
+            daiAmount,
+            timeTillMaturity,
+            k,
+            g_,
+            ONE64
+          )
         }
 
         expect(result).to.be.bignumber.gt(previousResult.toString())
@@ -259,7 +283,15 @@ contract('VariableYieldMath - Curve', async (accounts) => {
         var previousResult = new BN('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = new BN(g[j][0]).mul(b).div(new BN(g[j][1]))
-          var result = await yieldMath.vyDaiInForFYDaiOut(daiReserves, fyDaiReserves, daiAmount, timeTillMaturity, k, g_, ONE64)
+          var result = await yieldMath.vyDaiInForFYDaiOut(
+            daiReserves,
+            fyDaiReserves,
+            daiAmount,
+            timeTillMaturity,
+            k,
+            g_,
+            ONE64
+          )
         }
 
         expect(result).to.be.bignumber.gt(previousResult.toString())
