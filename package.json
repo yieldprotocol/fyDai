@@ -29,6 +29,7 @@
     "ethereumjs-util": "^7.0.3",
     "ethers": "^5.0.7",
     "ganache-time-traveler": "^1.0.14",
+    "mathjs": "^7.3.0",
     "mocha": "^7.1.0",
     "prettier": "^2.0.5",
     "solhint": "^3.2.0",
