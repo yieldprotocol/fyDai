@@ -19,6 +19,7 @@ function toBigNumber(x: any) {
 
 
 function buyFYDai(vyDaiReserves: any, fyDaiReserves: any, fyDai: any, timeTillMaturity: any, rate: any) {
+    const fee = bignumber(1000000000000)
     const Z = bignumber(vyDaiReserves)
     const Y = bignumber(fyDaiReserves)
     const T = bignumber(timeTillMaturity)
@@ -35,11 +36,13 @@ function buyFYDai(vyDaiReserves: any, fyDaiReserves: any, fyDai: any, timeTillMa
     const Yxa = pow(subtract(Y, x), a)
     const sum = add(multiply(c, Za), multiply(invC, subtract(Ya, Yxa)))
     const y = subtract(multiply(invC, pow(sum, invA)), Z)
+    const yFee = add(y, fee)
 
-    return y
+    return yFee
 };
 
 function sellVYDai(vyDaiReserves: any, fyDaiReserves: any, vyDai: any, timeTillMaturity: any, rate: any) {
+    const fee = bignumber(1000000000000)
     const Z = bignumber(vyDaiReserves)
     const Y = bignumber(fyDaiReserves)
     const T = bignumber(timeTillMaturity)
@@ -55,11 +58,13 @@ function sellVYDai(vyDaiReserves: any, fyDaiReserves: any, vyDai: any, timeTillM
     const Zxa = multiply(c, pow(multiply(c, add(Z, x)), a))
     const sum = subtract(add(Za, Ya), Zxa)
     const y = subtract(Y, pow(sum, invA))
+    const yFee = subtract(y, fee)
 
-    return y
+    return yFee
 };
 
 function buyVYDai (vyDaiReserves: any, fyDaiReserves: any, vyDai: any, timeTillMaturity: any, rate: any) {
+    const fee = bignumber(1000000000000)
     const Z = bignumber(vyDaiReserves)
     const Y = bignumber(fyDaiReserves)
     const T = bignumber(timeTillMaturity)
@@ -75,11 +80,13 @@ function buyVYDai (vyDaiReserves: any, fyDaiReserves: any, vyDai: any, timeTillM
     const Zxa = multiply(c, pow(multiply(c, subtract(Z, x)), a))
     const sum = subtract(add(Za, Ya), Zxa)
     const y = subtract(pow(sum, invA), Y)
+    const yFee = add(y, fee)
 
-    return y
+    return yFee
 };
 
 function sellFYDai(vyDaiReserves: any, fyDaiReserves: any, fyDai: any, timeTillMaturity: any, rate: any) {
+    const fee = bignumber(1000000000000)
     const Z = bignumber(vyDaiReserves)
     const Y = bignumber(fyDaiReserves)
     const T = bignumber(timeTillMaturity)
@@ -96,8 +103,9 @@ function sellFYDai(vyDaiReserves: any, fyDaiReserves: any, fyDai: any, timeTillM
     const Yxa = pow(add(Y, x), a)
     const sum = add(Za, subtract(Ya, Yxa))
     const y = subtract(Z, multiply(invC, pow(sum, invA)))
+    const yFee = subtract(y, fee)
 
-    return y
+    return yFee
 };
 
 function almostEqual(x: any, y: any, p: any) {
@@ -192,6 +200,7 @@ contract('VariableYieldMath - Curve', async (accounts) => {
           for (var tradeSize of tradeSizes) {
             for (var timeTillMaturity of timesTillMaturity) {
               for (var exchangeRate of exchangeRates) {
+                console.log(`vyDaiReserve, fyDaiReserveDelta, tradeSize, timeTillMaturity, exchangeRate`)
                 console.log(`${vyDaiReserve}, ${fyDaiReserveDelta}, ${tradeSize}, ${timeTillMaturity}, ${exchangeRate}`)
                 const fyDaiReserve = new BN(vyDaiReserve).add(new BN(fyDaiReserveDelta)).toString()
                 const bnRate = new BN((Number(exchangeRate) * 100).toString()).mul(ONE64).div(new BN('100'))
