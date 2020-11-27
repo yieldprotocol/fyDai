@@ -179,7 +179,9 @@ contract PoolProxy is DecimalMath {
         approvals = approvals && dai.allowance(address(this), address(chai)) == type(uint256).max;
         approvals = approvals && dai.allowance(address(this), address(pool)) == type(uint256).max;
         approvals = approvals && pool.fyDai().allowance(address(this), address(pool)) >= type(uint112).max;
+        // Allow transfers of Dai to your Proxy
         bool daiSig = dai.allowance(msg.sender, address(this)) == type(uint256).max;
+        // Allow your Proxy to interact with your collateralized positions.
         bool controllerSig = controller.delegated(msg.sender, address(this));
         return (approvals, daiSig, controllerSig);
     }
@@ -229,7 +231,9 @@ contract PoolProxy is DecimalMath {
         bool approvals = true;
         approvals = approvals && dai.allowance(address(this), address(pool)) == type(uint256).max;
         approvals = approvals && pool.fyDai().allowance(address(this), address(pool)) >= type(uint112).max;
+        // Allow your Proxy to interact with your collateralized positions.
         bool controllerSig = controller.delegated(msg.sender, address(this));
+        // Allow your Proxy to interact with the xxx pool in your name.
         bool poolSig = pool.delegated(msg.sender, address(this));
         return (approvals, controllerSig, poolSig);
     }
@@ -272,7 +276,9 @@ contract PoolProxy is DecimalMath {
         bool approvals = true;
         approvals = approvals && dai.allowance(address(this), treasury) == type(uint256).max;
         approvals = approvals && pool.fyDai().allowance(address(this), address(pool)) >= type(uint112).max;
+        // Allow your Proxy to interact with your collateralized positions.
         bool controllerSig = controller.delegated(msg.sender, address(this));
+        // Allow your Proxy to interact with the xxx pool in your name.
         bool poolSig = pool.delegated(msg.sender, address(this));
         return (approvals, controllerSig, poolSig);
     }
@@ -311,7 +317,9 @@ contract PoolProxy is DecimalMath {
     /// If `return` is `(true, true, true)`, `removeLiquidityMature` won't fail because of missing approvals or signatures.
     function removeLiquidityMatureCheck(IPool pool) public view returns (bool, bool, bool) {
         bool approvals = dai.allowance(address(this), treasury) == type(uint256).max;
+        // Allow your Proxy to interact with your collateralized positions.
         bool controllerSig = controller.delegated(msg.sender, address(this));
+        // Allow your Proxy to interact with the xxx pool in your name.
         bool poolSig = pool.delegated(msg.sender, address(this));
         return (approvals, controllerSig, poolSig);
     }
