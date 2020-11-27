@@ -185,8 +185,8 @@ contract BorrowProxy {
     /// If `return` is `(true, true)`, `withdrawWithSignature` won't fail because of missing approvals or signatures.
     function withdrawCheck() public view returns (bool, bool) {
         bool approvals = true; // sellFYDai doesn't need proxy approvals
-        bool controllerSig = controller.delegated(msg.sender, address(this));
         // Allow this website to interact with your collateralized positions.
+        bool controllerSig = controller.delegated(msg.sender, address(this));
         return (approvals, controllerSig);
     }
 
@@ -206,8 +206,8 @@ contract BorrowProxy {
     /// If `return` is `(true, true)`, `borrowDaiForMaximumFYDai` won't fail because of missing approvals or signatures.
     function borrowDaiForMaximumFYDaiCheck(IPool pool) public view returns (bool, bool) {
         bool approvals = pool.fyDai().allowance(address(this), address(pool)) >= type(uint112).max;
-        bool controllerSig = controller.delegated(msg.sender, address(this));
         // Allow this website to interact with your collateralized positions.
+        bool controllerSig = controller.delegated(msg.sender, address(this));
         return (approvals, controllerSig);
     }
 
@@ -250,10 +250,10 @@ contract BorrowProxy {
     /// If `return` is `(true, true, any)`, `controller.repayDai` can be called directly and won't fail because of missing approvals or signatures.
     function repayDaiCheck() public view returns (bool, bool, bool) {
         bool approvals = true; // repayDai doesn't need proxy approvals
-        bool daiSig = dai.allowance(msg.sender, treasury) == type(uint256).max;
         // Allow Dai transfers to the fyDai Treasury.
-        bool controllerSig = controller.delegated(msg.sender, address(this));
+        bool daiSig = dai.allowance(msg.sender, treasury) == type(uint256).max;
         // Allow this website to interact with your collateralized positions.
+        bool controllerSig = controller.delegated(msg.sender, address(this));
         return (approvals, daiSig, controllerSig);
     }
 
@@ -297,10 +297,10 @@ contract BorrowProxy {
     /// If `return` is `(true, true, true)`, `repayMinimumFYDaiDebtForDai` won't fail because of missing approvals or signatures.
     function repayMinimumFYDaiDebtForDaiCheck(IPool pool) public view returns (bool, bool, bool) {
         bool approvals = pool.fyDai().allowance(address(this), treasury) >= type(uint112).max;
-        bool controllerSig = controller.delegated(msg.sender, address(this));
         // Allow this website to interact with your collateralized positions.
-        bool poolSig = pool.delegated(msg.sender, address(this));
+        bool controllerSig = controller.delegated(msg.sender, address(this));
         // Allow this website to interact with the xxx pool in your name.
+        bool poolSig = pool.delegated(msg.sender, address(this));
         return (approvals, controllerSig, poolSig);
     }
 
@@ -341,10 +341,10 @@ contract BorrowProxy {
     /// If `return` is `(true, true, true)`, `sellFYDai` won't fail because of missing approvals or signatures.
     function sellFYDaiCheck(IPool pool) public view returns (bool, bool, bool) {
         bool approvals = true; // sellFYDai doesn't need proxy approvals
-        bool fyDaiSig = pool.fyDai().allowance(msg.sender, address(pool)) >= type(uint112).max;
         // Allow fyDai transfers to the xxx pool.
-        bool poolSig = pool.delegated(msg.sender, address(this));
+        bool fyDaiSig = pool.fyDai().allowance(msg.sender, address(pool)) >= type(uint112).max;
         // Allow this website to interact with the xxx pool in your name.
+        bool poolSig = pool.delegated(msg.sender, address(this));
         return (approvals, fyDaiSig, poolSig);
     }
 
