@@ -241,6 +241,7 @@ contract ImportProxy is DecimalMath, IFlashMinter {
     /// If `return` is `(true, true)`, `importFromProxy` won't fail because of missing approvals or signatures.
     function importPositionCheck() public view returns (bool, bool) {
         bool approvals = vat.can(msg.sender, address(this)) == 1;
+        // Allow your Proxy to interact with your collateralized positions.
         bool controllerSig = controller.delegated(msg.sender, address(importProxy));
         return (approvals, controllerSig);
     }

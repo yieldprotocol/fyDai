@@ -166,6 +166,7 @@ contract ExportProxy is DecimalMath, IFlashMinter {
     /// If `return` is `(true, true)`, `exportPosition` won't fail because of missing approvals or signatures.
     function exportPositionCheck() public view returns (bool, bool) {
         bool approvals = vat.can(msg.sender, address(this)) == 1;
+        // Allow the Export Proxy to interact with your collateralized positions.
         bool controllerSig = controller.delegated(msg.sender, address(this));
         return (approvals, controllerSig);
     }
