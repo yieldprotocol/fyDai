@@ -377,10 +377,10 @@ contract BorrowProxy {
     /// If `return` is `(true, true, true)`, `sellDai` won't fail because of missing approvals or signatures.
     function sellDaiCheck(IPool pool) public view returns (bool, bool, bool) {
         bool approvals = true; // sellDai doesn't need proxy approvals
-        bool daiSig = dai.allowance(msg.sender, address(pool)) == type(uint256).max;
         // Allow Dai transfers to the xxx pool.
-        bool poolSig = pool.delegated(msg.sender, address(this));
+        bool daiSig = dai.allowance(msg.sender, address(pool)) == type(uint256).max;
         // Allow this website to interact with the xxx pool in your name.
+        bool poolSig = pool.delegated(msg.sender, address(this));
         return (approvals, daiSig, poolSig);
     }
 
