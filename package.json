@@ -1,6 +1,6 @@
 {
   "name": "@yield-protocol/vault-v1",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Solidity contracts to implement the Yield Protocol collateralized debt engine",
   "author": "Yield Inc.",
   "files": [
@@ -11,11 +11,11 @@
   ],
   "homepage": "https://yield.is",
   "repository": {
-    "url": "https://github.com/yieldprotocol/vault-v1",
+    "url": "https://github.com/yieldprotocol/fyDai",
     "type": "git"
   },
   "bugs": {
-    "url": "https://github.com/yieldprotocol/vault-v1/issues"
+    "url": "https://github.com/yieldprotocol/fyDai/issues"
   },
   "engines": {
     "node": ">=10"
