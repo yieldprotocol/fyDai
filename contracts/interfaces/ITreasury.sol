@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.6.10;
 
-import "./IVat.sol";
-import "./IDai.sol";
-import "./IWeth.sol";
-import "./IGemJoin.sol";
-import "./IDaiJoin.sol";
-import "./IPot.sol";
-import "./IChai.sol";
+import "../external/weth/interfaces/IWeth.sol";
+import "../external/maker/interfaces/IVat.sol";
+import "../external/maker/interfaces/IDai.sol";
+import "../external/maker/interfaces/IGemJoin.sol";
+import "../external/maker/interfaces/IDaiJoin.sol";
+import "../external/maker/interfaces/IPot.sol";
+import "../external/chai/interfaces/IChai.sol";
 
 interface ITreasury {
     function debt() external view returns(uint256);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.6.10;
 
-import "./IDelegable.sol";
+import "@yield-protocol/utils/contracts/interfaces/IDelegable.sol";
 import "./ITreasury.sol";
 import "./IFYDai.sol";
 

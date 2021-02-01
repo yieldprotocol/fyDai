@@ -5,18 +5,18 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./interfaces/IVat.sol";
-import "./interfaces/IWeth.sol";
-import "./interfaces/IGemJoin.sol";
-import "./interfaces/IDaiJoin.sol";
-import "./interfaces/IPot.sol";
-import "./interfaces/IEnd.sol";
-import "./interfaces/IChai.sol";
+import "@yield-protocol/utils/contracts/DecimalMath.sol";
+import "./external/weth/interfaces/IWeth.sol";
+import "./external/maker/interfaces/IVat.sol";
+import "./external/maker/interfaces/IGemJoin.sol";
+import "./external/maker/interfaces/IDaiJoin.sol";
+import "./external/maker/interfaces/IPot.sol";
+import "./external/maker/interfaces/IEnd.sol";
+import "./external/chai/interfaces/IChai.sol";
 import "./interfaces/ITreasury.sol";
 import "./interfaces/IController.sol";
 import "./interfaces/IFYDai.sol";
 import "./interfaces/ILiquidations.sol";
-import "./helpers/DecimalMath.sol";
 
 
 /**

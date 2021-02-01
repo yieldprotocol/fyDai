@@ -6,9 +6,9 @@ import "@openzeppelin/contracts/math/Math.sol";
 import "./interfaces/IController.sol";
 import "./interfaces/ILiquidations.sol";
 import "./interfaces/ITreasury.sol";
-import "./helpers/DecimalMath.sol";
-import "./helpers/Delegable.sol";
-import "./helpers/Orchestrated.sol";
+import "@yield-protocol/utils/contracts/Delegable.sol";
+import "@yield-protocol/utils/contracts/DecimalMath.sol";
+import "@yield-protocol/utils/contracts/Orchestrated.sol";
 
 
 /**
