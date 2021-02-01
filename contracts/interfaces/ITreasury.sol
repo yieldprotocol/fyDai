@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.6.10;
 
-import "../external/weth/interfaces/IWeth.sol";
-import "../external/maker/interfaces/IVat.sol";
-import "../external/maker/interfaces/IDai.sol";
-import "../external/maker/interfaces/IGemJoin.sol";
-import "../external/maker/interfaces/IDaiJoin.sol";
-import "../external/maker/interfaces/IPot.sol";
-import "../external/chai/interfaces/IChai.sol";
+import "@yield-protocol/utils/contracts/interfaces/weth/IWeth.sol";
+import "@yield-protocol/utils/contracts/interfaces/maker/IVat.sol";
+import "@yield-protocol/utils/contracts/interfaces/maker/IDai.sol";
+import "@yield-protocol/utils/contracts/interfaces/maker/IGemJoin.sol";
+import "@yield-protocol/utils/contracts/interfaces/maker/IDaiJoin.sol";
+import "@yield-protocol/utils/contracts/interfaces/maker/IPot.sol";
+import "@yield-protocol/utils/contracts/interfaces/chai/IChai.sol";
 
 interface ITreasury {
     function debt() external view returns(uint256);
