@@ -2,14 +2,11 @@ const Delegable = artifacts.require('Delegable')
 
 // @ts-ignore
 import { expectRevert } from '@openzeppelin/test-helpers'
+import { signatures} from '@yield-protocol/utils'
+const { getSignatureDigest, getDomainSeparator, SIGNATURE_TYPEHASH } = signatures
 import { Contract } from './shared/fixtures'
-import { getSignatureDigest, getDomainSeparator } from './shared/signatures'
 import { keccak256, toUtf8Bytes } from 'ethers/lib/utils'
 import { ecsign } from 'ethereumjs-util'
-
-const SIGNATURE_TYPEHASH = keccak256(
-  toUtf8Bytes('Signature(address user,address delegate,uint256 nonce,uint256 deadline)')
-)
 
 contract('Delegable with signatures', async (accounts: string[]) => {
   // this is the SECOND account that buidler creates
