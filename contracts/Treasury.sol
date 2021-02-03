@@ -2,8 +2,8 @@
 pragma solidity ^0.6.10;
 
 import "@openzeppelin/contracts/math/Math.sol";
-import "@yield-protocol/utils/contracts/DecimalMath.sol";
-import "@yield-protocol/utils/contracts/Orchestrated.sol";
+import "@yield-protocol/utils/contracts/math/DecimalMath.sol";
+import "@yield-protocol/utils/contracts/access/Orchestrated.sol";
 import "@yield-protocol/utils/contracts/interfaces/maker/IVat.sol";
 import "@yield-protocol/utils/contracts/interfaces/maker/IDai.sol";
 import "@yield-protocol/utils/contracts/interfaces/maker/IDaiJoin.sol";

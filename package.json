@@ -1,6 +1,6 @@
 {
   "name": "@yield-protocol/vault-v1",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Solidity contracts to implement the Yield Protocol collateralized debt engine",
   "author": "Yield Inc.",
   "files": [
@@ -36,7 +36,7 @@
     "lint:sol": "solhint -f table contracts/**/*.sol"
   },
   "devDependencies": {
-    "@yield-protocol/utils": "^1.0.2",
+    "@yield-protocol/utils": "^1.0.4",
     "@nomiclabs/buidler": "^1.3.8",
     "@nomiclabs/buidler-truffle5": "^1.3.4",
     "@nomiclabs/buidler-web3": "^1.3.4",
