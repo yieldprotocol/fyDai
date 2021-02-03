@@ -7,11 +7,12 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@yield-protocol/utils/contracts/math/DecimalMath.sol";
 import "@yield-protocol/utils/contracts/interfaces/weth/IWeth.sol";
-import "@yield-protocol/utils/contracts/interfaces/maker/IVat.sol";
-import "@yield-protocol/utils/contracts/interfaces/maker/IGemJoin.sol";
-import "@yield-protocol/utils/contracts/interfaces/maker/IDaiJoin.sol";
-import "@yield-protocol/utils/contracts/interfaces/maker/IPot.sol";
-import "@yield-protocol/utils/contracts/interfaces/maker/IEnd.sol";
+import "dss-interfaces/src/dss/VatAbstract.sol";
+import "dss-interfaces/src/dss/DaiAbstract.sol";
+import "dss-interfaces/src/dss/GemJoinAbstract.sol";
+import "dss-interfaces/src/dss/DaiJoinAbstract.sol";
+import "dss-interfaces/src/dss/PotAbstract.sol";
+import "dss-interfaces/src/dss/EndAbstract.sol";
 import "@yield-protocol/utils/contracts/interfaces/chai/IChai.sol";
 import "./interfaces/ITreasury.sol";
 import "./interfaces/IController.sol";
@@ -32,13 +33,13 @@ contract Unwind is Ownable(), DecimalMath {
     bytes32 public constant CHAI = "CHAI";
     bytes32 public constant WETH = "ETH-A";
 
-    IVat public vat;
-    IERC20 public dai;
-    IDaiJoin public daiJoin;
+    VatAbstract public vat;
+    DaiAbstract public dai;
+    DaiJoinAbstract public daiJoin;
     IWeth public weth;
-    IGemJoin public wethJoin;
-    IPot public pot;
-    IEnd public end;
+    GemJoinAbstract public wethJoin;
+    PotAbstract public pot;
+    EndAbstract public end;
     IChai public chai;
     ITreasury public treasury;
     IController public controller;
@@ -60,7 +61,7 @@ contract Unwind is Ownable(), DecimalMath {
         address end_,
         address liquidations_
     ) public {
-        end = IEnd(end_);
+        end = EndAbstract(end_);
         liquidations = ILiquidations(liquidations_);
         controller = liquidations.controller();
         treasury = controller.treasury();
@@ -72,7 +73,7 @@ contract Unwind is Ownable(), DecimalMath {
         pot = treasury.pot();
         chai = treasury.chai();
 
-        IERC20(treasury.dai()).approve(address(daiJoin), uint256(-1));
+        treasury.dai().approve(address(daiJoin), uint256(-1));
         vat.hope(address(treasury));
         vat.hope(address(end));
     }
