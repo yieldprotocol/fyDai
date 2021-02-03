@@ -7,10 +7,10 @@ import "@yield-protocol/utils/contracts/interfaces/maker/IPot.sol";
 import "./interfaces/ITreasury.sol";
 import "./interfaces/IFYDai.sol";
 import "./interfaces/IFlashMinter.sol";
-import "@yield-protocol/utils/contracts/Delegable.sol";
-import "@yield-protocol/utils/contracts/DecimalMath.sol";
-import "@yield-protocol/utils/contracts/Orchestrated.sol";
-import "@yield-protocol/utils/contracts/ERC20Permit.sol";
+import "@yield-protocol/utils/contracts/access/Delegable.sol";
+import "@yield-protocol/utils/contracts/math/DecimalMath.sol";
+import "@yield-protocol/utils/contracts/access/Orchestrated.sol";
+import "@yield-protocol/utils/contracts/token/ERC20Permit.sol";
 
 
 /**

@@ -3,9 +3,9 @@ pragma solidity ^0.6.10;
 
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@yield-protocol/utils/contracts/Delegable.sol";
-import "@yield-protocol/utils/contracts/DecimalMath.sol";
-import "@yield-protocol/utils/contracts/Orchestrated.sol";
+import "@yield-protocol/utils/contracts/access/Delegable.sol";
+import "@yield-protocol/utils/contracts/math/DecimalMath.sol";
+import "@yield-protocol/utils/contracts/access/Orchestrated.sol";
 import "@yield-protocol/utils/contracts/interfaces/maker/IVat.sol";
 import "@yield-protocol/utils/contracts/interfaces/maker/IPot.sol";
 import "./interfaces/ITreasury.sol";

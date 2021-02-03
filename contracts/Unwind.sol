@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@yield-protocol/utils/contracts/DecimalMath.sol";
+import "@yield-protocol/utils/contracts/math/DecimalMath.sol";
 import "@yield-protocol/utils/contracts/interfaces/weth/IWeth.sol";
 import "@yield-protocol/utils/contracts/interfaces/maker/IVat.sol";
 import "@yield-protocol/utils/contracts/interfaces/maker/IGemJoin.sol";
