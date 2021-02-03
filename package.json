@@ -27,10 +27,10 @@
     "build": "buidler compile",
     "test": "buidler test test/*.ts",
     "test:non-functional": "buidler test test/non-functional/*.ts",
+    "coverage": "buidler coverage --network coverage --temp build --testfiles 'test/*.ts'",
     "ganache": "./scripts/ganache.sh",
     "deploy:ganache": "yarn ganache && truffle migrate",
     "mainnet-ganache": "./scripts/mainnet-ganache.sh",
-    "coverage": "buidler coverage --network coverage --temp build --testfiles 'test/*.ts'",
     "lint": "prettier ./test/**/*.ts --check",
     "lint:ts": "prettier ./test/**/*.ts --write",
     "lint:sol": "solhint -f table contracts/**/*.sol"
