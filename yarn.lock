@@ -911,6 +911,14 @@
     typedarray-to-buffer "^3.1.5"
     yaeti "^0.0.6"
 
+"@yield-protocol/utils@^1.0.4":
+  version "1.0.4"
+  resolved "https://registry.yarnpkg.com/@yield-protocol/utils/-/utils-1.0.4.tgz#fa550061db8472d5f15bfd1633ed4abf5fa8aaed"
+  integrity sha512-2POvpw+kEhv1ZwGcKa99rpMnMGBoW0sDEDgnYNuN8OyL8NvCjarfX7uoUES8Zx3ZOvatKGva8EsKR9RNA4Vx9w==
+  dependencies:
+    ethereumjs-util "^7.0.8"
+    ethers "^5.0.7"
+
 abbrev@1:
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/abbrev/-/abbrev-1.1.1.tgz#f8f2c887ad10bf67f634f005b6987fed3179aac8"
@@ -2874,6 +2882,18 @@ ethereumjs-util@^7.0.2, ethereumjs-util@^7.0.3:
   version "7.0.3"
   resolved "https://registry.yarnpkg.com/ethereumjs-util/-/ethereumjs-util-7.0.3.tgz#d055fc7f852d79065d2e689002a789b1323cf3fd"
   integrity sha512-uLQsGPOwsRxe50WV1Dybh5N8zXDz4ev7wP49LKX9kr28I5TmcDILPgpKK/BFe5zYSfRGEeo+hPT7W3tjghYLuA==
+  dependencies:
+    "@types/bn.js" "^4.11.3"
+    bn.js "^5.1.2"
+    create-hash "^1.1.2"
+    ethereum-cryptography "^0.1.3"
+    ethjs-util "0.1.6"
+    rlp "^2.2.4"
+
+ethereumjs-util@^7.0.8:
+  version "7.0.8"
+  resolved "https://registry.yarnpkg.com/ethereumjs-util/-/ethereumjs-util-7.0.8.tgz#5258762b7b17e3d828e41834948363ff0a703ffd"
+  integrity sha512-JJt7tDpCAmDPw/sGoFYeq0guOVqT3pTE9xlEbBmc/nlCij3JRCoS2c96SQ6kXVHOT3xWUNLDm5QCJLQaUnVAtQ==
   dependencies:
     "@types/bn.js" "^4.11.3"
     bn.js "^5.1.2"

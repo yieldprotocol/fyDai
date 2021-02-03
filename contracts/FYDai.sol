@@ -2,16 +2,15 @@
 pragma solidity ^0.6.10;
 
 import "@openzeppelin/contracts/math/Math.sol";
-import "./interfaces/IVat.sol";
-import "./interfaces/IPot.sol";
+import "@yield-protocol/utils/contracts/interfaces/maker/IVat.sol";
+import "@yield-protocol/utils/contracts/interfaces/maker/IPot.sol";
 import "./interfaces/ITreasury.sol";
 import "./interfaces/IFYDai.sol";
 import "./interfaces/IFlashMinter.sol";
-import "./helpers/Delegable.sol";
-import "./helpers/DecimalMath.sol";
-import "./helpers/Orchestrated.sol";
-import "./helpers/ERC20Permit.sol";
-
+import "@yield-protocol/utils/contracts/access/Delegable.sol";
+import "@yield-protocol/utils/contracts/math/DecimalMath.sol";
+import "@yield-protocol/utils/contracts/access/Orchestrated.sol";
+import "@yield-protocol/utils/contracts/token/ERC20Permit.sol";
 
 
 /**

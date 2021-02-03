@@ -3,7 +3,8 @@ const ERC20 = artifacts.require('TestERC20')
 // @ts-ignore
 import { expectRevert } from '@openzeppelin/test-helpers'
 import { Contract } from './shared/fixtures'
-import { PERMIT_TYPEHASH, getPermitDigest, getDomainSeparator } from './shared/signatures'
+import { signatures } from '@yield-protocol/utils'
+const { PERMIT_TYPEHASH, getPermitDigest, getDomainSeparator } = signatures
 import { keccak256, toUtf8Bytes } from 'ethers/lib/utils'
 import { ecsign } from 'ethereumjs-util'
 
