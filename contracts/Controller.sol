@@ -6,8 +6,8 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@yield-protocol/utils/contracts/access/Delegable.sol";
 import "@yield-protocol/utils/contracts/math/DecimalMath.sol";
 import "@yield-protocol/utils/contracts/access/Orchestrated.sol";
-import "@yield-protocol/utils/contracts/interfaces/maker/IVat.sol";
-import "@yield-protocol/utils/contracts/interfaces/maker/IPot.sol";
+import "dss-interfaces/src/dss/VatAbstract.sol";
+import "dss-interfaces/src/dss/PotAbstract.sol";
 import "./interfaces/ITreasury.sol";
 import "./interfaces/IController.sol";
 import "./interfaces/IFYDai.sol";
@@ -35,8 +35,8 @@ contract Controller is IController, Orchestrated(), Delegable(), DecimalMath {
     bytes32 public constant WETH = "ETH-A";
     uint256 public constant DUST = 50e15; // 0.05 ETH
 
-    IVat public vat;
-    IPot public pot;
+    VatAbstract public vat;
+    PotAbstract public pot;
     ITreasury public override treasury;
 
     mapping(uint256 => IFYDai) public override series;                 // FYDai series, indexed by maturity

@@ -4,11 +4,11 @@ pragma solidity ^0.6.10;
 import "@openzeppelin/contracts/math/Math.sol";
 import "@yield-protocol/utils/contracts/math/DecimalMath.sol";
 import "@yield-protocol/utils/contracts/access/Orchestrated.sol";
-import "@yield-protocol/utils/contracts/interfaces/maker/IVat.sol";
-import "@yield-protocol/utils/contracts/interfaces/maker/IDai.sol";
-import "@yield-protocol/utils/contracts/interfaces/maker/IDaiJoin.sol";
-import "@yield-protocol/utils/contracts/interfaces/maker/IGemJoin.sol";
-import "@yield-protocol/utils/contracts/interfaces/maker/IPot.sol";
+import "dss-interfaces/src/dss/VatAbstract.sol";
+import "dss-interfaces/src/dss/DaiAbstract.sol";
+import "dss-interfaces/src/dss/DaiJoinAbstract.sol";
+import "dss-interfaces/src/dss/GemJoinAbstract.sol";
+import "dss-interfaces/src/dss/PotAbstract.sol";
 import "@yield-protocol/utils/contracts/interfaces/chai/IChai.sol";
 import "./interfaces/ITreasury.sol";
 
@@ -24,12 +24,12 @@ import "./interfaces/ITreasury.sol";
 contract Treasury is ITreasury, Orchestrated(), DecimalMath {
     bytes32 constant WETH = "ETH-A";
 
-    IVat public override vat;
+    VatAbstract public override vat;
     IWeth public override weth;
-    IDai public override dai;
-    IDaiJoin public override daiJoin;
-    IGemJoin public override wethJoin;
-    IPot public override pot;
+    DaiAbstract public override dai;
+    DaiJoinAbstract public override daiJoin;
+    GemJoinAbstract public override wethJoin;
+    PotAbstract public override pot;
     IChai public override chai;
     address public unwind;
 
@@ -48,13 +48,13 @@ contract Treasury is ITreasury, Orchestrated(), DecimalMath {
         address chai_
     ) public {
         // These could be hardcoded for mainnet deployment.
-        dai = IDai(dai_);
+        dai = DaiAbstract(dai_);
         chai = IChai(chai_);
-        pot = IPot(pot_);
+        pot = PotAbstract(pot_);
         weth = IWeth(weth_);
-        daiJoin = IDaiJoin(daiJoin_);
-        wethJoin = IGemJoin(wethJoin_);
-        vat = IVat(vat_);
+        daiJoin = DaiJoinAbstract(daiJoin_);
+        wethJoin = GemJoinAbstract(wethJoin_);
+        vat = VatAbstract(vat_);
         vat.hope(wethJoin_);
         vat.hope(daiJoin_);
 
@@ -231,7 +231,7 @@ contract Treasury is ITreasury, Orchestrated(), DecimalMath {
             daiJoin.exit(address(this), toBorrow); // `daiJoin` reverts on failures
         }
 
-        require(dai.transfer(to, daiAmount));                            // Give dai to user
+        dai.transfer(to, daiAmount);               // Give dai to user - Dai doesn't have a return value for `transfer`
     }
 
     /// @dev Returns chai using chai savings as much as possible, and borrowing the rest.

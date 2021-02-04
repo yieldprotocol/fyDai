@@ -2,8 +2,8 @@
 pragma solidity ^0.6.10;
 
 import "@openzeppelin/contracts/math/Math.sol";
-import "@yield-protocol/utils/contracts/interfaces/maker/IVat.sol";
-import "@yield-protocol/utils/contracts/interfaces/maker/IPot.sol";
+import "dss-interfaces/src/dss/VatAbstract.sol";
+import "dss-interfaces/src/dss/PotAbstract.sol";
 import "./interfaces/ITreasury.sol";
 import "./interfaces/IFYDai.sol";
 import "./interfaces/IFlashMinter.sol";
@@ -31,8 +31,8 @@ contract FYDai is IFYDai, Orchestrated(), Delegable(), DecimalMath, ERC20Permit 
 
     uint256 constant internal MAX_TIME_TO_MATURITY = 126144000; // seconds in four years
 
-    IVat public vat;
-    IPot public pot;
+    VatAbstract public vat;
+    PotAbstract public pot;
     ITreasury public treasury;
 
     bool public override isMature;
